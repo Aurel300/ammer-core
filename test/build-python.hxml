@@ -1,0 +1,3 @@
+-D AMMER_TEST_PYTHON
+build-common.hxml
+--python bin/python/test.py

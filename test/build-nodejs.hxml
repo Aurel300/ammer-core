@@ -1,0 +1,4 @@
+-lib hxnodejs
+-D AMMER_TEST_NODEJS
+build-common.hxml
+--js bin/nodejs/test.js

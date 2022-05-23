@@ -1,0 +1,3 @@
+-D AMMER_TEST_HL
+build-common.hxml
+--hl bin/hl/test.hl

@@ -1,0 +1,3 @@
+-D AMMER_TEST_JVM
+build-common.hxml
+--jvm bin/jvm/test.jar

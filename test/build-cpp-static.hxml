@@ -1,0 +1,3 @@
+-D AMMER_TEST_CPP_STATIC
+build-common.hxml
+--cpp bin/cpp-static

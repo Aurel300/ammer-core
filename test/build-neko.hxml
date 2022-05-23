@@ -1,0 +1,3 @@
+-D AMMER_TEST_NEKO
+build-common.hxml
+--neko bin/neko/test.n

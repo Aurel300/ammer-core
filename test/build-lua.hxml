@@ -1,0 +1,4 @@
+-D lua_vanilla
+-D AMMER_TEST_LUA
+build-common.hxml
+--lua bin/lua/test.lua
