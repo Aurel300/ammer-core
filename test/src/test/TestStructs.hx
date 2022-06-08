@@ -29,7 +29,7 @@ class TestStructs extends TestBase {
     var typeNative = cType("void* field_haxe;");
     var type = marshal.structPtr(typeNative, [{
       name: "field_haxe",
-      type: marshal.haxePtr((macro : Main.ExampleType)),
+      type: marshal.haxePtr((macro : ExampleType)),
       read: true,
       write: true,
       owned: true,

@@ -25,6 +25,8 @@ typedef MarshalBytes<TTypeMarshal> = {
 
   // TODO: offset ...?
 
+  // TODO: rename with Haxe instead of Bytes
+
   toBytesCopy:(self:Expr, size:Expr)->Expr,
   fromBytesCopy:(bytes:Expr)->Expr,
 

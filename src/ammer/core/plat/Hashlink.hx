@@ -15,10 +15,6 @@ class HashlinkMarshalSet extends BaseMarshalSet<
   HashlinkLibrary,
   HashlinkTypeMarshal
 > {
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   // TODO: ${config.internalPrefix}
   static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
     -> '$l2 = _ammer_core_registry_get((void*)$l1);';
@@ -29,240 +25,125 @@ class HashlinkMarshalSet extends BaseMarshalSet<
   static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
     -> '$l1 = $l2->key;';
 
-  static final MARSHAL_VOID:HashlinkTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "void",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-    hlType: "_VOID",
-  };
-
-  static final MARSHAL_BOOL:HashlinkTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "bool",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_BOOL",
-  };
-
-  static final MARSHAL_UINT8:HashlinkTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "uint8_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_I32",
-  };
-  static final MARSHAL_INT8:HashlinkTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "int8_t",
-    l3Type: "int8_t",
-    mangled: "i16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_I32",
-  };
-  static final MARSHAL_UINT16:HashlinkTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "uint16_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_I32",
-  };
-  static final MARSHAL_INT16:HashlinkTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "int16_t",
-    l3Type: "int16_t",
-    mangled: "i16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_I32",
-  };
-  static final MARSHAL_UINT32:HashlinkTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_I32",
-  };
-  static final MARSHAL_INT32:HashlinkTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_I32",
-  };
-  static final MARSHAL_UINT64:HashlinkTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "_ammer_haxe_int64*",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
-    l1l2: (l1, l2) -> '$l2 = (((uint64_t)$l1->high) << 32) | (uint32_t)$l1->low;',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_int64*)hl_alloc_obj(_ammer_haxe_int64_type);
-$l1->high = (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF);
-$l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
-    hlType: "_OBJ(_I32 _I32)",
-  };
-  static final MARSHAL_INT64:HashlinkTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "_ammer_haxe_int64*",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
-    l1l2: (l1, l2) -> '$l2 = (((int64_t)$l1->high) << 32) | (uint32_t)$l1->low;',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_int64*)hl_alloc_obj(_ammer_haxe_int64_type);
-$l1->high = (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF);
-$l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
-    hlType: "_OBJ(_I32 _I32)",
-  };
-
-  static final MARSHAL_FLOAT32:HashlinkTypeMarshal = {
-    haxeType: (macro : Single),
-    l1Type: "float",
-    l2Type: "float",
-    l3Type: "float",
-    mangled: "f32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_F32",
-  };
-  static final MARSHAL_FLOAT64:HashlinkTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "double",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_F64",
-  };
-
-  static final MARSHAL_STRING:HashlinkTypeMarshal = {
-    haxeType: (macro : String),
-    l1Type: "_ammer_haxe_string*",
-    l2Type: "const char*",
-    l3Type: "const char*",
-    mangled: "s",
-    l1l2: (l1, l2) -> '$l2 = hl_to_utf8($l1->data);',
-    l2ref: MARSHAL_NOOP1, // TODO: might need to GC root ?
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1, // TODO: dealloc?
-    l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_string*)hl_alloc_obj(_ammer_haxe_string_type);
-$l1->len = hl_utf8_length($l2, 0);
-$l1->data = (uchar*)hl_gc_alloc_noptr(($l1->len + 1) * sizeof(uchar));
-hl_from_utf8($l1->data, $l1->len, $l2);', // TODO: handle null?
-    hlType: "_OBJ(_BYTES _I32)",
-  };
-
-  static final MARSHAL_BYTES:HashlinkTypeMarshal = {
-    haxeType: (macro : hl.Bytes),
-    l1Type: "vbyte*",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: "_BYTES",
-  };
-
-  public function new(library:HashlinkLibrary) {
-    super(library);
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ext:HashlinkTypeMarshalExt,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):HashlinkTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      l1Type:    over != null && over.l1Type    != null ? over.l1Type    : base.l1Type,
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+      hlType:    ext.hlType,
+    };
   }
 
+  static final MARSHAL_VOID = baseExtend(BaseMarshalSet.baseVoid(), {hlType: "_VOID"});
   public function void():HashlinkTypeMarshal return MARSHAL_VOID;
 
+  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {hlType: "_BOOL"});
   public function bool():HashlinkTypeMarshal return MARSHAL_BOOL;
 
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {hlType: "_I32"}, {
+    l1Type: "int32_t",
+    // TODO: no direct array for 8-bit ints: causes JIT error
+    // arrayType: (macro : hl.UI8),
+  });
+  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {hlType: "_I32"}, {
+    l1Type: "int32_t",
+    // arrayType: (macro : hl.UI8),
+  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {hlType: "_I32"}, {
+    l1Type: "int32_t",
+    arrayType: (macro : hl.UI16),
+  });
+  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {hlType: "_I32"}, {
+    l1Type: "int32_t",
+    arrayType: (macro : hl.UI16),
+  });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {hlType: "_I32"}, {
+    l1Type: "int32_t",
+    arrayType: (macro : Int),
+  });
+  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {hlType: "_I32"}, {
+    l1Type: "int32_t",
+    arrayType: (macro : Int),
+  });
   public function uint8():HashlinkTypeMarshal return MARSHAL_UINT8;
   public function int8():HashlinkTypeMarshal return MARSHAL_INT8;
   public function uint16():HashlinkTypeMarshal return MARSHAL_UINT16;
   public function int16():HashlinkTypeMarshal return MARSHAL_INT16;
   public function uint32():HashlinkTypeMarshal return MARSHAL_UINT32;
   public function int32():HashlinkTypeMarshal return MARSHAL_INT32;
+
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {hlType: "_I64"}, {
+    l1Type: "uint64_t",
+    // TODO: JIT errors and no ArrayBytes<I64> (Haxe#10725)
+    // arrayType: (macro : hl.I64), //haxe.Int64),
+  });
+  static final MARSHAL_INT64 = baseExtend(BaseMarshalSet.baseInt64(), {hlType: "_I64"}, {
+    l1Type: "int64_t",
+    // arrayType: (macro : hl.I64), //haxe.Int64),
+  });
   public function uint64():HashlinkTypeMarshal return MARSHAL_UINT64;
   public function int64():HashlinkTypeMarshal return MARSHAL_INT64;
 
+  // TODO: hl_legacy32 / <1.12 int64s are objects
+  /*
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {hlType: "_OBJ(_I32 _I32)"}, {
+    l1Type: "_ammer_haxe_int64*",
+    l1l2: (l1, l2) -> '$l2 = (((uint64_t)$l1->high) << 32) | (uint32_t)$l1->low;',
+    l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_int64*)hl_alloc_obj(_ammer_haxe_int64_type);
+$l1->high = (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF);
+$l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
+  });
+  static final MARSHAL_INT64 = baseExtend(BaseMarshalSet.baseInt64(), {hlType: "_OBJ(_I32 _I32)"}, {
+    l1Type: "_ammer_haxe_int64*",
+    l1l2: (l1, l2) -> '$l2 = (((int64_t)$l1->high) << 32) | (uint32_t)$l1->low;',
+    l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_int64*)hl_alloc_obj(_ammer_haxe_int64_type);
+$l1->high = (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF);
+$l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
+  });
+  public function uint64():HashlinkTypeMarshal return MARSHAL_UINT64;
+  public function int64():HashlinkTypeMarshal return MARSHAL_INT64;
+*/
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {hlType: "_F32"}, {
+    arrayType: (macro : hl.F32),
+  });
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {hlType: "_F64"}, {
+    arrayType: (macro : Float),
+  });
   public function float32():HashlinkTypeMarshal return MARSHAL_FLOAT32;
   public function float64():HashlinkTypeMarshal return MARSHAL_FLOAT64;
 
+  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {hlType: "_OBJ(_BYTES _I32)"}, {
+    l1Type: "_ammer_haxe_string*",
+    l1l2: (l1, l2) -> '$l2 = hl_to_utf8((const uchar*)$l1->data);',
+    l2ref: BaseMarshalSet.MARSHAL_NOOP1, // TODO: might need to GC root ?
+    l2unref: BaseMarshalSet.MARSHAL_NOOP1, // TODO: dealloc?
+    l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_string*)hl_alloc_obj(_ammer_haxe_string_type);
+$l1->len = hl_utf8_length((const unsigned char*)$l2, 0);
+$l1->data = hl_gc_alloc_noptr(($l1->len + 1) * sizeof(uchar));
+hl_from_utf8((uchar*)$l1->data, $l1->len, $l2);', // TODO: handle null?
+  });
   public function string():HashlinkTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {hlType: "_BYTES"}, {
+    haxeType: (macro : hl.Bytes),
+    l1Type: "vbyte*",
+  });
   function bytesInternalType():HashlinkTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:HashlinkTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -271,46 +152,23 @@ hl_from_utf8($l1->data, $l1->len, $l2);', // TODO: handle null?
     toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   } {
-    var tdefBytesRef = library.typeDefCreate();
-    tdefBytesRef.name += "_BytesRef";
-    tdefBytesRef.fields = (macro class BytesRef {
-      public var bytes(default, null):haxe.io.Bytes;
-      public var ptr(default, null):hl.Bytes;
-      public function unref():Void {
-        if (bytes != null) {
-          bytes = null;
-          ptr = null;
-        }
-      }
-      private function new(bytes:haxe.io.Bytes, ptr:hl.Bytes) {
-        this.bytes = bytes;
-        this.ptr = ptr;
-      }
-    }).fields;
-    var pathBytesRef:TypePath = {
-      name: tdefBytesRef.name,
-      pack: tdefBytesRef.pack,
-    };
+    var pathBytesRef = baseBytesRef(
+      (macro : hl.Bytes), macro null,
+      (macro : Int), macro 0, // handle unused
+      macro {}
+    );
     return {
       toBytesCopy: (self, size) -> macro {
         var _self = ($self : hl.Bytes);
         var _size = ($size : Int);
-        var _ret = haxe.io.Bytes.alloc(_size); // TODO: does this zero unnecessarily?
-        $e{blit(
-          macro _self, macro 0,
-          macro @:privateAccess _ret.b, macro 0,
-          macro _size
-        )};
-        _ret;
+        var _ret = new hl.Bytes(_size);
+        _ret.blit(0, _self, 0, _size);
+        _ret.toBytes(_size);
       },
       fromBytesCopy: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
         var _ret = $e{alloc(macro _bytes.length)};
-        $e{blit(
-          macro @:privateAccess _bytes.b, macro 0,
-          macro _ret, macro 0,
-          macro _bytes.length
-        )};
+        _ret.blit(0, @:privateAccess _bytes.b, 0, _bytes.length);
         _ret;
       },
 
@@ -322,12 +180,16 @@ hl_from_utf8($l1->data, $l1->len, $l2);', // TODO: handle null?
       fromBytesRef: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
         var _ptr = @:privateAccess _bytes.b;
-        (@:privateAccess new $pathBytesRef(_bytes, _ptr));
+        (@:privateAccess new $pathBytesRef(_bytes, _ptr, 0));
       },
+
+      // TODO: provide overrides for blit, get/set ...
     };
   }
 
-  function opaquePtrInternal(name:String):HashlinkTypeMarshal return {
+  function opaquePtrInternal(name:String):HashlinkTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+    hlType: '_ABSTRACT(abstract_$name)',
+  }, {
     haxeType: TPath({
       // no prefix results in collisions with other type declarations
       // TODO: name with _ammer prefix
@@ -335,56 +197,97 @@ hl_from_utf8($l1->data, $l1->len, $l2);', // TODO: handle null?
       pack: ["hl"],
       name: "Abstract",
     }),
-    l1Type: '$name*',
-    l2Type: '$name*',
-    l3Type: '$name*',
-    mangled: 'p${Mangle.identifier(name)}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    hlType: '_ABSTRACT(abstract_$name)',
-  };
+  });
 
-  function haxePtrInternal(haxeType:ComplexType):HashlinkTypeMarshal return {
+  function arrayPtrInternalType(element:HashlinkTypeMarshal):HashlinkTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    hlType: "_BYTES",
+  }, {
+    haxeType: (macro : hl.Bytes),
+    l1Type: "vbyte*",
+    l1l2: BaseMarshalSet.MARSHAL_CONVERT_CAST('${element.l2Type}*'),
+    l2l1: BaseMarshalSet.MARSHAL_CONVERT_CAST("vbyte*"),
+  });
+  override function arrayPtrInternalOps(
+    type:HashlinkTypeMarshal,
+    element:HashlinkTypeMarshal,
+    alloc:(size:Expr)->Expr
+    // blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
+  ):{
+    vectorType:Null<ComplexType>,
+    toHaxeCopy:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeCopy:Null<(array:Expr)->Expr>,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(array:Expr)->Expr>,
+  } {
+    var elType = element.arrayType;
+    var vectorType = (macro : haxe.ds.Vector<$elType>);
+    var vectorTypePath = TypeUtils.complexTypeToPath(vectorType);
+    var pathArrayRef = baseArrayRef(
+      element, vectorType,
+      (macro : hl.Bytes), macro null,
+      (macro : Int), macro 0, // handle unused
+      macro {}
+    );
+    return {
+      vectorType: vectorType,
+      toHaxeCopy: (self, size) -> macro {
+        var _self = ($self : hl.Bytes);
+        var _size = ($size : Int);
+        var bytes = new hl.Bytes(_size << $v{element.arrayBits});
+        bytes.blit(0, _self, 0, _size << $v{element.arrayBits});
+        var bytesAccess:hl.BytesAccess<$elType> = bytes;
+        var _ret = new hl.types.ArrayBytes<$elType>(); // use untyped $new ?
+        @:privateAccess _ret.bytes = bytesAccess;
+        @:privateAccess _ret.length = _size;
+        @:privateAccess _ret.size = _size;
+        (cast _ret : $vectorType);
+      },
+      fromHaxeCopy: (vector) -> macro {
+        var _vector = ($vector : $vectorType);
+        var _ret = $e{alloc(macro _vector.length << $v{element.arrayBits})};
+        _ret.blit(
+          0,
+          @:privateAccess (cast _vector.toData() : hl.types.ArrayBytes<$elType>).bytes,
+          0,
+          _vector.length << $v{element.arrayBits}
+        );
+        _ret;
+      },
+      toHaxeRef: (self, size) -> macro {
+        var _self = ($self : hl.Bytes);
+        var _size = ($size : Int);
+        var bytesAccess:hl.BytesAccess<$elType> = _self;
+        var _ret = new hl.types.ArrayBytes<$elType>(); // use untyped $new ?
+        @:privateAccess _ret.bytes = bytesAccess;
+        @:privateAccess _ret.length = _size;
+        @:privateAccess _ret.size = _size;
+        (cast _ret : $vectorType);
+      },
+      fromHaxeRef: (vector) -> macro {
+        var _vector = ($vector : $vectorType);
+        var _ptr = @:privateAccess (cast _vector.toData() : hl.types.ArrayBytes<$elType>).bytes;
+        (@:privateAccess new $pathArrayRef(_vector, _ptr, 0));
+      },
+    };
+  }
+
+  function haxePtrInternal(haxeType:ComplexType):HashlinkTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
+    hlType: "_DYN",
+  }, {
     // TODO: would be nice to avoid boxing
     //       but maybe this requires a post-typing interface ...
     haxeType: (macro : Dynamic),
     l1Type: "vdynamic*",
     l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
     l1l2: MARSHAL_REGISTRY_GET_NODE,
     l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
     l2unref: MARSHAL_REGISTRY_UNREF,
     l2l1: MARSHAL_REGISTRY_GET_KEY,
-    hlType: "_DYN",
-  };
+  });
 
-  function closureInternal(
-    ret:HashlinkTypeMarshal,
-    args:Array<HashlinkTypeMarshal>
-  ):HashlinkTypeMarshal return {
-    haxeType: TFunction(
-      args.map(arg -> arg.haxeType),
-      ret.haxeType
-    ),
-    l1Type: "vclosure*",
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
-    hlType: '_FUN(${ret.hlType}, ' + (args.length == 0 ? "_NO_ARG" : args.map(arg -> arg.hlType).join(" ")) + ')',
-  };
+  public function new(library:HashlinkLibrary) {
+    super(library);
+  }
 }
 
 class Hashlink extends Base<
@@ -408,13 +311,15 @@ class Hashlink extends Base<
         ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
         : '${config.outputPath}/${lib.config.name}.hdll',
       libCode: lib -> lib.lb
-        .ail("void HL_NAME(_ammer_init)(_ammer_haxe_int64 *ex_int64, _ammer_haxe_string *ex_string) {")
+        .ail("void HL_NAME(_ammer_init)(_ammer_haxe_string *ex_string) {")
+        // _ammer_haxe_int64 *ex_int64 // hl_legacy32
         .i()
-          .ail("_ammer_haxe_int64_type = ex_int64->t;")
+          // .ail("_ammer_haxe_int64_type = ex_int64->t;")
           .ail("_ammer_haxe_string_type = ex_string->t;")
         .d()
         .ail("}")
-        .ail('DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32));')
+        // _OBJ(_I32 _I32)
+        .ail('DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));')
         .done(),
     });
   }
@@ -447,17 +352,7 @@ class HashlinkLibrary extends BaseLibrary<
         ],
         name: ":hlNative",
       }],
-      kind: FFun({
-        ret: (macro : Void),
-        expr: macro throw 0,
-        args: [{
-          type: (macro : haxe.Int64),
-          name: "ex_int64",
-        }, {
-          type: (macro : String),
-          name: "ex_string",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (/*haxe.Int64,*/ String) -> Void), macro throw 0),
       access: [APrivate, AStatic],
     });
     tdef.fields.push({
@@ -467,7 +362,7 @@ class HashlinkLibrary extends BaseLibrary<
         (macro : Int),
         macro {
           _ammer_init(
-            haxe.Int64.make(0, 0),
+            //haxe.Int64.make(0, 0),
             ""
           );
           0;
@@ -477,7 +372,6 @@ class HashlinkLibrary extends BaseLibrary<
     });
     lb.ail('#define HL_NAME(n) ${config.name}_ ## n');
     lb.ail("#include \"hl.h\"");
-    //lb.ail("#include <inttypes.h>");
     boilerplate(
       "void*",
       "void*",
@@ -487,20 +381,19 @@ class HashlinkLibrary extends BaseLibrary<
       "hl_remove_root(&curr->key);"
     );
     // TODO: could be nicer with a union?
-    lb.ail("typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;");
-    lb.ail("static hl_type *_ammer_haxe_int64_type;");
+    //lb.ail("typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;");
+    //lb.ail("static hl_type *_ammer_haxe_int64_type;");
     lb.ail("typedef struct { hl_type *t; vbyte *data; int32_t len; } _ammer_haxe_string;");
     lb.ail("static hl_type *_ammer_haxe_string_type;");
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:HashlinkTypeMarshal,
     args:Array<HashlinkTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
-    var name = mangleFunction(ret, args, code);
     lb
       .ai('HL_PRIM ${ret.l1Type} HL_NAME($name)(')
       .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_$idx', ", ")
@@ -512,7 +405,7 @@ class HashlinkLibrary extends BaseLibrary<
         .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
         .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret != HashlinkMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -543,14 +436,7 @@ class HashlinkLibrary extends BaseLibrary<
         ],
         name: ":hlNative",
       }],
-      kind: FFun({
-        ret: ret.haxeType,
-        expr: macro throw 0,
-        args: [ for (i => arg in args) {
-          type: arg.haxeType,
-          name: 'arg$i',
-        } ],
-      }),
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
       access: [APublic, AStatic],
     });
     return fieldExpr(name);
@@ -570,11 +456,11 @@ class HashlinkLibrary extends BaseLibrary<
         .ail(clType.type.l3l2(fn, "_l2_fn"))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .ail('${clType.type.l1Type} _l1_fn;')
+        .ail("vclosure* _l1_fn;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret != HashlinkMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
           .ail('_l1_output = (_l1_fn->hasValue')
         .ife()
@@ -592,7 +478,7 @@ class HashlinkLibrary extends BaseLibrary<
           .map(args, arg -> arg, ", ")
           .al("));")
         .d()
-        .ifi(clType.ret != HashlinkMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
           .ail(clType.ret.l2l3("_l2_output", outputExpr))
@@ -614,7 +500,7 @@ class HashlinkLibrary extends BaseLibrary<
       .a(args.length == 0 ? "void" : "")
       .al(") {")
       .i()
-      .ifi(ret != HashlinkMarshalSet.MARSHAL_VOID)
+      .ifi(ret.mangled != "v")
         .ail('${ret.l3Type} ${config.returnIdent};')
         .ail(code)
         .ail('return ${config.returnIdent};')
@@ -628,9 +514,12 @@ class HashlinkLibrary extends BaseLibrary<
 }
 
 typedef HashlinkLibraryConfig = LibraryConfig;
+typedef HashlinkTypeMarshalExt = {
+  hlType:String,
+};
 typedef HashlinkTypeMarshal = {
   >BaseTypeMarshal,
-  hlType:String,
+  >HashlinkTypeMarshalExt,
 };
 
 #end

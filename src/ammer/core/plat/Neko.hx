@@ -13,10 +13,6 @@ class NekoMarshalSet extends BaseMarshalSet<
   NekoLibrary,
   NekoTypeMarshal
 > {
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   // TODO: ${config.internalPrefix}
   static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
     -> '$l2 = _ammer_core_registry_get((void*)$l1);';
@@ -27,215 +23,112 @@ class NekoMarshalSet extends BaseMarshalSet<
   static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
     -> '$l1 = $l2->key;';
 
-  static final MARSHAL_VOID:NekoTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "void",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-  };
-
-  static final MARSHAL_BOOL:NekoTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "value",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
-    l1l2: (l1, l2) -> '$l2 = val_bool($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_bool($l2);',
-  };
-
-  static final MARSHAL_UINT8:NekoTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "value",
-    l2Type: "uint32_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
-    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
-  };
-  static final MARSHAL_INT8:NekoTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "value",
-    l2Type: "int32_t",
-    l3Type: "int8_t",
-    mangled: "i8",
-    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
-  };
-  static final MARSHAL_UINT16:NekoTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "value",
-    l2Type: "uint32_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
-    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
-  };
-  static final MARSHAL_INT16:NekoTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "value",
-    l2Type: "int32_t",
-    l3Type: "int16_t",
-    mangled: "u16",
-    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
-  };
-  static final MARSHAL_UINT32:NekoTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "value",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
-    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
-  };
-  static final MARSHAL_INT32:NekoTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "value",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
-    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
-  };
-  static final MARSHAL_UINT64:NekoTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "value",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
-    l1l2: (l1, l2) -> '$l2 = ((uint64_t)val_any_int(val_field($l1, _ammer_haxe_field_high)) << 32) | (uint32_t)val_any_int(val_field($l1, _ammer_haxe_field_low));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
-((vobject*)$l1)->proto = _ammer_haxe_proto_int64;
-alloc_field($l1, _ammer_haxe_field_high, alloc_int32(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
-alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
-  };
-  static final MARSHAL_INT64:NekoTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "value",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
-    l1l2: (l1, l2) -> '$l2 = ((int64_t)val_any_int(val_field($l1, _ammer_haxe_field_high)) << 32) | (uint32_t)val_any_int(val_field($l1, _ammer_haxe_field_low));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
-((vobject*)$l1)->proto = _ammer_haxe_proto_int64;
-alloc_field($l1, _ammer_haxe_field_high, alloc_int32(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
-alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
-  };
-
-  // static final MARSHAL_FLOAT32:NekoTypeMarshal = {};
-  static final MARSHAL_FLOAT64:NekoTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "value",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: (l1, l2) -> '$l2 = val_float($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
-  };
-
-  static final MARSHAL_STRING:NekoTypeMarshal = {
-    haxeType: (macro : String),
-    l1Type: "value",
-    l2Type: "const char*",
-    l3Type: "const char*",
-    mangled: "s",
-    l1l2: (l1, l2) -> '$l2 = val_string(val_field($l1, _ammer_haxe_field_string));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
-((vobject*)$l1)->proto = _ammer_haxe_proto_string;
-alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
-  };
-
-  static final MARSHAL_BYTES:NekoTypeMarshal = {
-    haxeType: (macro : Dynamic),
-    l1Type: "value",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: (l1, l2) -> '$l2 = (uint8_t*)(int_val)val_data($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_bytes, (value)(int_val)($l2));',
-  };
-
-  public function new(library:NekoLibrary) {
-    super(library);
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):NekoTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      // L1 type is always "value", a Neko tagged pointer
+      l1Type:   "value",
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+    };
   }
 
+  static final MARSHAL_VOID = BaseMarshalSet.baseVoid();
   public function void():NekoTypeMarshal return MARSHAL_VOID;
 
+  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {
+    l1l2: (l1, l2) -> '$l2 = val_bool($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_bool($l2);',
+  });
   public function bool():NekoTypeMarshal return MARSHAL_BOOL;
 
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {
+    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
+  });
+  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {
+    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
+  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {
+    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
+  });
+  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {
+    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
+  });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
+    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
+  });
+  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {
+    l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
+  });
   public function uint8():NekoTypeMarshal return MARSHAL_UINT8;
   public function int8():NekoTypeMarshal return MARSHAL_INT8;
   public function uint16():NekoTypeMarshal return MARSHAL_UINT16;
   public function int16():NekoTypeMarshal return MARSHAL_INT16;
   public function uint32():NekoTypeMarshal return MARSHAL_UINT32;
   public function int32():NekoTypeMarshal return MARSHAL_INT32;
+
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
+    l1l2: (l1, l2) -> '$l2 = ((uint64_t)val_any_int(val_field($l1, _ammer_haxe_field_high)) << 32) | (uint32_t)val_any_int(val_field($l1, _ammer_haxe_field_low));',
+    l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
+((vobject*)$l1)->proto = _ammer_haxe_proto_int64;
+alloc_field($l1, _ammer_haxe_field_high, alloc_int32(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
+alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
+  });
+  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(), {
+    l1l2: (l1, l2) -> '$l2 = ((int64_t)val_any_int(val_field($l1, _ammer_haxe_field_high)) << 32) | (uint32_t)val_any_int(val_field($l1, _ammer_haxe_field_low));',
+    l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
+((vobject*)$l1)->proto = _ammer_haxe_proto_int64;
+alloc_field($l1, _ammer_haxe_field_high, alloc_int32(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
+alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
+  });
   public function uint64():NekoTypeMarshal return MARSHAL_UINT64;
   public function int64():NekoTypeMarshal return MARSHAL_INT64;
 
+  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {
+  //   l1l2: (l1, l2) -> '$l2 = val_float($l1);',
+  //   l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
+  // });
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {
+    //l1l2: (l1, l2) -> '$l2 = val_float($l1);',
+    l1l2: (l1, l2) -> '$l2 = val_number($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
+  });
   public function float32():NekoTypeMarshal return throw "!";
   public function float64():NekoTypeMarshal return MARSHAL_FLOAT64;
 
+  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {
+    l1l2: (l1, l2) -> '$l2 = val_string(val_field($l1, _ammer_haxe_field_string));',
+    l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
+((vobject*)$l1)->proto = _ammer_haxe_proto_string;
+alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
+  });
   public function string():NekoTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+    haxeType: (macro : Dynamic),
+    l1l2: (l1, l2) -> '$l2 = (uint8_t*)(int_val)val_data($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_bytes, (value)(int_val)($l2));',
+  });
   function bytesInternalType():NekoTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:NekoTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -244,26 +137,11 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
     toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   } {
-    var tdefBytesRef = library.typeDefCreate();
-    tdefBytesRef.name += "_BytesRef";
-    tdefBytesRef.fields = (macro class BytesRef {
-      public var bytes(default, null):haxe.io.Bytes;
-      public var ptr(default, null):Dynamic;
-      public function unref():Void {
-        if (bytes != null) {
-          bytes = null;
-          ptr = null;
-        }
-      }
-      private function new(bytes:haxe.io.Bytes, ptr:Dynamic) {
-        this.bytes = bytes;
-        this.ptr = ptr;
-      }
-    }).fields;
-    var pathBytesRef:TypePath = {
-      name: tdefBytesRef.name,
-      pack: tdefBytesRef.pack,
-    };
+    var pathBytesRef = baseBytesRef(
+      (macro : Int), macro 0,
+      (macro : Int), macro 0, // handle unused
+      macro {}
+    );
     return {
       toBytesCopy: (self, size) -> macro {
         var _self = ($self : Dynamic);
@@ -289,7 +167,7 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
         var _ret = ((untyped $e{library.fieldExpr("_ammer_neko_frombytesref")}) : (neko.NativeString) -> Dynamic)(
           _bytes.getData()
         );
-        (@:privateAccess new $pathBytesRef(_bytes, _ret));
+        (@:privateAccess new $pathBytesRef(_bytes, _ret, 0));
       },
     };
   }
@@ -299,54 +177,37 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
       library.lb.ail('DEFINE_KIND(_neko_abstract_kind_$name);');
       library.abstractKinds[name] = true;
     }
-    return {
+    return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
       haxeType: (macro : Dynamic),
-      l1Type: "value",
-      l2Type: '$name*',
-      l3Type: '$name*',
-      mangled: 'p${Mangle.identifier(name)}_',
       l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
-      l2ref: MARSHAL_NOOP1,
-      l2l3: MARSHAL_CONVERT_DIRECT,
-      l3l2: MARSHAL_CONVERT_DIRECT,
-      l2unref: MARSHAL_NOOP1,
       l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$name, (value)(int_val)($l2));',
-    };
+    });
   }
 
-  function haxePtrInternal(haxeType:ComplexType):NekoTypeMarshal return {
-    haxeType: (macro : Dynamic), // haxeType?
-    l1Type: "value",
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  function arrayPtrInternalType(element:NekoTypeMarshal):NekoTypeMarshal {
+    var name = 'array_${element.mangled}'; // TODO: more robust name
+    if (!library.abstractKinds.exists(name)) {
+      library.lb.ail('DEFINE_KIND(_neko_abstract_kind_$name);');
+      library.abstractKinds[name] = true;
+    }
+    return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+      haxeType: (macro : Dynamic),
+      l1l2: (l1, l2) -> '$l2 = (${element.l3Type}*)(int_val)val_data($l1);',
+      l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$name, (value)(int_val)($l2));',
+    });
+  }
 
-  function closureInternal(
-    ret:NekoTypeMarshal,
-    args:Array<NekoTypeMarshal>
-  ):NekoTypeMarshal return {
-    haxeType: TFunction(
-      args.map(arg -> arg.haxeType),
-      ret.haxeType
-    ),
-    l1Type: "value",
+  function haxePtrInternal(haxeType:ComplexType):NekoTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
     l1l2: MARSHAL_REGISTRY_GET_NODE,
     l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
     l2unref: MARSHAL_REGISTRY_UNREF,
     l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  });
+
+  public function new(library:NekoLibrary) {
+    super(library);
+  }
 }
 
 class Neko extends Base<
@@ -375,8 +236,8 @@ static value _ammer_neko_tobytescopy(value data, value size) {
 DEFINE_PRIM(_ammer_neko_tobytescopy, 2);
 static value _ammer_neko_frombytescopy(value data, value w_size) {
   uint32_t size = val_any_int(w_size);
-  uint8_t* ret = (uint8_t*)malloc(size); // TODO: mallocFunction
-  memcpy(ret, val_string(data), size);
+  uint8_t* ret = (uint8_t*)${lib.config.mallocFunction}(size);
+  ${lib.config.memcpyFunction}(ret, val_string(data), size);
   return alloc_abstract(_neko_abstract_bytes, (value)(int_val)(ret));
 }
 DEFINE_PRIM(_ammer_neko_frombytescopy, 2);
@@ -464,7 +325,6 @@ class NekoLibrary extends BaseLibrary<
       access: [APrivate, AStatic],
     });
     lb.ail("#include <neko.h>");
-    lb.ail("#include <inttypes.h>");
     boilerplate(
       "void*",
       "void*",
@@ -482,14 +342,13 @@ class NekoLibrary extends BaseLibrary<
     lb.ail('DEFINE_KIND(_neko_abstract_bytes);');
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:NekoTypeMarshal,
     args:Array<NekoTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
-    var name = mangleFunction(ret, args, code);
     lb
       .ai('static value ${name}(')
       .mapi(args, (idx, arg) -> 'value _l1_arg_$idx', ", ")
@@ -501,7 +360,7 @@ class NekoLibrary extends BaseLibrary<
         .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
         .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret != NekoMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -551,7 +410,7 @@ class NekoLibrary extends BaseLibrary<
         .ail('value _neko_args[${args.length}] = {')
         .lmapi(args, (idx, arg) -> '_l1_arg_$idx,')
         .ail("};")
-        .ifi(clType.ret != NekoMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
           .ail('_l1_output = val_callN(_l1_fn, _neko_args, ${args.length});')
           .ail('${clType.ret.l2Type} _l2_output;')
@@ -577,7 +436,7 @@ class NekoLibrary extends BaseLibrary<
       .a(args.length == 0 ? "void" : "")
       .al(") {")
       .i()
-        .ifi(ret != NekoMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('return ${config.returnIdent};')

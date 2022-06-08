@@ -38,6 +38,10 @@ abstract class BaseLibrary<
     if (config.typeDefPack == null) config.typeDefPack = ["ammer", "externs"];
     if (config.typeDefName == null) config.typeDefName = 'CoreExtern_${config.name}';
     tdef = typeDefCreate();
+    lb.ail("#include <stdlib.h>
+#include <inttypes.h>
+#include <stdbool.h>
+#include <string.h>");
   }
 
   function boilerplate(
@@ -50,15 +54,8 @@ abstract class BaseLibrary<
     // TODO: ctx might need to be per node (multi-threading ...)
     final BINS = 128;
     final P = '${config.internalPrefix}registry';
-    /*
-static void _ammer_core_registry_init($ctxType ctx) {
-  _ammer_core_registry.ctx = ctx;
-}
-    */
     addCode('
 // ammer core boilerplate
-#include <stdlib.h>
-// #include <stdio.h>
 static size_t ${P}_hash(size_t key) {
   // taken from https://gist.github.com/badboy/6267743#64-bit-mix-functions
   // (by Thomas Wang)
@@ -94,7 +91,7 @@ static ${P}_node* ${P}_get($keyType key) {
     next_ptr = &curr->next;
     curr = *next_ptr;
   }
-  curr = (${P}_node*)calloc(1, sizeof(${P}_node));
+  curr = (${P}_node*)${config.callocFunction}(1, sizeof(${P}_node));
   curr->key = key;
   curr->ref_count = 0;
   *next_ptr = curr;
@@ -103,7 +100,7 @@ static ${P}_node* ${P}_get($keyType key) {
 static void ${P}_incref(${P}_node* curr) {
   if (curr == NULL || curr == &${P}.null_node) return;
   if (curr->ref_count < 0) {
-    // TODO: crash
+    abort();
     //puts("warning: ref_count < 0");
   }
   if (curr->ref_count == 0) {
@@ -116,7 +113,7 @@ static void ${P}_decref(${P}_node* curr) {
   if (curr == NULL || curr == &${P}.null_node) return;
   curr->ref_count--;
   if (curr->ref_count < 0) {
-    // TODO: crash
+    abort();
     //printf("warning: decref ref_count < 0 for %p (%p)\\n", curr, curr->key);
   }
   if (curr->ref_count == 0) {
@@ -127,7 +124,7 @@ static void ${P}_decref(${P}_node* curr) {
       if (curr == curr_cmp) {
         *next_ptr = curr->next;
         $unroot
-        free(curr);
+        ${config.freeFunction}(curr);
       }
       next_ptr = &curr_cmp->next;
       curr_cmp = *next_ptr;
@@ -168,25 +165,27 @@ static void ${P}_decref(${P}_node* curr) {
     // noop for most platforms
   }
 
-  abstract public function addFunction(
+  public function addFunction(
     ret:TTypeMarshal,
     args:Array<TTypeMarshal>,
     code:String,
     ?pos:Position
-  ):Expr;
-  /*
-  abstract public function storeOwned(
-    native:String,
-    c:String,
-    type:TTypeMarshal
-  ):String;
+  ):Expr {
+    lb.ail('// args: [${args.map(a -> a.mangled).join(", ")}]');
+    lb.ail('// ret:  ${ret.mangled}');
+    if (pos == null) pos = config.pos;
+    var name = mangleFunction(ret, args, code);
+    return addNamedFunction(name, ret, args, code, pos);
+  }
 
-  abstract public function loadOwned(
-    native:String,
-    c:String,
-    type:TTypeMarshal
-  ):String;
-*/
+  abstract public function addNamedFunction(
+    name:String,
+    ret:TTypeMarshal,
+    args:Array<TTypeMarshal>,
+    code:String,
+    pos:Position
+  ):Expr;
+
   abstract public function closureCall(
     fn:String,
     clType:MarshalClosure<TTypeMarshal>,

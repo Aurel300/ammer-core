@@ -16,242 +16,74 @@ class CsMarshalSet extends BaseMarshalSet<
   CsLibrary,
   CsTypeMarshal
 > {
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   // The implementation is a noop but the identity of the function is used to
   // identify when ref/unref should happen in a C# wrapper.
   static final MARSHAL_REGISTRY_REF = (_:String) -> "";
   static final MARSHAL_REGISTRY_UNREF = (_:String) -> "";
 
-  static final MARSHAL_VOID:CsTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "void",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-    primitive: true,
-    csType: "void",
-  };
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ext:CsTypeMarshalExt,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):CsTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      l1Type:    over != null && over.l1Type    != null ? over.l1Type    : base.l1Type,
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+      primitive: ext.primitive,
+      csType:    ext.csType,
+    };
+  }
 
-  static final MARSHAL_BOOL:CsTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "bool",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "bool",
-  };
+  static final MARSHAL_VOID = baseExtend(BaseMarshalSet.baseVoid(), {primitive: true, csType: "void"});
+  public function void():CsTypeMarshal return MARSHAL_VOID;
 
-  static final MARSHAL_UINT8:CsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "uint8_t",
-    l2Type: "uint8_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "byte",
-  };
-  static final MARSHAL_INT8:CsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int8_t",
-    l2Type: "int8_t",
-    l3Type: "int8_t",
-    mangled: "i8",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "sbyte",
-  };
-  static final MARSHAL_UINT16:CsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "uint16_t",
-    l2Type: "uint16_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "ushort",
-  };
-  static final MARSHAL_INT16:CsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int16_t",
-    l2Type: "int16_t",
-    l3Type: "int16_t",
-    mangled: "i16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "short",
-  };
-  static final MARSHAL_UINT32:CsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "uint32_t",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
+  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {primitive: true, csType: "bool"});
+  public function bool():CsTypeMarshal return MARSHAL_BOOL;
+
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {primitive: true, csType: "byte"}, {
+    arrayType: (macro : cs.types.UInt8),
+  });
+  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {primitive: true, csType: "sbyte"}, {
+    arrayType: (macro : cs.types.Int8),
+  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {primitive: true, csType: "ushort"}, {
+    arrayType: (macro : cs.types.UInt16),
+  });
+  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {primitive: true, csType: "short"}, {
+    arrayType: (macro : cs.types.Int16),
+  });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
     // csType: "uint",
     primitive: true,
     csType: "int", // see Haxe#5258
-  };
-  static final MARSHAL_INT32:CsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "int",
-  };
-  static final MARSHAL_UINT64:CsTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "uint64_t",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
+  }, {
+    arrayType: (macro : Int),
+  });
+  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {primitive: true, csType: "int"}, {
+    arrayType: (macro : Int),
+  });
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
     // csType: "ulong",
     primitive: true,
     csType: "long", // same as Haxe#5258?
-  };
-  static final MARSHAL_INT64:CsTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "int64_t",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "long",
-  };
-
-  static final MARSHAL_FLOAT32:CsTypeMarshal = {
-    haxeType: (macro : Single),
-    l1Type: "float",
-    l2Type: "float",
-    l3Type: "float",
-    mangled: "f32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "float",
-  };
-  static final MARSHAL_FLOAT64:CsTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "double",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: true,
-    csType: "double",
-  };
-
-  // TODO: MarshalAs for strings? https://docs.microsoft.com/en-us/dotnet/standard/native-interop/type-marshaling
-  static final MARSHAL_STRING:CsTypeMarshal = {
-    haxeType: (macro : String),
-    l1Type: "const char*",
-    l2Type: "const char*",
-    l3Type: "const char*",
-    mangled: "s",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: false,
-    csType: "string",
-  };
-
-  static final MARSHAL_BYTES:CsTypeMarshal = {
-    haxeType: (macro : cs.system.IntPtr),
-    l1Type: "uint8_t*",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: (l1, l2) -> '$l2 = (uint8_t*)$l1;',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = (uint8_t*)$l2;',
-    primitive: false,
-    csType: "System.IntPtr",
-  };
-
-  public function new(library:CsLibrary) {
-    super(library);
-  }
-
-  public function void():CsTypeMarshal return MARSHAL_VOID;
-
-  public function bool():CsTypeMarshal return MARSHAL_BOOL;
-
+  }, {
+    // arrayType: (macro: cs.types.UInt64)
+    arrayType: (macro: cs.types.Int64)
+  });
+  static final MARSHAL_INT64 = baseExtend(BaseMarshalSet.baseInt64(), {primitive: true, csType: "long"}, {
+    arrayType: (macro : cs.types.Int64),
+  });
   public function uint8():CsTypeMarshal return MARSHAL_UINT8;
   public function int8():CsTypeMarshal return MARSHAL_INT8;
   public function uint16():CsTypeMarshal return MARSHAL_UINT16;
@@ -261,14 +93,26 @@ class CsMarshalSet extends BaseMarshalSet<
   public function uint64():CsTypeMarshal return MARSHAL_UINT64;
   public function int64():CsTypeMarshal return MARSHAL_INT64;
 
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {primitive: true, csType: "float"}, {
+    arrayType: (macro : Single),
+  });
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {primitive: true, csType: "double"}, {
+    arrayType: (macro : Float),
+  });
   public function float32():CsTypeMarshal return MARSHAL_FLOAT32;
   public function float64():CsTypeMarshal return MARSHAL_FLOAT64;
 
+  // TODO: MarshalAs for strings? https://docs.microsoft.com/en-us/dotnet/standard/native-interop/type-marshaling
+  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {primitive: false, csType: "string"});
   public function string():CsTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {primitive: false, csType: "System.IntPtr"}, {
+    haxeType: (macro : cs.system.IntPtr),
+    // l1l2: (l1, l2) -> '$l2 = (uint8_t*)$l1;',
+    // l2l1: (l2, l1) -> '$l1 = (uint8_t*)$l2;',
+  });
   function bytesInternalType():CsTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:CsTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -277,30 +121,11 @@ class CsMarshalSet extends BaseMarshalSet<
     toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   } {
-    var tdefBytesRef = library.typeDefCreate();
-    tdefBytesRef.name += "_BytesRef";
-    tdefBytesRef.fields = (macro class BytesRef {
-      public var bytes(default, null):haxe.io.Bytes;
-      public var ptr(default, null):cs.system.IntPtr;
-      private var handle:cs.system.runtime.interopservices.GCHandle;
-      public function unref():Void {
-        if (bytes != null) {
-          handle.Free();
-          bytes = null;
-          ptr = null;
-          handle = null;
-        }
-      }
-      private function new(bytes:haxe.io.Bytes, ptr:cs.system.IntPtr, handle:cs.system.runtime.interopservices.GCHandle) {
-        this.bytes = bytes;
-        this.ptr = ptr;
-        this.handle = handle;
-      }
-    }).fields;
-    var pathBytesRef:TypePath = {
-      name: tdefBytesRef.name,
-      pack: tdefBytesRef.pack,
-    };
+    var pathBytesRef = baseBytesRef(
+      (macro : cs.system.IntPtr), macro null,
+      (macro : cs.system.runtime.interopservices.GCHandle), macro null,
+      macro handle.Free()
+    );
     return {
       toBytesCopy: (self, size) -> macro {
         var _self:cs.system.IntPtr = $self;
@@ -327,21 +152,111 @@ class CsMarshalSet extends BaseMarshalSet<
     };
   }
 
-  function opaquePtrInternal(name:String):CsTypeMarshal return {
-    haxeType: (macro : cs.system.IntPtr),
-    l1Type: '$name*',
-    l2Type: '$name*',
-    l3Type: '$name*',
-    mangled: 'p${Mangle.identifier(name)}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
+  function opaquePtrInternal(name:String):CsTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
     primitive: false,
     csType: "System.IntPtr",
-  };
+  }, {
+    haxeType: (macro : cs.system.IntPtr),
+  });
+
+  function arrayPtrInternalType(element:CsTypeMarshal):CsTypeMarshal {
+    var elType = element.arrayType != null ? element.arrayType : element.haxeType;
+    return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+      primitive: false,
+      csType: "System.IntPtr",
+    }, {
+      haxeType: (macro : cs.system.IntPtr),
+    });
+  }
+  override function arrayPtrInternalOps(
+    type:CsTypeMarshal,
+    element:CsTypeMarshal,
+    alloc:(size:Expr)->Expr
+    // blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
+  ):{
+    vectorType:Null<ComplexType>,
+    toHaxeCopy:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeCopy:Null<(array:Expr)->Expr>,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(array:Expr)->Expr>,
+  } {
+    var elType = element.arrayType;
+    var vectorType = (macro : haxe.ds.Vector<$elType>);
+    var vectorTypePath = TypeUtils.complexTypeToPath(vectorType);
+
+    var copyTo = '_ammer_cs_toarraycopy_${element.mangled}';
+    var copyFrom = '_ammer_cs_fromarraycopy_${element.mangled}';
+    library.lb.ail('void $copyTo(uint8_t* data, int size, uint8_t* res, int res_size) {
+  ${library.config.memcpyFunction}(res, data, size);
+}
+uint8_t* $copyFrom(uint8_t* data, int size) {
+  uint8_t* res = (uint8_t*)${library.config.mallocFunction}(size);
+  ${library.config.memcpyFunction}(res, data, size);
+  return res;
+}');
+    library.lbImport
+      .ai("[System.Runtime.InteropServices.DllImport(")
+        // TODO: OS dependent
+        .al('"${library.config.name}.dylib")]')
+      .ail('public static extern void $copyTo(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] ${element.csType}[] res, int res_size);');
+    library.tdef.fields.push({
+      pos: library.config.pos,
+      name: copyTo,
+      kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Int, cs.NativeArray<$elType>, Int) -> Void)),
+      access: [APrivate, AStatic, AExtern],
+    });
+    library.lbImport
+      .ai("[System.Runtime.InteropServices.DllImport(")
+        // TODO: OS dependent
+        .al('"${library.config.name}.dylib")]')
+      .ail('public static extern System.IntPtr $copyFrom(${element.csType}[] data, int size);');
+    library.tdef.fields.push({
+      pos: library.config.pos,
+      name: copyFrom,
+      kind: TypeUtils.ffunCt((macro : (cs.NativeArray<$elType>, Int) -> cs.system.IntPtr)),
+      access: [APrivate, AStatic, AExtern],
+    });
+
+    var pathArrayRef = baseArrayRef(
+      element, vectorType,
+      (macro : cs.system.IntPtr), macro null,
+      (macro : cs.system.runtime.interopservices.GCHandle), macro null,
+      macro handle.Free()
+    );
+    return {
+      vectorType: vectorType,
+      toHaxeCopy: (self, size) -> macro {
+        var _self = ($self : cs.system.IntPtr);
+        var _size = ($size : Int);
+        var _ret = new cs.NativeArray<$elType>(_size);
+        (@:privateAccess $e{library.fieldExpr(copyTo)})(
+          _self,
+          _size << $v{element.arrayBits},
+          _ret,
+          _size
+        );
+        haxe.ds.Vector.fromData(_ret);
+      },
+      fromHaxeCopy: (vector) -> macro {
+        var _vector = ($vector : haxe.ds.Vector<$elType>);
+        (@:privateAccess $e{library.fieldExpr(copyFrom)})(
+          _vector.toData(),
+          _vector.length << $v{element.arrayBits}
+        );
+      },
+
+      toHaxeRef: null,
+      fromHaxeRef: (vector) -> macro {
+        var _vector = ($vector : haxe.ds.Vector<$elType>);
+        var handle = cs.system.runtime.interopservices.GCHandle.Alloc(
+          _vector.toData(),
+          cs.system.runtime.interopservices.GCHandleType.Pinned
+        );
+        var ptr = handle.AddrOfPinnedObject();
+        (@:privateAccess new $pathArrayRef(_vector, ptr, handle));
+      },
+    };
+  }
 
   override function structPtrInternalFieldSetter(
     structName:String,
@@ -350,8 +265,8 @@ class CsMarshalSet extends BaseMarshalSet<
   ):(self:Expr, val:Expr)->Expr {
     if (field.owned) {
       var fname = field.name;
-      var code = 'int old_val = _arg0->${fname};
-_arg0->${fname} = _arg1;
+      var code = 'int old_val = (int)_arg0->${fname};
+_arg0->${fname} = (void*)(intptr_t)_arg1;
 return old_val;';
       var name = library.mangleFunction(MARSHAL_INT32, [type, field.type], code);
       var nameNative = '${name}_internal';
@@ -383,17 +298,7 @@ return old_val;';
       library.tdef.fields.push({
         pos: library.config.pos,
         name: name,
-        kind: FFun({
-          ret: (macro : Void),
-          expr: null,
-          args: [{
-            type: (macro : cs.system.IntPtr),
-            name: "arg0",
-          }, {
-            type: (macro : Dynamic),
-            name: "arg1",
-          }],
-        }),
+        kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Dynamic) -> Void)),
         access: [APublic, AStatic, AExtern],
       });
       var setterF = library.fieldExpr(name);
@@ -402,40 +307,21 @@ return old_val;';
     return super.structPtrInternalFieldSetter(structName, type, field);
   }
 
-  function haxePtrInternal(haxeType:ComplexType):CsTypeMarshal return {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "void*",
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_CONVERT_DIRECT,
+  function haxePtrInternal(haxeType:ComplexType):CsTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     primitive: false,
     csType: "int",
-  };
+  }, {
+    haxeType: (macro : Int),
+    l1Type: "int32_t",
+    l1l2: BaseMarshalSet.MARSHAL_CONVERT_CAST("void*"),
+    l2ref: MARSHAL_REGISTRY_REF,
+    l2unref: MARSHAL_REGISTRY_UNREF,
+    l2l1: BaseMarshalSet.MARSHAL_CONVERT_CAST("int32_t"),
+  });
 
-  function closureInternal(
-    ret:CsTypeMarshal,
-    args:Array<CsTypeMarshal>
-  ):CsTypeMarshal return {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "void*",
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    primitive: false,
-    csType: "int",
-  };
+  public function new(library:CsLibrary) {
+    super(library);
+  }
 }
 
 class Cs extends Base<
@@ -454,8 +340,8 @@ class Cs extends Base<
       lib.lb
         .ail('
 int _ammer_init(void* delegates[${lib.delegateCtr}]) {
-  _ammer_delegates = (void**)malloc(sizeof(void*) * ${lib.delegateCtr});
-  memcpy(_ammer_delegates, delegates, sizeof(void*) * ${lib.delegateCtr});
+  _ammer_delegates = (void**)${lib.config.mallocFunction}(sizeof(void*) * ${lib.delegateCtr});
+  ${lib.config.memcpyFunction}(_ammer_delegates, delegates, sizeof(void*) * ${lib.delegateCtr});
   return 0;
 }');
       lib.lbImport
@@ -529,17 +415,14 @@ private static void _ammer_decref(object val) {
     }
   }
 }");
-    lb.ail('
-#include <inttypes.h>
-void _ammer_cs_tobytescopy(uint8_t* data, int size, uint8_t* res, int res_size) {
-  memcpy(res, data, size);
+    lb.ail('void _ammer_cs_tobytescopy(uint8_t* data, int size, uint8_t* res, int res_size) {
+  ${config.memcpyFunction}(res, data, size);
 }
 uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
-  uint8_t* res = (uint8_t*)malloc(size);
-  memcpy(res, data, size);
+  uint8_t* res = (uint8_t*)${config.mallocFunction}(size);
+  ${config.memcpyFunction}(res, data, size);
   return res;
-}
-');
+}');
     lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
         // TODO: OS dependent
@@ -548,23 +431,7 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_cs_tobytescopy",
-      kind: FFun({
-        ret: (macro : Void),
-        expr: null,
-        args: [{
-          type: (macro : cs.system.IntPtr),
-          name: "data",
-        }, {
-          type: (macro : Int),
-          name: "size",
-        }, {
-          type: (macro : haxe.io.BytesData),
-          name: "res",
-        }, {
-          type: (macro : Int),
-          name: "res_size",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Int, haxe.io.BytesData, Int) -> Void)),
       access: [APrivate, AStatic, AExtern],
     });
     lbImport
@@ -575,17 +442,7 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_cs_frombytescopy",
-      kind: FFun({
-        ret: (macro : cs.system.IntPtr),
-        expr: null,
-        args: [{
-          type: (macro : haxe.io.BytesData),
-          name: "data",
-        }, {
-          type: (macro : Int),
-          name: "size",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData, Int) -> cs.system.IntPtr)),
       access: [APrivate, AStatic, AExtern],
     });
   }
@@ -594,15 +451,14 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
     return t.l2ref == CsMarshalSet.MARSHAL_REGISTRY_REF;
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:CsTypeMarshal,
     args:Array<CsTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
     var needsHandles = args.exists(needsHandle) || needsHandle(ret);
-    var name = mangleFunction(ret, args, code);
     var nameNative = needsHandles ? '${name}_internal' : name;
     lb
       .ai('${ret.l1Type} ${nameNative}(')
@@ -615,7 +471,7 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
         .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
         .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret != CsMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -671,14 +527,10 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
     tdef.fields.push({
       pos: pos,
       name: name,
-      kind: FFun({
-        ret: needsHandle(ret) ? (macro : Dynamic) : ret.haxeType,
-        expr: null,
-        args: [ for (i => arg in args) {
-          type: needsHandle(arg) ? (macro : Dynamic) : arg.haxeType,
-          name: 'arg$i',
-        } ],
-      }),
+      kind: TypeUtils.ffun(
+        args.map(arg -> needsHandle(arg) ? (macro : Dynamic) : arg.haxeType),
+        needsHandle(ret) ? (macro : Dynamic) : ret.haxeType
+      ),
       access: [APublic, AStatic, AExtern],
     });
     return fieldExpr(name);
@@ -709,7 +561,7 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
           .ail("object _cs_undef = global::haxe.lang.Runtime.undefined;")
           // TODO: handle refs for args (and ret) here as well?
           .ail("global::haxe.lang.Function cl = (global::haxe.lang.Function)_ammer_refs_reverse[handle_cl];")
-          .ifi(clType.ret != CsMarshalSet.MARSHAL_VOID)
+          .ifi(clType.ret.mangled != "v")
             .ai('return (${clType.ret.csType})')
           .ife()
             .ai("")
@@ -730,18 +582,21 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
         .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret != CsMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
-          .ail('_l1_output = ')
+          .ai('_l1_output = ')
+        .ife()
+          .ai("")
         .ifd()
-        .i()
-          .a('((${clType.ret.l1Type} (*)(int')
-          .map(clType.args, arg -> ', ${arg.l1Type}')
-          .a('))(_ammer_delegates[$delegateId]))($fn')
-          .map(args, arg -> ', ${arg}')
-          .a(');')
-        .d()
-        .ifi(clType.ret != CsMarshalSet.MARSHAL_VOID)
+        .a('((${clType.ret.l1Type} (*)(int32_t')
+        .map(clType.args, arg -> ', ${arg.l1Type}')
+        .a('))(_ammer_delegates[$delegateId]))((int32_t)$fn')
+        .mapi(args, (idx, arg) ->
+          clType.args[idx].l1Type == "int32_t" && clType.args[idx].l2Type == "void*"
+          ? ', (int32_t)${arg}'
+          : ', ${arg}')
+        .al(');')
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
           .ail(clType.ret.l2l3("_l2_output", outputExpr))
@@ -763,7 +618,7 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
       .a(args.length == 0 ? "void" : "")
       .al(") {")
       .i()
-        .ifi(ret != CsMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('return ${config.returnIdent};')
@@ -777,10 +632,13 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
 }
 
 typedef CsLibraryConfig = LibraryConfig;
-typedef CsTypeMarshal = {
-  >BaseTypeMarshal,
+typedef CsTypeMarshalExt = {
   primitive:Bool,
   csType:String,
+};
+typedef CsTypeMarshal = {
+  >BaseTypeMarshal,
+  >CsTypeMarshalExt,
 };
 
 #end

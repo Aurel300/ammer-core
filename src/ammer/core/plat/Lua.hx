@@ -13,10 +13,6 @@ class LuaMarshalSet extends BaseMarshalSet<
   LuaLibrary,
   LuaTypeMarshal
 > {
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   // TODO: ${config.internalPrefix}
   // TODO: this already roots
   static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
@@ -39,221 +35,117 @@ lua_pushinteger(_lua_state, $l2->stored);
 lua_gettable(_lua_state, -2);
 lua_remove(_lua_state, -2);';
 
-  static final MARSHAL_VOID:LuaTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "int",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-  };
-
-  static final MARSHAL_BOOL:LuaTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "int",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
-    l1l2: (l1, l2) -> '$l2 = lua_toboolean(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushboolean(_lua_state, $l2);',
-  };
-
-  static final MARSHAL_UINT8:LuaTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "uint8_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
-    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
-  };
-  static final MARSHAL_INT8:LuaTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "int8_t",
-    l3Type: "int8_t",
-    mangled: "i8",
-    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
-  };
-  static final MARSHAL_UINT16:LuaTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "uint16_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
-    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
-  };
-  static final MARSHAL_INT16:LuaTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "int16_t",
-    l3Type: "int16_t",
-    mangled: "i16",
-    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
-  };
-  static final MARSHAL_UINT32:LuaTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
-    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
-  };
-  static final MARSHAL_INT32:LuaTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
-    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
-  };
-  static final MARSHAL_UINT64:LuaTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "int",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
-    l1l2: (l1, l2) -> 'lua_getfield(_lua_state, $l1, "high");
-lua_getfield(_lua_state, $l1, "low");
-$l2 = ((uint64_t)lua_tointeger(_lua_state, -2) << 32) | (uint32_t)lua_tointeger(_lua_state, -1);
-lua_pop(_lua_state, 2);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_createtable(_lua_state, 0, 2);
-lua_pushinteger(_lua_state, $l2 & 0xFFFFFFFF);
-lua_setfield(_lua_state, -2, "low");
-lua_pushinteger(_lua_state, ((uint64_t)$l2 >> 32) & 0xFFFFFFFF);
-lua_setfield(_lua_state, -2, "high");',
-  };
-  static final MARSHAL_INT64:LuaTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "int",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
-    l1l2: (l1, l2) -> 'lua_getfield(_lua_state, $l1, "high");
-lua_getfield(_lua_state, $l1, "low");
-$l2 = ((int64_t)lua_tointeger(_lua_state, -2) << 32) | (uint32_t)lua_tointeger(_lua_state, -1);
-lua_pop(_lua_state, 2);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_createtable(_lua_state, 0, 2);
-lua_pushinteger(_lua_state, (int32_t)($l2 & 0xFFFFFFFF));
-lua_setfield(_lua_state, -2, "low");
-lua_pushinteger(_lua_state, (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
-lua_setfield(_lua_state, -2, "high");',
-  };
-
-  //static final MARSHAL_FLOAT32:LuaTypeMarshal = {};
-  static final MARSHAL_FLOAT64:LuaTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "int",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushnumber(_lua_state, $l2);',
-  };
-
-  static final MARSHAL_STRING:LuaTypeMarshal = {
-    haxeType: (macro : String),
-    l1Type: "int",
-    l2Type: "const char*",
-    l3Type: "const char*",
-    mangled: "s",
-    l1l2: (l1, l2) -> '$l2 = lua_tostring(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushstring(_lua_state, $l2);',
-  };
-
-  static final MARSHAL_BYTES:LuaTypeMarshal = {
-    haxeType: (macro : lua.UserData),
-    l1Type: "int",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'lua_pushlightuserdata(_lua_state, $l2);',
-  };
-
-  public function new(library:LuaLibrary) {
-    super(library);
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):LuaTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      // L1 type is always "int", representing a stack offset
+      l1Type:   "int",
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+    };
   }
 
+  static final MARSHAL_VOID = BaseMarshalSet.baseVoid();
   public function void():LuaTypeMarshal return MARSHAL_VOID;
 
+  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {
+    l1l2: (l1, l2) -> '$l2 = lua_toboolean(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushboolean(_lua_state, $l2);',
+  });
   public function bool():LuaTypeMarshal return MARSHAL_BOOL;
 
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
+  });
+  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
+  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
+  });
+  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
+  });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
+  });
+  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tointeger(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushinteger(_lua_state, $l2);',
+  });
   public function uint8():LuaTypeMarshal return MARSHAL_UINT8;
   public function int8():LuaTypeMarshal return MARSHAL_INT8;
   public function uint16():LuaTypeMarshal return MARSHAL_UINT16;
   public function int16():LuaTypeMarshal return MARSHAL_INT16;
   public function uint32():LuaTypeMarshal return MARSHAL_UINT32;
   public function int32():LuaTypeMarshal return MARSHAL_INT32;
+
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
+    l1l2: (l1, l2) -> 'lua_getfield(_lua_state, $l1, "high");
+lua_getfield(_lua_state, $l1, "low");
+$l2 = ((uint64_t)lua_tointeger(_lua_state, -2) << 32) | (uint32_t)lua_tointeger(_lua_state, -1);
+lua_pop(_lua_state, 2);',
+    l2l1: (l2, l1) -> 'lua_createtable(_lua_state, 0, 2);
+lua_pushinteger(_lua_state, (int32_t)($l2 & 0xFFFFFFFF));
+lua_setfield(_lua_state, -2, "low");
+lua_pushinteger(_lua_state, (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
+lua_setfield(_lua_state, -2, "high");',
+  });
+  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(), {
+    l1l2: (l1, l2) -> 'lua_getfield(_lua_state, $l1, "high");
+lua_getfield(_lua_state, $l1, "low");
+$l2 = ((int64_t)lua_tointeger(_lua_state, -2) << 32) | (uint32_t)lua_tointeger(_lua_state, -1);
+lua_pop(_lua_state, 2);',
+    l2l1: (l2, l1) -> 'lua_createtable(_lua_state, 0, 2);
+lua_pushinteger(_lua_state, (int32_t)($l2 & 0xFFFFFFFF));
+lua_setfield(_lua_state, -2, "low");
+lua_pushinteger(_lua_state, (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
+lua_setfield(_lua_state, -2, "high");',
+  });
   public function uint64():LuaTypeMarshal return MARSHAL_UINT64;
   public function int64():LuaTypeMarshal return MARSHAL_INT64;
 
+  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {
+  //   l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
+  //   l2l1: (l2, l1) -> 'lua_pushnumber(_lua_state, $l2);',
+  // });
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushnumber(_lua_state, $l2);',
+  });
   public function float32():LuaTypeMarshal throw "!";
   public function float64():LuaTypeMarshal return MARSHAL_FLOAT64;
 
+  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tostring(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushstring(_lua_state, $l2);',
+  });
   public function string():LuaTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+    haxeType: (macro : lua.UserData),
+    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushlightuserdata(_lua_state, $l2);',
+  });
   function bytesInternalType():LuaTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:LuaTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -291,53 +183,31 @@ lua_setfield(_lua_state, -2, "high");',
     };
   }
 
-  function opaquePtrInternal(name:String):LuaTypeMarshal return {
+  function opaquePtrInternal(name:String):LuaTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
     haxeType: (macro : lua.UserData),
-    l1Type: "int",
-    l2Type: '$name*',
-    l3Type: '$name*',
-    mangled: 'p${Mangle.identifier(name)}_',
     l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'lua_pushlightuserdata(_lua_state, $l2);',
-  };
+  });
 
-  function haxePtrInternal(haxeType:ComplexType):LuaTypeMarshal return {
+  function arrayPtrInternalType(element:LuaTypeMarshal):LuaTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    haxeType: (macro : lua.UserData),
+    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l2l1: (l2, l1) -> 'lua_pushlightuserdata(_lua_state, $l2);',
+  });
+
+  function haxePtrInternal(haxeType:ComplexType):LuaTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     haxeType: haxeType,
     l1Type: "int",
     l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
     l1l2: MARSHAL_REGISTRY_GET_NODE,
     l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
     l2unref: MARSHAL_REGISTRY_UNREF,
     l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  });
 
-  function closureInternal(
-    ret:LuaTypeMarshal,
-    args:Array<LuaTypeMarshal>
-  ):LuaTypeMarshal return {
-    haxeType: TFunction(
-      args.map(arg -> arg.haxeType),
-      ret.haxeType
-    ),
-    l1Type: "int",
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  public function new(library:LuaLibrary) {
+    super(library);
+  }
 }
 
 class Lua extends Base<
@@ -356,60 +226,48 @@ class Lua extends Base<
       includePaths: config.luaIncludePaths,
       libraryPaths: config.luaLibraryPaths,
       linkNames: ["lua"],
-      libCode: lib -> lib.lb
-        // TODO: just paste this instead of ail, i, d ...
-        // TODO: name symbols with internalPrefix
-        .ail("int _ammer_lua_tobytesdata(lua_State* _lua_state) {")
-        .i()
-          .ail("uint8_t* data = lua_touserdata(_lua_state, 1);")
-          .ail("uint32_t size = lua_tointeger(_lua_state, 2);")
-          .ail("lua_createtable(_lua_state, size, 0);")
-          .ail("for (int i = 0; i < size; i++) {")
-          .i()
-            .ail("lua_pushinteger(_lua_state, i + 1);")
-            .ail("lua_pushinteger(_lua_state, data[i]);")
-            .ail("lua_settable(_lua_state, 3);")
-          .d()
-          .ail("}")
-          .ail("return 1;")
-        .d()
-        .ail("}")
-        .ail("int _ammer_lua_frombytesdata(lua_State* _lua_state) {")
-        .i()
-          // in the stack we get a table (+ size for now? can be determined maybe?)
-          // we need to create a lightuserdata
-          .ail("uint32_t size = lua_tointeger(_lua_state, 2);")
-          .ail("uint8_t* data = (uint8_t*)malloc(size);") // TODO: mallocFunction, check NULL
-          .ail("for (int i = 0; i < size; i++) {")
-          .i()
-            .ail("lua_pushinteger(_lua_state, i + 1);")
-            .ail("lua_gettable(_lua_state, 1);")
-            .ail("data[i] = lua_tointeger(_lua_state, 3);")
-            .ail("lua_pop(_lua_state, 1);")
-          .d()
-          .ail("}")
-          .ail("lua_pushlightuserdata(_lua_state, data);")
-          .ail("return 1;")
-        .d()
-        .ail("}")
-        .ail("int _ammer_init(lua_State* _lua_state) {")
-        .i()
-          .ail("luaL_Reg _init_wrap[] = {")
-          .a(lib.lbInit.done())
-          .ail('{"_ammer_lua_tobytesdata", _ammer_lua_tobytesdata},')
-          .ail('{"_ammer_lua_frombytesdata", _ammer_lua_frombytesdata},')
-          .ail("{NULL, NULL}")
-          .ail("};")
-          .ail("lua_newtable(_lua_state);")
-          .ail("luaL_setfuncs(_lua_state, _init_wrap, 0);")
-          .ail('lua_pushstring(_lua_state, _ammer_registry_name);')
-          .ail("lua_newtable(_lua_state);")
-          .ail("lua_settable(_lua_state, LUA_REGISTRYINDEX);")
-          .ail('${lib.config.internalPrefix}registry.ctx = _lua_state;')
-          .ail("return 1;")
-        .d()
-        .ail("}")
-        .done(),
+      // TODO: name symbols with internalPrefix
+      libCode: lib -> lib.lb.ail('
+int _ammer_lua_tobytesdata(lua_State* _lua_state) {
+  uint8_t* data = lua_touserdata(_lua_state, 1);
+  uint32_t size = lua_tointeger(_lua_state, 2);
+  lua_createtable(_lua_state, size, 0);
+  for (int i = 0; i < size; i++) {
+    lua_pushinteger(_lua_state, i + 1);
+    lua_pushinteger(_lua_state, data[i]);
+    lua_settable(_lua_state, 3);
+  }
+  return 1;
+}
+int _ammer_lua_frombytesdata(lua_State* _lua_state) {
+  // in the stack we get a table (+ size for now? can be determined maybe?)
+  // we need to create a lightuserdata
+  uint32_t size = lua_tointeger(_lua_state, 2);
+  uint8_t* data = (uint8_t*)${lib.config.mallocFunction}(size); // TODO: check NULL
+  for (int i = 0; i < size; i++) {
+    lua_pushinteger(_lua_state, i + 1);
+    lua_gettable(_lua_state, 1);
+    data[i] = lua_tointeger(_lua_state, 3);
+    lua_pop(_lua_state, 1);
+  }
+  lua_pushlightuserdata(_lua_state, data);
+  return 1;
+}
+int _ammer_init(lua_State* _lua_state) {
+  luaL_Reg _init_wrap[] = {
+')/*.addBuf(lib.lbInit)*/.ail(lib.lbInit.done()).ail('
+    {"_ammer_lua_tobytesdata", _ammer_lua_tobytesdata},
+    {"_ammer_lua_frombytesdata", _ammer_lua_frombytesdata},
+    {NULL, NULL}
+  };
+  lua_newtable(_lua_state);
+  luaL_setfuncs(_lua_state, _init_wrap, 0);
+  lua_pushstring(_lua_state, _ammer_registry_name);
+  lua_newtable(_lua_state);
+  lua_settable(_lua_state, LUA_REGISTRYINDEX);
+  ${lib.config.internalPrefix}registry.ctx = _lua_state;
+  return 1;
+}').done(),
     });
   }
 }
@@ -442,10 +300,9 @@ class LuaLibrary extends BaseLibrary<
       ),
       access: [APrivate, AStatic],
     });
-    lb.ail("#include <lua.h>");
-    lb.ail("#include <lualib.h>");
-    lb.ail("#include <lauxlib.h>");
-    lb.ail("#include <inttypes.h>");
+    lb.ail("#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>");
     lb.ail("static size_t _ammer_ctr = 0;"); // TODO: internalPrefix
     lb.ail('static const char *_ammer_registry_name = "${config.internalPrefix}registry";');
     boilerplate(
@@ -462,14 +319,13 @@ lua_settable(_lua_state, -3);"
     );
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:LuaTypeMarshal,
     args:Array<LuaTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
-    var name = mangleFunction(ret, args, code);
     lb
       .ail('static int ${name}(lua_State* _lua_state) {')
       .i()
@@ -478,7 +334,7 @@ lua_settable(_lua_state, -3);"
         .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
         .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret != LuaMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -518,7 +374,7 @@ lua_settable(_lua_state, -3);"
         // then the arguments in direct order
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', ""))
         .ail('lua_call(_lua_state, ${args.length}, 1);')
-        .ifi(clType.ret != LuaMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("-1", "_l2_output"))
           .ail(clType.ret.l2l3("_l2_output", outputExpr))
@@ -542,7 +398,7 @@ lua_settable(_lua_state, -3);"
       .al(") {")
       .i()
         .ail('lua_State* _lua_state = ${config.internalPrefix}registry.ctx;')
-        .ifi(ret != LuaMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('return ${config.returnIdent};')

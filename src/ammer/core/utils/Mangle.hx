@@ -6,6 +6,8 @@ import haxe.macro.Expr;
 import haxe.macro.Type;
 
 class Mangle {
+  static var printer = new haxe.macro.Printer();
+
   public static function identifier(name:String):String {
     return [ for (i in 0...name.length) {
       var cc = name.charCodeAt(i);
@@ -23,9 +25,7 @@ class Mangle {
   }
 
   public static function complexType(t:ComplexType):String {
-    return (switch (t) {
-      case _: "haxetype"; // TODO
-    });
+    return identifier(printer.printComplexType(t));
   }
 
   public static function type(t:Type):String {

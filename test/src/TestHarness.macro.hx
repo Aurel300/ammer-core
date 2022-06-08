@@ -10,9 +10,6 @@ class TestHarness {
         jvm: false,
       #end
     });
-    library.addInclude(IncludeGlobal("inttypes.h"));
-    library.addInclude(IncludeGlobal("stdbool.h"));
-    library.addInclude(IncludeGlobal("string.h"));
 
     var context:TestContext = {
       platformId:
@@ -43,7 +40,7 @@ class TestHarness {
     };
     TestContext.I = context;
 
-    var testExprs = [];
+    var testExprs:Array<Expr> = [];
     for (ctor in ([
       test.TestArrays.new,
       test.TestBools.new,

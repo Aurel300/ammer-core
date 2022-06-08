@@ -13,10 +13,6 @@ class NodejsMarshalSet extends BaseMarshalSet<
   NodejsLibrary,
   NodejsTypeMarshal
 > {
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   // TODO: ${config.internalPrefix}
   // TODO: this already roots
   static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
@@ -29,120 +25,75 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
   static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
     -> 'NAPI_CALL_I(napi_get_reference_value(_nodejs_env, $l2->ref, &$l1));';
 
-  static final MARSHAL_VOID:NodejsTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "napi_value",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-  };
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):NodejsTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      // L1 type is always "napi_value", a Node.js tagged pointer (or boxed NaN)
+      l1Type:   "napi_value",
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+    };
+  }
 
-  static final MARSHAL_BOOL:NodejsTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "napi_value",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
+  static final MARSHAL_VOID = baseExtend(BaseMarshalSet.baseVoid());
+  public function void():NodejsTypeMarshal return MARSHAL_VOID;
+
+  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_bool(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_get_boolean(_nodejs_env, $l2, &$l1));',
-  };
+  });
+  public function bool():NodejsTypeMarshal return MARSHAL_BOOL;
 
-  static final MARSHAL_UINT8:NodejsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "napi_value",
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {
     l2Type: "uint32_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2, &$l1));',
-  };
-  static final MARSHAL_INT8:NodejsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "napi_value",
+  });
+  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {
     l2Type: "int32_t",
-    l3Type: "int8_t",
-    mangled: "i8",
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_int32(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2, &$l1));',
-  };
-  static final MARSHAL_UINT16:NodejsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "napi_value",
+  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {
     l2Type: "uint32_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2, &$l1));',
-  };
-  static final MARSHAL_INT16:NodejsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "napi_value",
+  });
+  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {
     l2Type: "int32_t",
-    l3Type: "int16_t",
-    mangled: "i16",
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_int32(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2, &$l1));',
-  };
-  static final MARSHAL_UINT32:NodejsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "napi_value",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
+  });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2, &$l1));',
-  };
-  static final MARSHAL_INT32:NodejsTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "napi_value",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
+  });
+  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_int32(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2, &$l1));',
-  };
+  });
+  public function uint8():NodejsTypeMarshal return MARSHAL_UINT8;
+  public function int8():NodejsTypeMarshal return MARSHAL_INT8;
+  public function uint16():NodejsTypeMarshal return MARSHAL_UINT16;
+  public function int16():NodejsTypeMarshal return MARSHAL_INT16;
+  public function uint32():NodejsTypeMarshal return MARSHAL_UINT32;
+  public function int32():NodejsTypeMarshal return MARSHAL_INT32;
+
   // TODO: a single _nodejs_tmp? per-function?
   // TODO: very verbose: wrap into macros?
-  static final MARSHAL_UINT64:NodejsTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "napi_value",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
     l1l2: (l1, l2) -> 'do {
   napi_value _nodejs_tmp;
   uint32_t _nodejs_high;
@@ -153,10 +104,6 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
   NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, _nodejs_tmp, &_nodejs_low));
   $l2 = ((uint64_t)_nodejs_high << 32) | (uint32_t)_nodejs_low;
 } while (0);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'do {
   NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
   napi_value _nodejs_tmp;
@@ -165,13 +112,8 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
   NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2 & 0xFFFFFFFF, &_nodejs_tmp));
   NAPI_CALL_I(napi_set_named_property(_nodejs_env, $l1, "low", _nodejs_tmp));
 } while (0);',
-  };
-  static final MARSHAL_INT64:NodejsTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "napi_value",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
+  });
+  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(), {
     l1l2: (l1, l2) -> 'do {
   napi_value _nodejs_tmp;
   NAPI_CALL_I(napi_get_named_property(_nodejs_env, $l1, "high", &_nodejs_tmp));
@@ -182,10 +124,6 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
   NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, _nodejs_tmp, &_nodejs_low));
   $l2 = ((int64_t)_nodejs_high << 32) | (uint32_t)_nodejs_low;
 } while (0);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'do {
   NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
   napi_value _nodejs_tmp;
@@ -194,84 +132,43 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
   NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2 & 0xFFFFFFFF, &_nodejs_tmp));
   NAPI_CALL_I(napi_set_named_property(_nodejs_env, $l1, "low", _nodejs_tmp));
 } while (0);',
-  };
-
-  // static final MARSHAL_FLOAT32:NodejsTypeMarshal = {};
-  static final MARSHAL_FLOAT64:NodejsTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "napi_value",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',
-  };
-
-  final MARSHAL_STRING:NodejsTypeMarshal;
-
-  static final MARSHAL_BYTES:NodejsTypeMarshal = {
-    haxeType: (macro : Dynamic),
-    l1Type: "napi_value",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
-NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
-  };
-
-  public function new(library:NodejsLibrary) {
-    super(library);
-    MARSHAL_STRING = {
-      haxeType: (macro : String),
-      l1Type: "napi_value",
-      l2Type: "const char*",
-      l3Type: "const char*",
-      mangled: "s",
-      // TODO: check malloc != null
-      l1l2: (l1, l2) -> 'do {
-  size_t _nodejs_tmp;
-  NAPI_CALL_I(napi_get_value_string_utf8(_nodejs_env, $l1, NULL, 0, &_nodejs_tmp));
-  $l2 = (const char *)${library.config.mallocFunction}(_nodejs_tmp + 1);
-  NAPI_CALL_I(napi_get_value_string_utf8(_nodejs_env, $l1, (char*)$l2, _nodejs_tmp + 1, &_nodejs_tmp));
-} while (0);',
-      l2ref: MARSHAL_NOOP1, // TODO: ref?
-      l2l3: MARSHAL_CONVERT_DIRECT,
-      l3l2: MARSHAL_CONVERT_DIRECT,
-      l2unref: MARSHAL_NOOP1,
-      l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_string_utf8(_nodejs_env, $l2, NAPI_AUTO_LENGTH, &$l1));',
-    };
-  }
-
-  public function void():NodejsTypeMarshal return MARSHAL_VOID;
-
-  public function bool():NodejsTypeMarshal return MARSHAL_BOOL;
-
-  public function uint8():NodejsTypeMarshal return MARSHAL_UINT8;
-  public function int8():NodejsTypeMarshal return MARSHAL_INT8;
-  public function uint16():NodejsTypeMarshal return MARSHAL_UINT16;
-  public function int16():NodejsTypeMarshal return MARSHAL_INT16;
-  public function uint32():NodejsTypeMarshal return MARSHAL_UINT32;
-  public function int32():NodejsTypeMarshal return MARSHAL_INT32;
+  });
   public function uint64():NodejsTypeMarshal return MARSHAL_UINT64;
   public function int64():NodejsTypeMarshal return MARSHAL_INT64;
 
+  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {
+  //   l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
+  //   l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',
+  // });
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {
+    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
+    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',
+  });
   public function float32():NodejsTypeMarshal throw "!";
   public function float64():NodejsTypeMarshal return MARSHAL_FLOAT64;
 
+  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {
+    // TODO: mallocFunction
+    // TODO: check malloc != null
+    l1l2: (l1, l2) -> 'do {
+  size_t _nodejs_tmp;
+  NAPI_CALL_I(napi_get_value_string_utf8(_nodejs_env, $l1, NULL, 0, &_nodejs_tmp));
+  $l2 = (const char *)malloc(_nodejs_tmp + 1);
+  NAPI_CALL_I(napi_get_value_string_utf8(_nodejs_env, $l1, (char*)$l2, _nodejs_tmp + 1, &_nodejs_tmp));
+} while (0);',
+    // l2ref: BaseMarshalSet.MARSHAL_NOOP1, // TODO: ref?
+    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_string_utf8(_nodejs_env, $l2, NAPI_AUTO_LENGTH, &$l1));',
+  });
   public function string():NodejsTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+    haxeType: (macro : Dynamic),
+    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
+    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
+NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
+  });
   function bytesInternalType():NodejsTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:NodejsTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -280,27 +177,11 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
     toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   } {
-    var tdefBytesRef = library.typeDefCreate();
-    tdefBytesRef.name += "_BytesRef";
-    tdefBytesRef.fields = (macro class BytesRef {
-      public var bytes(default, null):haxe.io.Bytes;
-      public var ptr(default, null):Dynamic;
-      public function unref():Void {
-        if (bytes != null) {
-          bytes = null;
-          ptr = null;
-        }
-      }
-      private function new(bytes:haxe.io.Bytes, ptr:Int) {
-        this.bytes = bytes;
-        this.ptr = ptr;
-      }
-    }).fields;
-    var pathBytesRef:TypePath = {
-      name: tdefBytesRef.name,
-      pack: tdefBytesRef.pack,
-    };
-
+    var pathBytesRef = baseBytesRef(
+      (macro : Int), macro 0,
+      (macro : Int), macro 0, // handle unused
+      macro {}
+    );
     return {
       toBytesCopy: (self, size) -> macro {
         var _self:Dynamic = $self;
@@ -322,59 +203,37 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
       fromBytesRef: (bytes) -> macro {
         var _bytes:haxe.io.Bytes = $bytes;
         var _ptr:Dynamic = (@:privateAccess $e{library.fieldExpr("_ammer_nodejs_frombytesref")})(_bytes.getData());
-        @:privateAccess new $pathBytesRef(_bytes, _ptr);
+        (@:privateAccess new $pathBytesRef(_bytes, _ptr, 0));
       },
     };
   }
 
-  function opaquePtrInternal(name:String):NodejsTypeMarshal return {
+  function opaquePtrInternal(name:String):NodejsTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
     haxeType: (macro : Dynamic),
-    l1Type: "napi_value",
-    l2Type: '$name*',
-    l3Type: '$name*',
-    mangled: 'p${Mangle.identifier(name)}_',
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
 NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
-  };
+  });
 
-  function haxePtrInternal(haxeType:ComplexType):NodejsTypeMarshal return {
+  function arrayPtrInternalType(element:NodejsTypeMarshal):NodejsTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    haxeType: (macro : Dynamic),
+    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
+    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
+NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
+  });
+
+  function haxePtrInternal(haxeType:ComplexType):NodejsTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     haxeType: haxeType,
-    l1Type: "napi_value",
     l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
     l1l2: MARSHAL_REGISTRY_GET_NODE,
     l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
     l2unref: MARSHAL_REGISTRY_UNREF,
     l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  });
 
-  function closureInternal(
-    ret:NodejsTypeMarshal,
-    args:Array<NodejsTypeMarshal>
-  ):NodejsTypeMarshal return {
-    haxeType: TFunction(
-      args.map(arg -> arg.haxeType),
-      ret.haxeType
-    ),
-    l1Type: "napi_value",
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  public function new(library:NodejsLibrary) {
+    super(library);
+  }
 }
 
 class Nodejs extends Base<
@@ -404,7 +263,7 @@ class Nodejs extends Base<
 }]}')
       ));
       var libCode = lib.lb
-        .ail("#define NAPI_CALL_I NAPI_CALL
+        .ail('#define NAPI_CALL_I NAPI_CALL
 static napi_value _ammer_nodejs_tobytescopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
   size_t _nodejs_argc = 2;
   napi_value _nodejs_argv[2];
@@ -416,7 +275,7 @@ static napi_value _ammer_nodejs_tobytescopy(napi_env _nodejs_env, napi_callback_
   uint8_t* data_res;
   napi_value res;
   NAPI_CALL_I(napi_create_arraybuffer(_nodejs_env, size, (void**)&data_res, &res));
-  memcpy(data_res, data, size);
+  ${lib.config.memcpyFunction}(data_res, data, size);
   return res;
 }
 static napi_value _ammer_nodejs_frombytescopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
@@ -426,8 +285,8 @@ static napi_value _ammer_nodejs_frombytescopy(napi_env _nodejs_env, napi_callbac
   uint8_t* data;
   size_t size;
   NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
-  uint8_t* data_res = (uint8_t*)malloc(size);
-  memcpy(data_res, data, size);
+  uint8_t* data_res = (uint8_t*)${lib.config.mallocFunction}(size);
+  ${lib.config.memcpyFunction}(data_res, data, size);
   napi_value res;
   NAPI_CALL_I(napi_create_object(_nodejs_env, &res));
   NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data_res, NULL, NULL, NULL));
@@ -478,22 +337,18 @@ static napi_value _ammer_nodejs_frombytesref(napi_env _nodejs_env, napi_callback
   return res;
 }
 #undef NAPI_CALL_I
-")
-        .ail('NAPI_MODULE_INIT() {')
-        .i()
-          .ail("napi_property_descriptor _init_wrap[] = {")
-          .a(lib.lbInit.done())
-          .ail('{"_ammer_nodejs_tobytescopy", NULL, _ammer_nodejs_tobytescopy, NULL, NULL, NULL, 0, NULL},')
-          .ail('{"_ammer_nodejs_frombytescopy", NULL, _ammer_nodejs_frombytescopy, NULL, NULL, NULL, 0, NULL},')
-          .ail('{"_ammer_nodejs_tobytesref", NULL, _ammer_nodejs_tobytesref, NULL, NULL, NULL, 0, NULL},')
-          .ail('{"_ammer_nodejs_frombytesref", NULL, _ammer_nodejs_frombytesref, NULL, NULL, NULL, 0, NULL},')
-          .ail("};")
-          .ail('if (napi_define_properties(env, exports, ${lib.exportCount + 4}, _init_wrap) != napi_ok) return NULL;')
-          .ail('${lib.config.internalPrefix}registry.ctx = env;')
-          .ail("return exports;")
-        .d()
-        .ail("}")
-        .done();
+NAPI_MODULE_INIT() {
+  napi_property_descriptor _init_wrap[] = {
+').addBuf(lib.lbInit).ail('
+    {"_ammer_nodejs_tobytescopy", NULL, _ammer_nodejs_tobytescopy, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_frombytescopy", NULL, _ammer_nodejs_frombytescopy, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_tobytesref", NULL, _ammer_nodejs_tobytesref, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_frombytesref", NULL, _ammer_nodejs_frombytesref, NULL, NULL, NULL, 0, NULL},
+  };
+  if (napi_define_properties(env, exports, ${lib.exportCount + 4}, _init_wrap) != napi_ok) return NULL;
+  ${lib.config.internalPrefix}registry.ctx = env;
+  return exports;
+}').done();
       ops.push(BOAlways(
         File('${config.buildPath}/${lib.config.name}/lib.nodejs.$ext'),
         WriteContent(libCode)
@@ -545,59 +400,25 @@ class NodejsLibrary extends BaseLibrary<
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_nodejs_tobytescopy",
-      kind: FFun({
-        ret: (macro : js.lib.ArrayBuffer),
-        expr: null,
-        args: [{
-          type: (macro : Dynamic),
-          name: "arg1",
-        }, {
-          type: (macro : Int),
-          name: "arg2",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (Dynamic, Int) -> js.lib.ArrayBuffer)),
       access: [APrivate, AStatic],
     });
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_nodejs_frombytescopy",
-      kind: FFun({
-        ret: (macro : Dynamic),
-        expr: null,
-        args: [{
-          type: (macro : js.lib.ArrayBuffer),
-          name: "arg1",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (js.lib.ArrayBuffer) -> Dynamic)),
       access: [APrivate, AStatic],
     });
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_nodejs_tobytesref",
-      kind: FFun({
-        ret: (macro : js.lib.ArrayBuffer),
-        expr: null,
-        args: [{
-          type: (macro : Dynamic),
-          name: "arg1",
-        }, {
-          type: (macro : Int),
-          name: "arg2",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (Dynamic, Int) -> js.lib.ArrayBuffer)),
       access: [APrivate, AStatic],
     });
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_nodejs_frombytesref",
-      kind: FFun({
-        ret: (macro : Dynamic),
-        expr: null,
-        args: [{
-          type: (macro : js.lib.ArrayBuffer),
-          name: "arg1",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (js.lib.ArrayBuffer) -> Dynamic)),
       access: [APrivate, AStatic],
     });
     lb.ail("#define NAPI_VERSION 3");
@@ -632,14 +453,13 @@ class NodejsLibrary extends BaseLibrary<
     );
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:NodejsTypeMarshal,
     args:Array<NodejsTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
-    var name = mangleFunction(ret, args, code);
     lb
       .ail('static ${ret.l1Type} ${name}(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {')
       .i()
@@ -652,7 +472,7 @@ class NodejsLibrary extends BaseLibrary<
         .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
         .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret != NodejsMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -676,14 +496,7 @@ class NodejsLibrary extends BaseLibrary<
     tdef.fields.push({
       pos: pos,
       name: name,
-      kind: FFun({
-        ret: ret.haxeType,
-        expr: null,
-        args: [ for (i => arg in args) {
-          type: arg.haxeType,
-          name: 'arg$i',
-        } ],
-      }),
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
       access: [APublic, AStatic],
     });
     return fieldExpr(name);
@@ -712,7 +525,7 @@ class NodejsLibrary extends BaseLibrary<
         .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, (napi_value[]){')
         .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
         .al("}, &_l1_output));")
-        .ifi(clType.ret != NodejsMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
           .ail(clType.ret.l2l3("_l2_output", outputExpr))
@@ -739,7 +552,7 @@ class NodejsLibrary extends BaseLibrary<
         .ail('napi_env _nodejs_env = ${config.internalPrefix}registry.ctx;')
         .ail("napi_handle_scope _nodejs_scope;")
         .ail('$napiCall(napi_open_handle_scope(_nodejs_env, &_nodejs_scope));')
-        .ifi(ret != NodejsMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} _return;')
           .ail(code)
           .ail('$napiCall(napi_close_handle_scope(_nodejs_env, _nodejs_scope));')

@@ -13,10 +13,6 @@ class CppMarshalSet extends BaseMarshalSet<
   CppLibrary,
   CppTypeMarshal
 > {
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   // TODO: ${config.internalPrefix}
   static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
     -> '$l2 = _ammer_core_registry_get($l1.mPtr);';
@@ -27,219 +23,64 @@ class CppMarshalSet extends BaseMarshalSet<
   static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
     -> '$l1 = $l2->key;';
 
-  static final MARSHAL_VOID:CppTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "void",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-  };
-
-  static final MARSHAL_BOOL:CppTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "bool",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-
-  static final MARSHAL_UINT8:CppTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "uint8_t",
-    l2Type: "uint8_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_INT8:CppTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int8_t",
-    l2Type: "int8_t",
-    l3Type: "int8_t",
-    mangled: "i8",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_UINT16:CppTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "uint16_t",
-    l2Type: "uint16_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_INT16:CppTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int16_t",
-    l2Type: "int16_t",
-    l3Type: "int16_t",
-    mangled: "i16",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_UINT32:CppTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "uint32_t",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_INT32:CppTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "int32_t",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_UINT64:CppTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "uint64_t",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_INT64:CppTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "int64_t",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-
-  static final MARSHAL_FLOAT32:CppTypeMarshal = {
-    haxeType: (macro : Single),
-    l1Type: "float",
-    l2Type: "float",
-    l3Type: "float",
-    mangled: "f32",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-  static final MARSHAL_FLOAT64:CppTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "double",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-
-  static final MARSHAL_STRING:CppTypeMarshal = {
-    haxeType: (macro : String),
-    l1Type: "const char*",
-    l2Type: "const char*",
-    l3Type: "const char*",
-    mangled: "s",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-  };
-
-  static final MARSHAL_BYTES:CppTypeMarshal = {
-    haxeType: (macro : cpp.Pointer<cpp.UInt8>),
-    l1Type: "uint8_t*",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):CppTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      l1Type:    over != null && over.l1Type    != null ? over.l1Type    : base.l1Type,
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+    };
   }
 
-  public function new(library:CppLibrary) {
-    super(library);
-  }
-
+  static final MARSHAL_VOID = BaseMarshalSet.baseVoid();
   public function void():CppTypeMarshal return MARSHAL_VOID;
 
+  static final MARSHAL_BOOL = BaseMarshalSet.baseBool();
   public function bool():CppTypeMarshal return MARSHAL_BOOL;
 
+  static final MARSHAL_UINT8  = baseExtend(BaseMarshalSet.baseUint8(),  {arrayType: (macro : cpp.UInt8) });
+  static final MARSHAL_INT8   = baseExtend(BaseMarshalSet.baseInt8(),   {arrayType: (macro : cpp.Int8)  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {arrayType: (macro : cpp.UInt16)});
+  static final MARSHAL_INT16  = baseExtend(BaseMarshalSet.baseInt16(),  {arrayType: (macro : cpp.Int16) });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {arrayType: (macro : cpp.UInt32)});
+  static final MARSHAL_INT32  = baseExtend(BaseMarshalSet.baseInt32(),  {arrayType: (macro : cpp.Int32) });
   public function uint8():CppTypeMarshal return MARSHAL_UINT8;
   public function int8():CppTypeMarshal return MARSHAL_INT8;
   public function uint16():CppTypeMarshal return MARSHAL_UINT16;
   public function int16():CppTypeMarshal return MARSHAL_INT16;
   public function uint32():CppTypeMarshal return MARSHAL_UINT32;
   public function int32():CppTypeMarshal return MARSHAL_INT32;
+
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {arrayType: (macro : cpp.UInt64)});
+  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(),  {arrayType: (macro : cpp.Int64) });
   public function uint64():CppTypeMarshal return MARSHAL_UINT64;
   public function int64():CppTypeMarshal return MARSHAL_INT64;
 
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {arrayType: (macro : cpp.Float32)});
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {arrayType: (macro : cpp.Float64)});
   public function float32():CppTypeMarshal return MARSHAL_FLOAT32;
   public function float64():CppTypeMarshal return MARSHAL_FLOAT64;
 
+  static final MARSHAL_STRING = BaseMarshalSet.baseString();
   public function string():CppTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+    haxeType: (macro : cpp.Pointer<cpp.UInt8>),
+  });
   function bytesInternalType():CppTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:CppTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -248,27 +89,11 @@ class CppMarshalSet extends BaseMarshalSet<
     toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   } {
-    var tdefBytesRef = library.typeDefCreate();
-    tdefBytesRef.name += "_BytesRef";
-    tdefBytesRef.fields = (macro class BytesRef {
-      public var bytes(default, null):haxe.io.Bytes;
-      public var ptr(default, null):cpp.Pointer<cpp.UInt8>;
-      public function unref():Void {
-        if (bytes != null) {
-          // TODO: is this sufficient to also prevent the bytes buffer moving?
-          bytes = null;
-          ptr = null;
-        }
-      }
-      private function new(bytes:haxe.io.Bytes, ptr:cpp.Pointer<cpp.UInt8>) {
-        this.bytes = bytes;
-        this.ptr = ptr;
-      }
-    }).fields;
-    var pathBytesRef:TypePath = {
-      name: tdefBytesRef.name,
-      pack: tdefBytesRef.pack,
-    };
+    var pathBytesRef = baseBytesRef(
+      (macro : cpp.Pointer<cpp.UInt8>), macro null,
+      (macro : Int), macro 0, // handle unused
+      macro {}
+    );
     return {
       toBytesCopy: (self, size) -> macro {
         var _self = ($self : cpp.Pointer<cpp.UInt8>);
@@ -300,7 +125,7 @@ class CppMarshalSet extends BaseMarshalSet<
       fromBytesRef: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
         var _ptr = cpp.Pointer.ofArray(_bytes.getData());
-        (@:privateAccess new $pathBytesRef(_bytes, _ptr));
+        (@:privateAccess new $pathBytesRef(_bytes, _ptr, 0));
       },
     };
   }
@@ -318,7 +143,7 @@ class CppMarshalSet extends BaseMarshalSet<
       tdef: native,
       fields: new Map(),
     };
-    return {
+    return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
       haxeType: TPath({
         params: [TPType(TPath({
           pack: library.config.typeDefPack,
@@ -327,16 +152,61 @@ class CppMarshalSet extends BaseMarshalSet<
         pack: ["cpp"],
         name: "Pointer", // Star?
       }),
-      l1Type: '$name*',
-      l2Type: '$name*',
-      l3Type: '$name*',
-      mangled: 'p${Mangle.identifier(name)}_',
-      l1l2: MARSHAL_CONVERT_DIRECT,
-      l2ref: MARSHAL_NOOP1,
-      l2l3: MARSHAL_CONVERT_DIRECT,
-      l3l2: MARSHAL_CONVERT_DIRECT,
-      l2unref: MARSHAL_NOOP1,
-      l2l1: MARSHAL_CONVERT_DIRECT,
+    });
+  }
+
+  function arrayPtrInternalType(element:CppTypeMarshal):CppTypeMarshal {
+    var elType = element.arrayType != null ? element.arrayType : element.haxeType;
+    return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+      haxeType: (macro : cpp.Pointer<$elType>),
+    });
+  }
+  override function arrayPtrInternalOps(
+    type:CppTypeMarshal,
+    element:CppTypeMarshal,
+    alloc:(size:Expr)->Expr
+    // blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
+  ):{
+    vectorType:Null<ComplexType>,
+    toHaxeCopy:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeCopy:Null<(array:Expr)->Expr>,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(array:Expr)->Expr>,
+  } {
+    var elType = element.arrayType;
+    var vectorType = (macro : haxe.ds.Vector<$elType>);
+    var vectorTypePath = TypeUtils.complexTypeToPath(vectorType);
+    var pathArrayRef = baseArrayRef(
+      element, vectorType,
+      (macro : cpp.Pointer<$elType>), macro null,
+      (macro : Int), macro 0, // handle unused
+      macro {}
+    );
+    return {
+      vectorType: vectorType,
+      toHaxeCopy: (self, size) -> macro {
+        var _self = ($self : cpp.Pointer<$elType>);
+        var _size = ($size : Int);
+        haxe.ds.Vector.fromData(_self.toUnmanagedArray(_size)).copy();
+      },
+      fromHaxeCopy: (vector) -> macro {
+        var _vector = ($vector : $vectorType);
+        var _data:cpp.Pointer<$elType> = cpp.Pointer.ofArray(_vector.toData());
+        // TODO: use alloc and blit instead?
+        var _ret:cpp.Star<$elType> = cpp.Native.malloc(_vector.length << $v{element.arrayBits});
+        cpp.Native.memcpy(_ret, _data, _vector.length << $v{element.arrayBits});
+        cpp.Pointer.fromStar(_ret);
+      },
+      toHaxeRef: (self, size) -> macro {
+        var _self = ($self : cpp.Pointer<$elType>);
+        var _size = ($size : Int);
+        haxe.ds.Vector.fromData(_self.toUnmanagedArray(_size));
+      },
+      fromHaxeRef: (vector) -> macro {
+        var _vector = ($vector : $vectorType);
+        var _ptr = cpp.Pointer.ofArray(_vector.toData());
+        (@:privateAccess new $pathArrayRef(_vector, _ptr, 0));
+      },
     };
   }
 
@@ -419,39 +289,20 @@ class CppMarshalSet extends BaseMarshalSet<
   }
   */
 
-  function haxePtrInternal(haxeType:ComplexType):CppTypeMarshal return {
-    haxeType: (macro : Dynamic),
+  function haxePtrInternal(haxeType:ComplexType):CppTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     l1Type: "::Dynamic",
     l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
     l1l2: MARSHAL_REGISTRY_GET_NODE,
     l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
+    l2l3: BaseMarshalSet.MARSHAL_CONVERT_DIRECT, // TODO: cast ...
     l3l2: (l3, l2) -> '$l2 = (${library.config.internalPrefix}registry_node*)$l3;',
     l2unref: MARSHAL_REGISTRY_UNREF,
     l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  });
 
-  function closureInternal(
-    ret:CppTypeMarshal,
-    args:Array<CppTypeMarshal>
-  ):CppTypeMarshal return {
-    haxeType: TFunction(
-      args.map(arg -> arg.haxeType),
-      ret.haxeType
-    ),
-    l1Type: "::Dynamic",
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: (l3, l2) -> '$l2 = (${library.config.internalPrefix}registry_node*)$l3;',
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
-  };
+  public function new(library:CppLibrary) {
+    super(library);
+  }
 }
 
 class Cpp extends Base<
@@ -549,14 +400,13 @@ class CppLibrary extends BaseLibrary<
     lbHeader.ail(code);
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:CppTypeMarshal,
     args:Array<CppTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
-    var name = mangleFunction(ret, args, code);
     lb
       .ai('${ret.l1Type} ${name}(')
       .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_$idx', ", ")
@@ -568,7 +418,7 @@ class CppLibrary extends BaseLibrary<
         .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
         .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret != CppMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -596,14 +446,7 @@ class CppLibrary extends BaseLibrary<
         params: [macro $v{name}],
         name: ":native",
       }],
-      kind: FFun({
-        ret: ret.haxeType,
-        expr: macro throw 0,
-        args: [ for (i => arg in args) {
-          type: arg.haxeType,
-          name: 'arg$i',
-        } ],
-      }),
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
       access: [APublic, AStatic],
     });
     return fieldExpr(name);
@@ -627,7 +470,7 @@ class CppLibrary extends BaseLibrary<
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret != CppMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
           .ai('_l1_output = (${clType.ret.l1Type})(_l1_fn(')
         .ife()
@@ -635,7 +478,7 @@ class CppLibrary extends BaseLibrary<
         .ifd()
         .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
         .al("));")
-        .ifi(clType.ret != CppMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
           .ail(clType.ret.l2l3("_l2_output", outputExpr))
@@ -658,7 +501,7 @@ class CppLibrary extends BaseLibrary<
       .al(") {")
       .i()
         .ail("::hx::NativeAttach _cpp_attach_gc;")
-        .ifi(ret != CppMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('return ${config.returnIdent};')

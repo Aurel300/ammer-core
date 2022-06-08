@@ -16,247 +16,129 @@ class PythonMarshalSet extends BaseMarshalSet<
   // TODO: deal with references...
   // Reference counting
   // https://docs.python.org/3/extending/extending.html#reference-counts
-
-  static final MARSHAL_NOOP1 = (_:String) -> "";
-  static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
-  static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
-
   static final MARSHAL_REF = (l2:String) -> 'Py_XINCREF($l2);';
   static final MARSHAL_UNREF = (l2:String) -> 'Py_XDECREF($l2);';
 
-  static final MARSHAL_VOID:PythonTypeMarshal = {
-    haxeType: (macro : Void),
-    l1Type: "void",
-    l2Type: "void",
-    l3Type: "void",
-    mangled: "v",
-    l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_NOOP2,
-    l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_NOOP2,
-    //pyTupleName: "",
-  };
-
-  static final MARSHAL_BOOL:PythonTypeMarshal = {
-    haxeType: (macro : Bool),
-    l1Type: "PyObject*",
-    l2Type: "bool",
-    l3Type: "bool",
-    mangled: "u1",
-    l1l2: (l1, l2) -> '$l2 = ($l1 == Py_True);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyBool_FromLong($l2);',
-    //pyTupleName: "O",
-  };
-
-  static final MARSHAL_UINT8:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "uint32_t",
-    l3Type: "uint8_t",
-    mangled: "u8",
-    l1l2: (l1, l2) -> '$l2 = PyLong_AsUnsignedLong($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLong($l2);',
-    //pyTupleName: "B",
-  };
-  static final MARSHAL_INT8:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "int32_t",
-    l3Type: "int8_t",
-    mangled: "i8",
-    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
-    //pyTupleName: "b",
-  };
-  static final MARSHAL_UINT16:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "uint32_t",
-    l3Type: "uint16_t",
-    mangled: "u16",
-    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
-    //pyTupleName: "H",
-  };
-  static final MARSHAL_INT16:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "int32_t",
-    l3Type: "int16_t",
-    mangled: "i16",
-    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
-    //pyTupleName: "h",
-  };
-  static final MARSHAL_UINT32:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "uint32_t",
-    l3Type: "uint32_t",
-    mangled: "u32",
-    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
-    //pyTupleName: "I",
-  };
-  static final MARSHAL_INT32:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "int32_t",
-    l3Type: "int32_t",
-    mangled: "i32",
-    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
-    //pyTupleName: "i",
-  };
-  // TODO: why are the SetAttrString calls needed after a call to new?
-  static final MARSHAL_UINT64:PythonTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "PyObject*",
-    l2Type: "uint64_t",
-    l3Type: "uint64_t",
-    mangled: "u64",
-    l1l2: (l1, l2) -> 'do {
-  uint32_t _python_high = PyLong_AsLong(PyObject_GetAttrString($l1, "high"));
-  uint32_t _python_low = PyLong_AsLong(PyObject_GetAttrString($l1, "low"));
-  $l2 = (((uint64_t)_python_high) << 32) | (uint32_t)_python_low;
-} while (0);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'do {
-  PyObject *_python_tmp = Py_BuildValue("(kk)", 0, 0);
-  $l1 = _ammer_haxe_int64_type->tp_new(_ammer_haxe_int64_type, _python_tmp, Py_None);
-  PyObject_SetAttrString($l1, "high", PyLong_FromUnsignedLong(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
-  PyObject_SetAttrString($l1, "low", PyLong_FromUnsignedLong($l2 & 0xFFFFFFFF));
-} while (0);',
-    //pyTupleName: "O",
-  };
-  static final MARSHAL_INT64:PythonTypeMarshal = {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "PyObject*",
-    l2Type: "int64_t",
-    l3Type: "int64_t",
-    mangled: "i64",
-    l1l2: (l1, l2) -> 'do {
-  uint32_t _python_high = PyLong_AsLong(PyObject_GetAttrString($l1, "high"));
-  uint32_t _python_low = PyLong_AsLong(PyObject_GetAttrString($l1, "low"));
-  $l2 = (((int64_t)_python_high) << 32) | (uint32_t)_python_low;
-} while (0);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> 'do {
-  PyObject *_python_tmp = Py_BuildValue("(ll)", 0, 0);
-  $l1 = _ammer_haxe_int64_type->tp_new(_ammer_haxe_int64_type, _python_tmp, Py_None);
-  PyObject_SetAttrString($l1, "high", PyLong_FromLong((int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF)));
-  PyObject_SetAttrString($l1, "low", PyLong_FromLong((int32_t)($l2 & 0xFFFFFFFF)));
-} while (0);',
-    //pyTupleName: "O",
-  };
-
-  //static final MARSHAL_FLOAT32:PythonTypeMarshal = {};
-  static final MARSHAL_FLOAT64:PythonTypeMarshal = {
-    haxeType: (macro : Float),
-    l1Type: "PyObject*",
-    l2Type: "double",
-    l3Type: "double",
-    mangled: "f64",
-    l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',
-    //pyTupleName: "d",
-  };
-
-  static final MARSHAL_STRING:PythonTypeMarshal = {
-    haxeType: (macro : String),
-    l1Type: "PyObject*",
-    l2Type: "const char*",
-    l3Type: "const char*",
-    mangled: "s",
-    l1l2: (l1, l2) -> '$l2 = PyUnicode_AsUTF8($l1);',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyUnicode_FromString($l2);',
-    //pyTupleName: "s",
-  };
-
-  static final MARSHAL_BYTES:PythonTypeMarshal = {
-    haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: "uint8_t*",
-    l3Type: "uint8_t*",
-    mangled: "b",
-    l1l2: (l1, l2) -> '$l2 = (uint8_t*)(PyLong_AsUnsignedLongLong($l1));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
-    //pyTupleName: "?",
-  };
-
-  public function new(library:PythonLibrary) {
-    super(library);
+  static function baseExtend(
+    base:BaseTypeMarshal,
+    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+  ):PythonTypeMarshal {
+    return {
+      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      // L1 type is always "PyObject*", a Python object pointer
+      l1Type:   "PyObject*",
+      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
+      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
+      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+    };
   }
 
+  static final MARSHAL_VOID = baseExtend(BaseMarshalSet.baseVoid());
   public function void():PythonTypeMarshal return MARSHAL_VOID;
 
+  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {
+    l1l2: (l1, l2) -> '$l2 = ($l1 == Py_True);',
+    l2l1: (l2, l1) -> '$l1 = PyBool_FromLong($l2);',
+  });
   public function bool():PythonTypeMarshal return MARSHAL_BOOL;
 
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {
+    l2Type: "uint32_t",
+    l1l2: (l1, l2) -> '$l2 = PyLong_AsUnsignedLong($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLong($l2);',
+  });
+  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {
+    l2Type: "int32_t",
+    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {
+    l2Type: "uint32_t",
+    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+  });
+  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {
+    l2Type: "int32_t",
+    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+  });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
+    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+  });
+  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {
+    l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+  });
   public function uint8():PythonTypeMarshal return MARSHAL_UINT8;
   public function int8():PythonTypeMarshal return MARSHAL_INT8;
   public function uint16():PythonTypeMarshal return MARSHAL_UINT16;
   public function int16():PythonTypeMarshal return MARSHAL_INT16;
   public function uint32():PythonTypeMarshal return MARSHAL_UINT32;
   public function int32():PythonTypeMarshal return MARSHAL_INT32;
+
+  // TODO: why are the SetAttrString calls needed after a call to new?
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
+    l1l2: (l1, l2) -> 'do {
+  uint32_t _python_high = PyLong_AsLong(PyObject_GetAttrString($l1, "high"));
+  uint32_t _python_low = PyLong_AsLong(PyObject_GetAttrString($l1, "low"));
+  $l2 = (((uint64_t)_python_high) << 32) | (uint32_t)_python_low;
+} while (0);',
+    l2l1: (l2, l1) -> 'do {
+  PyObject *_python_tmp = Py_BuildValue("(kk)", 0, 0);
+  $l1 = _ammer_haxe_int64_type->tp_new(_ammer_haxe_int64_type, _python_tmp, Py_None);
+  PyObject_SetAttrString($l1, "high", PyLong_FromUnsignedLong(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
+  PyObject_SetAttrString($l1, "low", PyLong_FromUnsignedLong($l2 & 0xFFFFFFFF));
+} while (0);',
+  });
+  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(), {
+    l1l2: (l1, l2) -> 'do {
+  uint32_t _python_high = PyLong_AsLong(PyObject_GetAttrString($l1, "high"));
+  uint32_t _python_low = PyLong_AsLong(PyObject_GetAttrString($l1, "low"));
+  $l2 = (((int64_t)_python_high) << 32) | (uint32_t)_python_low;
+} while (0);',
+    l2l1: (l2, l1) -> 'do {
+  PyObject *_python_tmp = Py_BuildValue("(ll)", 0, 0);
+  $l1 = _ammer_haxe_int64_type->tp_new(_ammer_haxe_int64_type, _python_tmp, Py_None);
+  PyObject_SetAttrString($l1, "high", PyLong_FromLong((int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF)));
+  PyObject_SetAttrString($l1, "low", PyLong_FromLong((int32_t)($l2 & 0xFFFFFFFF)));
+} while (0);',
+  });
   public function uint64():PythonTypeMarshal return MARSHAL_UINT64;
   public function int64():PythonTypeMarshal return MARSHAL_INT64;
 
+  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {
+  //   l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
+  //   l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',
+  // });
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {
+    l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',
+  });
   public function float32():PythonTypeMarshal return throw "!";
   public function float64():PythonTypeMarshal return MARSHAL_FLOAT64;
 
+  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {
+    l1l2: (l1, l2) -> '$l2 = PyUnicode_AsUTF8($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyUnicode_FromString($l2);',
+  });
   public function string():PythonTypeMarshal return MARSHAL_STRING;
 
+  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+    haxeType: (macro : Int),
+    l1l2: (l1, l2) -> '$l2 = (uint8_t*)(PyLong_AsUnsignedLongLong($l1));',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
+  });
   function bytesInternalType():PythonTypeMarshal return MARSHAL_BYTES;
   function bytesInternalOps(
-    type:PythonTypeMarshal,
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
@@ -266,30 +148,11 @@ class PythonMarshalSet extends BaseMarshalSet<
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   } {
     var tdefExternExpr = library.tdefExternExpr;
-    var tdefBytesRef = library.typeDefCreate();
-    tdefBytesRef.name += "_BytesRef";
-    tdefBytesRef.fields = (macro class BytesRef {
-      public var bytes(default, null):haxe.io.Bytes;
-      public var ptr(default, null):Int;
-      private var view:Int;
-      public function unref():Void {
-        if (bytes != null) {
-          (@:privateAccess $tdefExternExpr._ammer_python_frombytesunref)(view);
-          bytes = null;
-          ptr = 0;
-          view = 0;
-        }
-      }
-      private function new(bytes:haxe.io.Bytes, ptr:Int, view:Int) {
-        this.bytes = bytes;
-        this.ptr = ptr;
-        this.view = view;
-      }
-    }).fields;
-    var pathBytesRef:TypePath = {
-      name: tdefBytesRef.name,
-      pack: tdefBytesRef.pack,
-    };
+    var pathBytesRef = baseBytesRef(
+      (macro : Int), macro 0,
+      (macro : Int), macro 0,
+      macro (@:privateAccess $tdefExternExpr._ammer_python_frombytesunref)(handle)
+    );
     return {
       toBytesCopy: (self, size) -> macro {
         var _self:Int = $self;
@@ -311,56 +174,28 @@ class PythonMarshalSet extends BaseMarshalSet<
     };
   }
 
-  function opaquePtrInternal(name:String):PythonTypeMarshal return {
+  function opaquePtrInternal(name:String):PythonTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
     haxeType: (macro : Int),
-    l1Type: "PyObject*",
-    l2Type: '$name*',
-    l3Type: '$name*',
-    mangled: 'p${Mangle.identifier(name)}_',
     l1l2: (l1, l2) -> '$l2 = ($name*)(PyLong_AsUnsignedLongLong($l1));',
-    l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
-    //pyTupleName: "K",
-  };
+  });
 
-  function haxePtrInternal(haxeType:ComplexType):PythonTypeMarshal return {
+  function arrayPtrInternalType(element:PythonTypeMarshal):PythonTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    haxeType: (macro : Int),
+    l1l2: (l1, l2) -> '$l2 = (${element.l3Type}*)(PyLong_AsUnsignedLongLong($l1));',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
+  });
+
+  function haxePtrInternal(haxeType:ComplexType):PythonTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     haxeType: haxeType,
-    l1Type: "PyObject*",
     l2Type: "PyObject*",
-    l3Type: "void*",
-    mangled: 'h${Mangle.complexType(haxeType)}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
     l2ref: MARSHAL_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
     l2unref: MARSHAL_UNREF,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    //pyTupleName: "O",
-  };
+  });
 
-  function closureInternal(
-    ret:PythonTypeMarshal,
-    args:Array<PythonTypeMarshal>
-  ):PythonTypeMarshal return {
-    haxeType: TFunction(
-      args.map(arg -> arg.haxeType),
-      ret.haxeType
-    ),
-    l1Type: "PyObject*",
-    l2Type: "PyObject*",
-    l3Type: "void*",
-    mangled: 'c${ret.mangled}_${args.length}${args.map(arg -> arg.mangled).join("_")}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_REF,
-    l2l3: MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_UNREF,
-    l2l1: MARSHAL_CONVERT_DIRECT,
-    //pyTupleName: "O",
-  };
+  public function new(library:PythonLibrary) {
+    super(library);
+  }
 }
 
 class Python extends Base<
@@ -397,7 +232,7 @@ class Python extends Base<
         .ail('PyMODINIT_FUNC PyInit_${lib.config.name}(void) {')
         .i()
           .ail("static PyMethodDef _init_wrap[] = {")
-          .a(lib.lbInit.done())
+          .addBuf(lib.lbInit)
           .ail("{\"_ammer_python_tobytescopy\", _ammer_python_tobytescopy, METH_VARARGS, \"\"},")
           .ail("{\"_ammer_python_frombytescopy\", _ammer_python_frombytescopy, METH_VARARGS, \"\"},")
           .ail("{\"_ammer_python_frombytesref\", _ammer_python_frombytesref, METH_VARARGS, \"\"},")
@@ -452,69 +287,31 @@ class PythonLibrary extends BaseLibrary<
     tdefExtern.fields.push({
       pos: config.pos,
       name: "_ammer_python_tobytescopy",
-      kind: FFun({
-        ret: (macro : haxe.io.BytesData),
-        expr: null,
-        args: [{
-          type: (macro : Int),
-          name: "arg1",
-        }, {
-          type: (macro : Int),
-          name: "arg2",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (Int, Int) -> haxe.io.BytesData)),
       access: [APrivate, AStatic],
     });
     tdefExtern.fields.push({
       pos: config.pos,
       name: "_ammer_python_frombytescopy",
-      kind: FFun({
-        ret: (macro : Int),
-        expr: null,
-        args: [{
-          type: (macro : haxe.io.BytesData),
-          name: "arg1",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData) -> Int)),
       access: [APrivate, AStatic],
     });
     tdefExtern.fields.push({
       pos: config.pos,
       name: "_ammer_python_frombytesref",
-      kind: FFun({
-        ret: (macro : python.Tuple.Tuple2<Int, Int>),
-        expr: null,
-        args: [{
-          type: (macro : haxe.io.BytesData),
-          name: "arg1",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData) -> python.Tuple.Tuple2<Int, Int>)),
       access: [APrivate, AStatic],
     });
     tdefExtern.fields.push({
       pos: config.pos,
       name: "_ammer_python_frombytesunref",
-      kind: FFun({
-        ret: (macro : Void),
-        expr: null,
-        args: [{
-          type: (macro : Int),
-          name: "arg1",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (Int) -> Void)),
       access: [APrivate, AStatic],
     });
     tdefExtern.fields.push({
       pos: config.pos,
       name: "_ammer_init",
-      kind: FFun({
-        ret: (macro : Void),
-        expr: null,
-        args: [{
-          type: (macro : haxe.Int64),
-          name: "ex_int64",
-        }],
-      }),
+      kind: TypeUtils.ffunCt((macro : (haxe.Int64) -> Void)),
       access: [APrivate, AStatic],
     });
     tdefExternExpr = macro $p{config.typeDefPack.concat([config.typeDefName + "_Native"])};
@@ -540,20 +337,20 @@ static PyObject* _ammer_python_tobytescopy(PyObject *_python_self, PyObject *_py
   PyObject* res = PyByteArray_FromStringAndSize(NULL, size);
   Py_buffer view;
   PyObject_GetBuffer(res, &view, PyBUF_WRITABLE | PyBUF_C_CONTIGUOUS);
-  memcpy(view.buf, data, size);
+  ${config.memcpyFunction}(view.buf, data, size);
   PyBuffer_Release(&view);
   return res;
 }
 static PyObject* _ammer_python_frombytescopy(PyObject *_python_self, PyObject *_python_args) {
   Py_buffer view;
   PyObject_GetBuffer(PyTuple_GetItem(_python_args, 0), &view, PyBUF_C_CONTIGUOUS);
-  uint8_t* data_res = (uint8_t*)malloc(view.len); // TODO: malloc
-  memcpy(data_res, view.buf, view.len);
+  uint8_t* data_res = (uint8_t*)${config.mallocFunction}(view.len);
+  ${config.memcpyFunction}(data_res, view.buf, view.len);
   PyBuffer_Release(&view);
   return PyLong_FromUnsignedLongLong((uint64_t)data_res);
 }
 static PyObject* _ammer_python_frombytesref(PyObject *_python_self, PyObject *_python_args) {
-  Py_buffer* view = (Py_buffer*)malloc(sizeof(Py_buffer));
+  Py_buffer* view = (Py_buffer*)${config.mallocFunction}(sizeof(Py_buffer));
   PyObject_GetBuffer(PyTuple_GetItem(_python_args, 0), view, PyBUF_C_CONTIGUOUS); // TODO: writable flag?
   uint8_t* data = view->buf;
   return PyTuple_Pack(2,
@@ -564,20 +361,19 @@ static PyObject* _ammer_python_frombytesref(PyObject *_python_self, PyObject *_p
 static PyObject* _ammer_python_frombytesunref(PyObject *_python_self, PyObject *_python_args) {
   Py_buffer* view = (Py_buffer*)(PyLong_AsUnsignedLongLong(PyTuple_GetItem(_python_args, 0)));
   PyBuffer_Release(view);
-  free(view); // TODO: free
+  ${config.freeFunction}(view);
   Py_RETURN_NONE;
 }
 ');
   }
 
-  public function addFunction(
+  public function addNamedFunction(
+    name:String,
     ret:PythonTypeMarshal,
     args:Array<PythonTypeMarshal>,
     code:String,
-    ?pos:Position
+    pos:Position
   ):Expr {
-    if (pos == null) pos = config.pos;
-    var name = mangleFunction(ret, args, code);
     lb
       .ail('static PyObject *${name}(PyObject *_python_self, PyObject *_python_args) {')
       .i()
@@ -588,7 +384,7 @@ static PyObject* _ammer_python_frombytesunref(PyObject *_python_self, PyObject *
           .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
           .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
         .ifd()
-        .ifi(ret != PythonMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('${ret.l2Type} _l2_return;')
@@ -609,28 +405,18 @@ static PyObject* _ammer_python_frombytesunref(PyObject *_python_self, PyObject *
     tdefExtern.fields.push({
       pos: pos,
       name: name,
-      kind: FFun({
-        ret: ret.haxeType,
-        expr: null,
-        args: [ for (i => arg in args) {
-          type: arg.haxeType,
-          name: 'arg$i',
-        } ],
-      }),
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
       access: [APrivate, AStatic],
     });
     var callArgs = [ for (i => arg in args) macro $i{'arg$i'} ];
     tdef.fields.push({
       pos: pos,
       name: name,
-      kind: FFun({
-        ret: ret.haxeType,
-        expr: macro return (@:privateAccess $tdefExternExpr.$name)($a{callArgs}),
-        args: [ for (i => arg in args) {
-          type: arg.haxeType,
-          name: 'arg$i',
-        } ],
-      }),
+      kind: TypeUtils.ffun(
+        args.map(arg -> arg.haxeType),
+        ret.haxeType,
+        macro return (@:privateAccess $tdefExternExpr.$name)($a{callArgs})
+      ),
       access: [APublic, AStatic, AInline],
     });
     return fieldExpr(name);
@@ -657,7 +443,7 @@ static PyObject* _ammer_python_frombytesunref(PyObject *_python_self, PyObject *
         .ai('PyObject* _python_args = PyTuple_Pack(${args.length}')
         .mapi(args, (idx, arg) -> ', _l1_arg_$idx')
         .al(");")
-        .ifi(clType.ret != PythonMarshalSet.MARSHAL_VOID)
+        .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
           .ail("_l1_output = PyObject_CallObject(_l1_fn, _python_args);")
           .ail('${clType.ret.l2Type} _l2_output;')
@@ -683,7 +469,7 @@ static PyObject* _ammer_python_frombytesunref(PyObject *_python_self, PyObject *
       .a(args.length == 0 ? "void" : "")
       .al(") {")
       .i()
-        .ifi(ret != PythonMarshalSet.MARSHAL_VOID)
+        .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
           .ail('return ${config.returnIdent};')

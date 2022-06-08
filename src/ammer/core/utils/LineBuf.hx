@@ -1,18 +1,16 @@
 package ammer.core.utils;
 
+import haxe.ds.List;
+
 using Lambda;
 
 class LineBuf {
   var indent:String;
-
-  // TODO: make `data` into a linked list of (arrays of) strings
-  //   -> can extend one LineBuf with another without stringifying
-  //   -> can re-use indent strings
-  //   keep track of total length
-  //   then stringify into Bytes ?
-  var data = new StringBuf();
   var indentCurrent = "";
   var indentLevel = 0;
+
+  var data:List<String>;
+  var length = 0;
 
   var condStack:Array<Bool> = [];
   // TODO: can probably be optimised away into two ints + bool?
@@ -20,24 +18,39 @@ class LineBuf {
   var condActive = true;
 
   public function new(indent:String = "  ") {
+    data = new List();
     this.indent = indent;
   }
 
+  public function addBuf(buf:LineBuf):LineBuf {
+    @:privateAccess data.q.next = buf.data.h;
+    @:privateAccess data.q = buf.data.q;
+    buf.data = null;
+    return this;
+  }
+
   public inline function a(val:String):LineBuf {
-    if (condActive) data.add(val);
+    if (condActive) {
+      data.add(val);
+      length += val.length;
+    }
     return this;
   }
 
   public inline function al(val:String):LineBuf {
-    return a(val + "\n");
+    a(val);
+    return a("\n");
   }
 
   public inline function ai(val:String):LineBuf {
-    return a(indentCurrent + val);
+    a(indentCurrent);
+    return a(val);
   }
 
   public inline function ail(val:String):LineBuf {
-    return a(indentCurrent + val + "\n");
+    a(indentCurrent);
+    a(val);
+    return a("\n");
   }
 
   public function each<T>(arr:Array<T>, f:(T, LineBuf)->Void):LineBuf {
@@ -124,6 +137,8 @@ class LineBuf {
   public function done():String {
     if (indentLevel > 0) throw "LineBuf not at zero indentation level";
     if (condStack.length > 0) throw "LineBuf not at zero condition level";
-    return data.toString();
+    var ret = data.join("");
+    data = null;
+    return ret;
   }
 }

@@ -1,5 +1,6 @@
 #if macro
 
+import haxe.macro.Context;
 import haxe.macro.Expr;
 
 abstract class TestBase {
@@ -37,7 +38,12 @@ abstract class TestBase {
     f();
     var inner = outputStack.pop();
     output = oldTop;
+    #if AMMER_TEST_LUA
+    // reduce local variable count ...
+    output.push(macro if (untyped __lua__("1")) $b{inner});
+    #else
     output.push(macro $b{inner});
+    #end
   }
 
   public function run(e:Expr):Void {
@@ -63,7 +69,12 @@ abstract class TestBase {
     var decls = typeHint != null
       ? macro @:mergeBlock { var _l:$typeHint = $l; var _r:$typeHint = $r; }
       : macro @:mergeBlock { var _l = $l;           var _r = $r;           };
+    #if AMMER_TEST_LUA
+    // reduce local variable count ...
+    output.push(macro if (untyped __lua__("1")) {
+    #else
     output.push(macro {
+    #end
       _assertsTotal++;
       $decls;
       if (_l == _r) {
@@ -93,10 +104,23 @@ typedef struct testtype_${ctr}_s testtype_${ctr}_t;');
     return 'testtype_${ctr}_t';
   }
 
+  static var testCtr = 0;
   public function done():Expr {
     if (outputStack.length > 1) throw 0;
     output.push(macro Sys.println($v{testId} + " ... " + _assertsPassed + "/" + _assertsTotal));
+    #if AMMER_TEST_LUA
+    // reduce local variable count ...
+    var tdef = macro class Test {
+      public static function run():Void {
+        $b{output}
+      }
+    };
+    tdef.name = 'TestFragment${testCtr++}';
+    Context.defineType(tdef);
+    return macro $i{tdef.name}.run();
+    #else
     return macro $b{output};
+    #end
   }
 }
 
