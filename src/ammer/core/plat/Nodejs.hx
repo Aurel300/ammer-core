@@ -6,9 +6,347 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import ammer.core.utils.*;
 
+using Lambda;
+
+@:structInit
+class NodejsConfig extends BaseConfig {
+  public var nodeGypBinary:String = "node-gyp";
+  // TODO: node-gyp config for electron etc?
+}
+
+typedef NodejsLibraryConfig = LibraryConfig;
+
+typedef NodejsTypeMarshal = BaseTypeMarshal;
+
+class Nodejs extends Base<
+  NodejsConfig,
+  NodejsLibraryConfig,
+  NodejsTypeMarshal,
+  NodejsLibrary,
+  NodejsMarshalSet
+> {
+  public function new(config:NodejsConfig) {
+    super("nodejs", config);
+  }
+
+  public function finalise():BuildProgram {
+    var ops:Array<BuildOp> = [];
+    for (lib in libraries) {
+      var ext = lib.config.abi.extension();
+      ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
+      ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
+      ops.push(BOAlways(
+        File('${config.buildPath}/${lib.config.name}/binding.gyp'),
+        // TODO: more configuration?
+        // TODO: stringify as JSON
+        WriteContent('{"targets": [{
+  "target_name": "binding",
+  "sources": ["lib.nodejs.$ext"],
+  "include_dirs": [${lib.config.includePaths.map(p -> '"$p"').join(",")}],
+  "link_settings": {
+    "library_dirs": [${lib.config.libraryPaths.map(p -> '"$p"').join(",")}],
+    "libraries": [${lib.config.linkNames.map(p -> '"-l$p"').join(",")}],
+  },
+}]}')
+      ));
+      ops.push(BOAlways(
+        File('${config.buildPath}/${lib.config.name}/lib.nodejs.$ext'),
+        WriteContent(lib.lb.done())
+      ));
+      ops.push(BOCwd(
+        '${config.buildPath}/${lib.config.name}',
+        [
+          BOAlways(File(""), Command(config.nodeGypBinary, ["configure"])),
+          BOAlways(File(""), Command(config.nodeGypBinary, ["build"])),
+        ]
+      ));
+      ops.push(BODependent(
+        File('${config.outputPath}/${lib.config.name}.node'),
+        File('${config.buildPath}/${lib.config.name}/build/Release/binding.node'),
+        Copy
+      ));
+    }
+    return new BuildProgram(ops);
+  }
+}
+
+class NodejsLibrary extends BaseLibrary<
+  NodejsLibrary,
+  NodejsConfig,
+  NodejsLibraryConfig,
+  NodejsTypeMarshal,
+  NodejsMarshalSet
+> {
+  var lbInit = new LineBuf();
+  var exportCount = 0;
+
+  public function new(config:NodejsLibraryConfig) {
+    super(config, new NodejsMarshalSet(this));
+    tdef.isExtern = true;
+    tdef.meta.push({
+      pos: config.pos,
+      params: [macro $v{"./" + config.name + ".node"}],
+      name: ":jsRequire",
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_nodejs_tobytescopy",
+      kind: TypeUtils.ffunCt((macro : (Dynamic, Int) -> js.lib.ArrayBuffer)),
+      access: [APrivate, AStatic],
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_nodejs_frombytescopy",
+      kind: TypeUtils.ffunCt((macro : (js.lib.ArrayBuffer) -> Dynamic)),
+      access: [APrivate, AStatic],
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_nodejs_tobytesref",
+      kind: TypeUtils.ffunCt((macro : (Dynamic, Int) -> js.lib.ArrayBuffer)),
+      access: [APrivate, AStatic],
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_nodejs_frombytesref",
+      kind: TypeUtils.ffunCt((macro : (js.lib.ArrayBuffer) -> Dynamic)),
+      access: [APrivate, AStatic],
+    });
+    lb.ail("#define NAPI_VERSION 3");
+    lb.ail("#include <node_api.h>");
+    lb.ail("#define NAPI_CALL_ENV(_nodejs_env, call, dref)                    \\
+  do {                                                            \\
+    napi_status status = (call);                                  \\
+    if (status != napi_ok) {                                      \\
+      const napi_extended_error_info* error_info = NULL;          \\
+      napi_get_last_error_info(_nodejs_env, &error_info);         \\
+      const char* err_message = error_info->error_message;        \\
+      bool is_pending;                                            \\
+      napi_is_exception_pending(_nodejs_env, &is_pending);        \\
+      if (!is_pending) {                                          \\
+        const char* message = (err_message == NULL)               \\
+            ? \"empty error message\"                               \\
+            : err_message;                                        \\
+        napi_throw_error(_nodejs_env, NULL, message);             \\
+        return dref;                                              \\
+      }                                                           \\
+    }                                                             \\
+  } while(0)");
+    lb.ail("#define NAPI_CALL(call) NAPI_CALL_ENV(_nodejs_env, call, 0)");
+    lb.ail("#define NAPI_CALL_V(call) NAPI_CALL_ENV(_nodejs_env, call,)");
+    lb.ail("static size_t _ammer_ctr = 0;"); // TODO: internalPrefix
+    boilerplate(
+      "napi_env",
+      "void*",
+      "napi_ref ref;",
+      "",
+      'NAPI_CALL_ENV(${config.internalPrefix}registry.ctx, napi_delete_reference(${config.internalPrefix}registry.ctx, curr->ref),);'
+    );
+  }
+
+  override function finalise(platConfig:NodejsConfig):Void {
+    lb.ail('#define NAPI_CALL_I NAPI_CALL
+static napi_value _ammer_nodejs_tobytescopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
+  size_t _nodejs_argc = 2;
+  napi_value _nodejs_argv[2];
+  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
+  uint8_t* data;
+  uint32_t size;
+  NAPI_CALL_I(napi_unwrap(_nodejs_env, _nodejs_argv[0], (void**)&data));
+  NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, _nodejs_argv[1], &size));
+  uint8_t* data_res;
+  napi_value res;
+  NAPI_CALL_I(napi_create_arraybuffer(_nodejs_env, size, (void**)&data_res, &res));
+  ${config.memcpyFunction}(data_res, data, size);
+  return res;
+}
+static napi_value _ammer_nodejs_frombytescopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
+  size_t _nodejs_argc = 1;
+  napi_value _nodejs_argv[1];
+  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
+  uint8_t* data;
+  size_t size;
+  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  uint8_t* data_res = (uint8_t*)${config.mallocFunction}(size);
+  ${config.memcpyFunction}(data_res, data, size);
+  napi_value res;
+  NAPI_CALL_I(napi_create_object(_nodejs_env, &res));
+  NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data_res, NULL, NULL, NULL));
+  return res;
+}
+static napi_value _ammer_nodejs_tobytesref(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
+  size_t _nodejs_argc = 2;
+  napi_value _nodejs_argv[2];
+  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
+  uint8_t* data;
+  uint32_t size;
+  NAPI_CALL_I(napi_unwrap(_nodejs_env, _nodejs_argv[0], (void**)&data));
+  NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, _nodejs_argv[1], &size));
+  napi_value res;
+  // TODO: NULL passed to finalise, pass a dummy method instead?
+  NAPI_CALL_I(napi_create_external_arraybuffer(_nodejs_env, (void*)data, size, NULL, NULL, &res));
+  return res;
+}
+static napi_value _ammer_nodejs_frombytesref(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
+  // TODO: should this create the reference?
+  /*
+  size_t _nodejs_argc = 1;
+  napi_value _nodejs_argv[1];
+  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
+  uint8_t* data;
+  size_t size;
+  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  napi_value res_ptr;
+  NAPI_CALL_I(napi_create_object(_nodejs_env, &res_ptr));
+  NAPI_CALL_I(napi_wrap(_nodejs_env, res_ptr, (void*)data, NULL, NULL, NULL));
+  napi_ref res_ref;
+  NAPI_CALL_I(napi_create_reference(_nodejs_env, _nodejs_argv[0], 1, &res_ref));
+  napi_value res;
+  NAPI_CALL_I(napi_create_array_with_length(_nodejs_env, 2, &res));
+  NAPI_CALL_I(napi_set_element(_nodejs_env, res, 0, ...));
+  NAPI_CALL_I(napi_set_element(_nodejs_env, res, 1, ...));
+  return res;
+  */
+  size_t _nodejs_argc = 1;
+  napi_value _nodejs_argv[1];
+  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
+  uint8_t* data;
+  size_t size;
+  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  napi_value res;
+  NAPI_CALL_I(napi_create_object(_nodejs_env, &res));
+  NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data, NULL, NULL, NULL));
+  return res;
+}
+#undef NAPI_CALL_I
+NAPI_MODULE_INIT() {
+  napi_property_descriptor _init_wrap[] = {
+').addBuf(lbInit).ail('
+    {"_ammer_nodejs_tobytescopy", NULL, _ammer_nodejs_tobytescopy, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_frombytescopy", NULL, _ammer_nodejs_frombytescopy, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_tobytesref", NULL, _ammer_nodejs_tobytesref, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_frombytesref", NULL, _ammer_nodejs_frombytesref, NULL, NULL, NULL, 0, NULL},
+  };
+  if (napi_define_properties(env, exports, ${exportCount + 4}, _init_wrap) != napi_ok) return NULL;
+  ${config.internalPrefix}registry.ctx = env;
+  return exports;
+}');
+    super.finalise(platConfig);
+  }
+
+  public function addNamedFunction(
+    name:String,
+    ret:NodejsTypeMarshal,
+    args:Array<NodejsTypeMarshal>,
+    code:String,
+    options:FunctionOptions
+  ):Expr {
+    lb
+      .ail('static ${ret.l1Type} ${name}(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {')
+      .i()
+        .ail('#define NAPI_CALL_I NAPI_CALL')
+        .ail('size_t _nodejs_argc = ${args.length};')
+        .ail('napi_value _nodejs_argv[${args.length}];')
+        .ail('NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));');
+    baseAddNamedFunction(
+      args,
+      args.mapi((idx, arg) -> '_nodejs_argv[$idx]'),
+      ret,
+      "_l1_return",
+      code,
+      lb,
+      options
+    );
+    lb
+        .ifi(ret.mangled == "v")
+          .ail('${ret.l1Type} _l1_return;')
+          .ail("NAPI_CALL_I(napi_get_undefined(_nodejs_env, &_l1_return));")
+        .ifd()
+        .ail("return _l1_return;")
+        .ail("#undef NAPI_CALL_I")
+      .d()
+      .ail("}");
+    lbInit.ail('{"${name}", NULL, ${name}, NULL, NULL, NULL, 0, NULL},');
+    exportCount++;
+    tdef.fields.push({
+      pos: options.pos,
+      name: name,
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
+      access: [APublic, AStatic],
+    });
+    return fieldExpr(name);
+  }
+
+  public function closureCall(
+    fn:String,
+    clType:MarshalClosure<NodejsTypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    // TODO: what about rebound "this"?
+    // TODO: ref/unref args?
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('${clType.type.l2Type} _l2_fn;')
+        .ail(clType.type.l3l2(fn, "_l2_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
+        .ail('${clType.type.l1Type} _l1_fn;')
+        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+        .ail('${clType.ret.l1Type} _l1_output;')
+        .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, (napi_value[]){')
+        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
+        .al("}, &_l1_output));")
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l2Type} _l2_output;')
+          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
+          .ail(clType.ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function addCallback(
+    ret:NodejsTypeMarshal,
+    args:Array<NodejsTypeMarshal>,
+    code:String
+  ):String {
+    var name = mangleFunction(ret, args, code, "cb");
+    var napiCall = (ret == NodejsMarshalSet.MARSHAL_VOID ? "NAPI_CALL_V" : "NAPI_CALL");
+    lb
+      .ai('static ${ret.l3Type} ${name}(')
+      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i()
+        .ail('#define NAPI_CALL_I $napiCall')
+        .ail('napi_env _nodejs_env = ${config.internalPrefix}registry.ctx;')
+        .ail("napi_handle_scope _nodejs_scope;")
+        .ail('$napiCall(napi_open_handle_scope(_nodejs_env, &_nodejs_scope));')
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l3Type} ${config.returnIdent};')
+          .ail(code)
+          .ail('$napiCall(napi_close_handle_scope(_nodejs_env, _nodejs_scope));')
+          .ail('return ${config.returnIdent};')
+        .ife()
+          .ail(code)
+          .ail('$napiCall(napi_close_handle_scope(_nodejs_env, _nodejs_scope));')
+        .ifd()
+        .ail("#undef NAPI_CALL_I")
+      .d()
+      .al("}");
+    return name;
+  }
+}
+
 @:allow(ammer.core.plat.Nodejs)
 class NodejsMarshalSet extends BaseMarshalSet<
   NodejsMarshalSet,
+  NodejsConfig,
   NodejsLibraryConfig,
   NodejsLibrary,
   NodejsTypeMarshal
@@ -56,25 +394,35 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
   });
   public function bool():NodejsTypeMarshal return MARSHAL_BOOL;
 
+  // the API expects a pointer to int32_t, providing a pointer to a smaller
+  // type can lead to stack corruption
+  static final MARSHAL_CAST_FROM_INT32 = (type:String, signed:Bool)
+    -> (l1:String, l2:String) -> 'do {
+  ${signed ? "" : "u"}int32_t _nodejs_tmp;
+  NAPI_CALL_I(napi_get_value_${signed ? "" : "u"}int32(_nodejs_env, $l1, &_nodejs_tmp));
+  $l2 = ($type)_nodejs_tmp;
+} while (0);';
+  static final MARSHAL_CAST_TO_INT32 = (signed:Bool)
+    -> (l2:String, l1:String) -> 'do {
+  ${signed ? "" : "u"}int32_t _nodejs_tmp = $l2;
+  NAPI_CALL_I(napi_create_${signed ? "" : "u"}int32(_nodejs_env, _nodejs_tmp, &$l1));
+} while (0);';
+
   static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {
-    l2Type: "uint32_t",
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, $l1, &$l2));',
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2, &$l1));',
+    l1l2: MARSHAL_CAST_FROM_INT32("uint8_t", false),
+    l2l1: MARSHAL_CAST_TO_INT32(false),
   });
   static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {
-    l2Type: "int32_t",
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_int32(_nodejs_env, $l1, &$l2));',
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2, &$l1));',
+    l1l2: MARSHAL_CAST_FROM_INT32("int8_t", true),
+    l2l1: MARSHAL_CAST_TO_INT32(true),
   });
   static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {
-    l2Type: "uint32_t",
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, $l1, &$l2));',
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2, &$l1));',
+    l1l2: MARSHAL_CAST_FROM_INT32("uint16_t", false),
+    l2l1: MARSHAL_CAST_TO_INT32(false),
   });
   static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {
-    l2Type: "int32_t",
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_int32(_nodejs_env, $l1, &$l2));',
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2, &$l1));',
+    l1l2: MARSHAL_CAST_FROM_INT32("int16_t", true),
+    l2l1: MARSHAL_CAST_TO_INT32(true),
   });
   static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, $l1, &$l2));',
@@ -107,9 +455,9 @@ NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
     l2l1: (l2, l1) -> 'do {
   NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
   napi_value _nodejs_tmp;
-  NAPI_CALL_I(napi_create_uint32(_nodejs_env, ((uint64_t)$l2 >> 32) & 0xFFFFFFFF, &_nodejs_tmp));
+  NAPI_CALL_I(napi_create_int32(_nodejs_env, ((uint64_t)$l2 >> 32) & 0xFFFFFFFF, &_nodejs_tmp));
   NAPI_CALL_I(napi_set_named_property(_nodejs_env, $l1, "high", _nodejs_tmp));
-  NAPI_CALL_I(napi_create_uint32(_nodejs_env, $l2 & 0xFFFFFFFF, &_nodejs_tmp));
+  NAPI_CALL_I(napi_create_int32(_nodejs_env, $l2 & 0xFFFFFFFF, &_nodejs_tmp));
   NAPI_CALL_I(napi_set_named_property(_nodejs_env, $l1, "low", _nodejs_tmp));
 } while (0);',
   });
@@ -208,12 +556,20 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
     };
   }
 
-  function opaquePtrInternal(name:String):NodejsTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
-    haxeType: (macro : Dynamic),
-    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
-    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
-NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
-  });
+  function opaqueInternal(name:String):MarshalOpaque<NodejsTypeMarshal> return {
+    type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+      haxeType: (macro : Dynamic),
+      l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
+      l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
+  NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
+    }),
+    typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+      haxeType: (macro : Dynamic),
+      l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
+      l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
+  NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
+    }),
+  };
 
   function arrayPtrInternalType(element:NodejsTypeMarshal):NodejsTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
     haxeType: (macro : Dynamic),
@@ -235,340 +591,5 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
     super(library);
   }
 }
-
-class Nodejs extends Base<
-  NodejsConfig,
-  NodejsLibraryConfig,
-  NodejsTypeMarshal,
-  NodejsLibrary,
-  NodejsMarshalSet
-> {
-  public function new(config:NodejsConfig) {
-    super("nodejs", config);
-  }
-
-  public function finalise():BuildProgram {
-    var ops:Array<BuildOp> = [];
-    var tdefs = [];
-    for (lib in libraries) {
-      var ext = lib.config.abi.extension();
-      ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
-      ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
-      ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/binding.gyp'),
-        // TODO: more configuration?
-        WriteContent('{"targets": [{
-  "target_name": "binding",
-  "sources": ["lib.nodejs.$ext"]
-}]}')
-      ));
-      var libCode = lib.lb
-        .ail('#define NAPI_CALL_I NAPI_CALL
-static napi_value _ammer_nodejs_tobytescopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
-  size_t _nodejs_argc = 2;
-  napi_value _nodejs_argv[2];
-  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
-  uint8_t* data;
-  uint32_t size;
-  NAPI_CALL_I(napi_unwrap(_nodejs_env, _nodejs_argv[0], (void**)&data));
-  NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, _nodejs_argv[1], &size));
-  uint8_t* data_res;
-  napi_value res;
-  NAPI_CALL_I(napi_create_arraybuffer(_nodejs_env, size, (void**)&data_res, &res));
-  ${lib.config.memcpyFunction}(data_res, data, size);
-  return res;
-}
-static napi_value _ammer_nodejs_frombytescopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
-  size_t _nodejs_argc = 1;
-  napi_value _nodejs_argv[1];
-  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
-  uint8_t* data;
-  size_t size;
-  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
-  uint8_t* data_res = (uint8_t*)${lib.config.mallocFunction}(size);
-  ${lib.config.memcpyFunction}(data_res, data, size);
-  napi_value res;
-  NAPI_CALL_I(napi_create_object(_nodejs_env, &res));
-  NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data_res, NULL, NULL, NULL));
-  return res;
-}
-static napi_value _ammer_nodejs_tobytesref(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
-  size_t _nodejs_argc = 2;
-  napi_value _nodejs_argv[2];
-  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
-  uint8_t* data;
-  uint32_t size;
-  NAPI_CALL_I(napi_unwrap(_nodejs_env, _nodejs_argv[0], (void**)&data));
-  NAPI_CALL_I(napi_get_value_uint32(_nodejs_env, _nodejs_argv[1], &size));
-  napi_value res;
-  // TODO: NULL passed to finalise, pass a dummy method instead?
-  NAPI_CALL_I(napi_create_external_arraybuffer(_nodejs_env, (void*)data, size, NULL, NULL, &res));
-  return res;
-}
-static napi_value _ammer_nodejs_frombytesref(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
-  // TODO: should this create the reference?
-  /*
-  size_t _nodejs_argc = 1;
-  napi_value _nodejs_argv[1];
-  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
-  uint8_t* data;
-  size_t size;
-  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
-  napi_value res_ptr;
-  NAPI_CALL_I(napi_create_object(_nodejs_env, &res_ptr));
-  NAPI_CALL_I(napi_wrap(_nodejs_env, res_ptr, (void*)data, NULL, NULL, NULL));
-  napi_ref res_ref;
-  NAPI_CALL_I(napi_create_reference(_nodejs_env, _nodejs_argv[0], 1, &res_ref));
-  napi_value res;
-  NAPI_CALL_I(napi_create_array_with_length(_nodejs_env, 2, &res));
-  NAPI_CALL_I(napi_set_element(_nodejs_env, res, 0, ...));
-  NAPI_CALL_I(napi_set_element(_nodejs_env, res, 1, ...));
-  return res;
-  */
-  size_t _nodejs_argc = 1;
-  napi_value _nodejs_argv[1];
-  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
-  uint8_t* data;
-  size_t size;
-  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
-  napi_value res;
-  NAPI_CALL_I(napi_create_object(_nodejs_env, &res));
-  NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data, NULL, NULL, NULL));
-  return res;
-}
-#undef NAPI_CALL_I
-NAPI_MODULE_INIT() {
-  napi_property_descriptor _init_wrap[] = {
-').addBuf(lib.lbInit).ail('
-    {"_ammer_nodejs_tobytescopy", NULL, _ammer_nodejs_tobytescopy, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_nodejs_frombytescopy", NULL, _ammer_nodejs_frombytescopy, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_nodejs_tobytesref", NULL, _ammer_nodejs_tobytesref, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_nodejs_frombytesref", NULL, _ammer_nodejs_frombytesref, NULL, NULL, NULL, 0, NULL},
-  };
-  if (napi_define_properties(env, exports, ${lib.exportCount + 4}, _init_wrap) != napi_ok) return NULL;
-  ${lib.config.internalPrefix}registry.ctx = env;
-  return exports;
-}').done();
-      ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/lib.nodejs.$ext'),
-        WriteContent(libCode)
-      ));
-      ops.push(BOCwd(
-        '${config.buildPath}/${lib.config.name}',
-        [
-          BOAlways(File(""), Command(config.nodeGypBinary, ["configure"])),
-          BOAlways(File(""), Command(config.nodeGypBinary, ["build"])),
-        ]
-      ));
-      ops.push(BODependent(
-        File('${config.outputPath}/${lib.config.name}.node'),
-        File('${config.buildPath}/${lib.config.name}/build/Release/binding.node'),
-        Copy
-      ));
-      for (tdef in lib.tdefs) {
-        tdefs.push(tdef);
-      }
-    }
-    return new BuildProgram(ops, tdefs);
-  }
-}
-
-@:structInit
-class NodejsConfig extends BaseConfig {
-  public var nodeGypBinary:String = "node-gyp";
-  // TODO: node-gyp config for electron etc?
-}
-
-@:allow(ammer.core.plat.Nodejs)
-class NodejsLibrary extends BaseLibrary<
-  NodejsLibrary,
-  NodejsLibraryConfig,
-  NodejsTypeMarshal,
-  NodejsMarshalSet
-> {
-  var lbInit = new LineBuf();
-  var exportCount = 0;
-
-  public function new(config:NodejsLibraryConfig) {
-    super(config, new NodejsMarshalSet(this));
-    tdef.isExtern = true;
-    tdef.meta.push({
-      pos: config.pos,
-      params: [macro $v{"./" + config.name + ".node"}],
-      name: ":jsRequire",
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_nodejs_tobytescopy",
-      kind: TypeUtils.ffunCt((macro : (Dynamic, Int) -> js.lib.ArrayBuffer)),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_nodejs_frombytescopy",
-      kind: TypeUtils.ffunCt((macro : (js.lib.ArrayBuffer) -> Dynamic)),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_nodejs_tobytesref",
-      kind: TypeUtils.ffunCt((macro : (Dynamic, Int) -> js.lib.ArrayBuffer)),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_nodejs_frombytesref",
-      kind: TypeUtils.ffunCt((macro : (js.lib.ArrayBuffer) -> Dynamic)),
-      access: [APrivate, AStatic],
-    });
-    lb.ail("#define NAPI_VERSION 3");
-    lb.ail("#include <node_api.h>");
-    lb.ail("#define NAPI_CALL_ENV(_nodejs_env, call, dref)                    \\
-  do {                                                            \\
-    napi_status status = (call);                                  \\
-    if (status != napi_ok) {                                      \\
-      const napi_extended_error_info* error_info = NULL;          \\
-      napi_get_last_error_info(_nodejs_env, &error_info);         \\
-      const char* err_message = error_info->error_message;        \\
-      bool is_pending;                                            \\
-      napi_is_exception_pending(_nodejs_env, &is_pending);        \\
-      if (!is_pending) {                                          \\
-        const char* message = (err_message == NULL)               \\
-            ? \"empty error message\"                               \\
-            : err_message;                                        \\
-        napi_throw_error(_nodejs_env, NULL, message);             \\
-        return dref;                                              \\
-      }                                                           \\
-    }                                                             \\
-  } while(0)");
-    lb.ail("#define NAPI_CALL(call) NAPI_CALL_ENV(_nodejs_env, call, 0)");
-    lb.ail("#define NAPI_CALL_V(call) NAPI_CALL_ENV(_nodejs_env, call,)");
-    lb.ail("static size_t _ammer_ctr = 0;"); // TODO: internalPrefix
-    boilerplate(
-      "napi_env",
-      "void*",
-      "napi_ref ref;",
-      "",
-      'NAPI_CALL_ENV(${config.internalPrefix}registry.ctx, napi_delete_reference(${config.internalPrefix}registry.ctx, curr->ref),);'
-    );
-  }
-
-  public function addNamedFunction(
-    name:String,
-    ret:NodejsTypeMarshal,
-    args:Array<NodejsTypeMarshal>,
-    code:String,
-    pos:Position
-  ):Expr {
-    lb
-      .ail('static ${ret.l1Type} ${name}(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {')
-      .i()
-        .ail('#define NAPI_CALL_I NAPI_CALL')
-        .ail('size_t _nodejs_argc = ${args.length};')
-        .ail('napi_value _nodejs_argv[${args.length}];')
-        .ail('NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));')
-        .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> arg.l1l2('_nodejs_argv[$idx]', '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
-        .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('${ret.l2Type} _l2_return;')
-          .ail(ret.l3l2(config.returnIdent, "_l2_return"))
-          .ail('${ret.l1Type} _l1_return;')
-          .ail(ret.l2l1("_l2_return", "_l1_return"))
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-          .ail('return _l1_return;')
-        .ife()
-          .ail(code)
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-          .ail('${ret.l1Type} _l1_return;')
-          .ail("NAPI_CALL_I(napi_get_undefined(_nodejs_env, &_l1_return));")
-          .ail("return _l1_return;")
-        .ifd()
-        .ail("#undef NAPI_CALL_I")
-      .d()
-      .al("}");
-    lbInit.ail('{"${name}", NULL, ${name}, NULL, NULL, NULL, 0, NULL},');
-    exportCount++;
-    tdef.fields.push({
-      pos: pos,
-      name: name,
-      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
-      access: [APublic, AStatic],
-    });
-    return fieldExpr(name);
-  }
-
-  public function closureCall(
-    fn:String,
-    clType:MarshalClosure<NodejsTypeMarshal>,
-    outputExpr:String,
-    args:Array<String>
-  ):String {
-    // TODO: what about rebound "this"?
-    // TODO: ref/unref args?
-    return new LineBuf()
-      .ail("do {")
-      .i()
-        .ail('${clType.type.l2Type} _l2_fn;')
-        .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .ail('${clType.type.l1Type} _l1_fn;')
-        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ail('${clType.ret.l1Type} _l1_output;')
-        .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, (napi_value[]){')
-        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
-        .al("}, &_l1_output));")
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
-      .d()
-      .ail("} while (0);")
-      .done();
-  }
-
-  public function addCallback(
-    ret:NodejsTypeMarshal,
-    args:Array<NodejsTypeMarshal>,
-    code:String
-  ):String {
-    var name = mangleFunction(ret, args, code, "cb");
-    var napiCall = (ret == NodejsMarshalSet.MARSHAL_VOID ? "NAPI_CALL_V" : "NAPI_CALL");
-    lb
-      .ai('static ${ret.l3Type} ${name}(')
-      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .ail('#define NAPI_CALL_I $napiCall')
-        .ail('napi_env _nodejs_env = ${config.internalPrefix}registry.ctx;')
-        .ail("napi_handle_scope _nodejs_scope;")
-        .ail('$napiCall(napi_open_handle_scope(_nodejs_env, &_nodejs_scope));')
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} _return;')
-          .ail(code)
-          .ail('$napiCall(napi_close_handle_scope(_nodejs_env, _nodejs_scope));')
-          .ail('return ${config.returnIdent};')
-        .ife()
-          .ail(code)
-          .ail('$napiCall(napi_close_handle_scope(_nodejs_env, _nodejs_scope));')
-        .ifd()
-        .ail("#undef NAPI_CALL_I")
-      .d()
-      .al("}");
-    return name;
-  }
-}
-
-typedef NodejsLibraryConfig = LibraryConfig;
-typedef NodejsTypeMarshal = BaseTypeMarshal;
 
 #end

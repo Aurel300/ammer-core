@@ -8,7 +8,6 @@ import haxe.macro.Expr;
 class LibraryConfig {
   public var name:String;
   public var linkNames:Array<String> = [];
-  // public var headerFiles:Array<String> = [];
   public var includePaths:Array<String> = [];
   public var libraryPaths:Array<String> = [];
   public var abi:LibraryAbi = C;

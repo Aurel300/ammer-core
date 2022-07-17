@@ -107,7 +107,10 @@ typedef struct testtype_${ctr}_s testtype_${ctr}_t;');
   static var testCtr = 0;
   public function done():Expr {
     if (outputStack.length > 1) throw 0;
-    output.push(macro Sys.println($v{testId} + " ... " + _assertsPassed + "/" + _assertsTotal));
+    output.push(macro {
+      Sys.println($v{testId} + " ... " + _assertsPassed + "/" + _assertsTotal);
+      if (_assertsPassed != _assertsTotal) Sys.exit(1);
+    });
     #if AMMER_TEST_LUA
     // reduce local variable count ...
     var tdef = macro class Test {

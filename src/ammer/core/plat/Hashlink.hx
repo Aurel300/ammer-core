@@ -8,9 +8,235 @@ import ammer.core.utils.*;
 
 using Lambda;
 
+@:structInit
+class HashlinkConfig extends BaseConfig {
+  public var hlc:Bool = false;
+  public var hlIncludePaths:Array<String> = null;
+  public var hlLibraryPaths:Array<String> = null;
+}
+
+typedef HashlinkLibraryConfig = LibraryConfig;
+
+typedef HashlinkTypeMarshalExt = {
+  hlType:String,
+};
+typedef HashlinkTypeMarshal = {
+  >BaseTypeMarshal,
+  >HashlinkTypeMarshalExt,
+};
+
+class Hashlink extends Base<
+  HashlinkConfig,
+  HashlinkLibraryConfig,
+  HashlinkTypeMarshal,
+  HashlinkLibrary,
+  HashlinkMarshalSet
+> {
+  public function new(config:HashlinkConfig) {
+    super("hl", config);
+  }
+
+  public function finalise():BuildProgram {
+    return baseDynamicLinkProgram({
+      includePaths: config.hlIncludePaths,
+      libraryPaths: config.hlLibraryPaths,
+      linkNames: ["hl"],
+      defines: ["LIBHL_EXPORTS"],
+      outputPath: lib -> config.hlc
+        ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
+        : '${config.outputPath}/${lib.config.name}.hdll',
+    });
+  }
+}
+
+@:allow(ammer.core.plat.Hashlink)
+class HashlinkLibrary extends BaseLibrary<
+  HashlinkLibrary,
+  HashlinkConfig,
+  HashlinkLibraryConfig,
+  HashlinkTypeMarshal,
+  HashlinkMarshalSet
+> {
+  public function new(config:HashlinkLibraryConfig) {
+    super(config, new HashlinkMarshalSet(this));
+    tdef.fields.push({
+      pos: Context.currentPos(),
+      name: "_ammer_init",
+      meta: [{
+        pos: Context.currentPos(),
+        params: [
+          macro $v{config.name},
+          macro "_ammer_init",
+        ],
+        name: ":hlNative",
+      }],
+      kind: TypeUtils.ffunCt((macro : (/*haxe.Int64,*/ String) -> Void), macro throw 0),
+      access: [APrivate, AStatic],
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : Int),
+        macro {
+          _ammer_init(
+            //haxe.Int64.make(0, 0),
+            ""
+          );
+          0;
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+    lb.ail('#define HL_NAME(n) ${config.name}_ ## n');
+    lb.ail("#include \"hl.h\"");
+    boilerplate(
+      "void*",
+      "void*",
+      "",
+      // TODO: GC moving curr->key would break things (different hash bin)
+      "hl_add_root(&curr->key);",
+      "hl_remove_root(&curr->key);"
+    );
+    // TODO: could be nicer with a union?
+    //lb.ail("typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;");
+    //lb.ail("static hl_type *_ammer_haxe_int64_type;");
+    lb.ail("typedef struct { hl_type *t; vbyte *data; int32_t len; } _ammer_haxe_string;
+static hl_type *_ammer_haxe_string_type;
+void HL_NAME(_ammer_init)(_ammer_haxe_string *ex_string) {
+// _ammer_haxe_int64 *ex_int64 // TODO: hl_legacy32
+// _ammer_haxe_int64_type = ex_int64->t;
+  _ammer_haxe_string_type = ex_string->t;
+}
+// _OBJ(_I32 _I32)
+DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));");
+  }
+
+  public function addNamedFunction(
+    name:String,
+    ret:HashlinkTypeMarshal,
+    args:Array<HashlinkTypeMarshal>,
+    code:String,
+    options:FunctionOptions
+  ):Expr {
+    lb
+      .ai('HL_PRIM ${ret.l1Type} HL_NAME($name)(')
+      .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_$idx', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i();
+    baseAddNamedFunction(
+      args,
+      args.mapi((idx, arg) -> '_l1_arg_$idx'),
+      ret,
+      "_l1_return",
+      code,
+      lb,
+      options
+    );
+    lb
+        .ifi(ret.mangled != "v")
+          .ail('return _l1_return;')
+        .ifd()
+      .d()
+      .ail("}");
+    lb
+      .ai('DEFINE_PRIM(${ret.hlType}, $name, ')
+      .map(args, arg -> arg.hlType, " ")
+      .a(args.length == 0 ? "_NO_ARG" : "")
+      .al(');');
+    tdef.fields.push({
+      pos: options.pos,
+      name: name,
+      meta: [{
+        pos: options.pos,
+        params: [
+          macro $v{config.name},
+          macro $v{name},
+        ],
+        name: ":hlNative",
+      }],
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
+      access: [APublic, AStatic],
+    });
+    return fieldExpr(name);
+  }
+
+  public function closureCall(
+    fn:String,
+    clType:MarshalClosure<HashlinkTypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    // TODO: ref/unref args?
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('${clType.type.l2Type} _l2_fn;')
+        .ail(clType.type.l3l2(fn, "_l2_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
+        .ail("vclosure* _l1_fn;")
+        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l1Type} _l1_output;')
+          .ail('_l1_output = (_l1_fn->hasValue')
+        .ife()
+          .ail('(_l1_fn->hasValue')
+        .ifd()
+        .i()
+          .ai('? ((${clType.ret.l1Type} (*)(vdynamic *')
+          .map(clType.args, arg -> ', ${arg.l1Type}')
+          .a('))(_l1_fn->fun))(_l1_fn->value')
+          .map(args, arg -> ', ${arg}')
+          .al(")")
+          .ai(': ((${clType.ret.l1Type} (*)(')
+          .map(clType.args, arg -> arg.l1Type, ", ")
+          .a('))(_l1_fn->fun))(')
+          .map(args, arg -> arg, ", ")
+          .al("));")
+        .d()
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l2Type} _l2_output;')
+          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
+          .ail(clType.ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function addCallback(
+    ret:HashlinkTypeMarshal,
+    args:Array<HashlinkTypeMarshal>,
+    code:String
+  ):String {
+    var name = mangleFunction(ret, args, code, "cb");
+    lb
+      .ai('static ${ret.l3Type} ${name}(')
+      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i()
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l3Type} ${config.returnIdent};')
+        .ail(code)
+        .ail('return ${config.returnIdent};')
+      .ife()
+        .ail(code)
+      .ifd()
+      .d()
+      .al("}");
+    return name;
+  }
+}
+
 @:allow(ammer.core.plat.Hashlink)
 class HashlinkMarshalSet extends BaseMarshalSet<
   HashlinkMarshalSet,
+  HashlinkConfig,
   HashlinkLibraryConfig,
   HashlinkLibrary,
   HashlinkTypeMarshal
@@ -187,17 +413,28 @@ hl_from_utf8((uchar*)$l1->data, $l1->len, $l2);', // TODO: handle null?
     };
   }
 
-  function opaquePtrInternal(name:String):HashlinkTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
-    hlType: '_ABSTRACT(abstract_$name)',
-  }, {
-    haxeType: TPath({
+  function opaqueInternal(name:String):MarshalOpaque<HashlinkTypeMarshal> {
+    var mname = Mangle.identifier(name);
+    var haxeType:ComplexType = TPath({
       // no prefix results in collisions with other type declarations
       // TODO: name with _ammer prefix
-      params: [TPExpr(macro $v{"abstract_" + name})],
+      params: [TPExpr(macro $v{"abstract_" + mname})],
       pack: ["hl"],
       name: "Abstract",
-    }),
-  });
+    });
+    return {
+      type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+        hlType: '_ABSTRACT(abstract_$mname)',
+      }, {
+        haxeType: haxeType,
+      }),
+      typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+        hlType: '_ABSTRACT(abstract_$mname)',
+      }, {
+        haxeType: haxeType,
+      }),
+    };
+  }
 
   function arrayPtrInternalType(element:HashlinkTypeMarshal):HashlinkTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
     hlType: "_BYTES",
@@ -289,237 +526,5 @@ hl_from_utf8((uchar*)$l1->data, $l1->len, $l2);', // TODO: handle null?
     super(library);
   }
 }
-
-class Hashlink extends Base<
-  HashlinkConfig,
-  HashlinkLibraryConfig,
-  HashlinkTypeMarshal,
-  HashlinkLibrary,
-  HashlinkMarshalSet
-> {
-  public function new(config:HashlinkConfig) {
-    super("hl", config);
-  }
-
-  public function finalise():BuildProgram {
-    return baseDynamicLinkProgram({
-      includePaths: config.hlIncludePaths,
-      libraryPaths: config.hlLibraryPaths,
-      linkNames: ["hl"],
-      defines: ["LIBHL_EXPORTS"],
-      outputPath: lib -> config.hlc
-        ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
-        : '${config.outputPath}/${lib.config.name}.hdll',
-      libCode: lib -> lib.lb
-        .ail("void HL_NAME(_ammer_init)(_ammer_haxe_string *ex_string) {")
-        // _ammer_haxe_int64 *ex_int64 // hl_legacy32
-        .i()
-          // .ail("_ammer_haxe_int64_type = ex_int64->t;")
-          .ail("_ammer_haxe_string_type = ex_string->t;")
-        .d()
-        .ail("}")
-        // _OBJ(_I32 _I32)
-        .ail('DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));')
-        .done(),
-    });
-  }
-}
-
-@:structInit
-class HashlinkConfig extends BaseConfig {
-  public var hlc:Bool = false;
-  public var hlIncludePaths:Array<String> = null;
-  public var hlLibraryPaths:Array<String> = null;
-}
-
-@:allow(ammer.core.plat.Hashlink)
-class HashlinkLibrary extends BaseLibrary<
-  HashlinkLibrary,
-  HashlinkLibraryConfig,
-  HashlinkTypeMarshal,
-  HashlinkMarshalSet
-> {
-  public function new(config:HashlinkLibraryConfig) {
-    super(config, new HashlinkMarshalSet(this));
-    tdef.fields.push({
-      pos: Context.currentPos(),
-      name: "_ammer_init",
-      meta: [{
-        pos: Context.currentPos(),
-        params: [
-          macro $v{config.name},
-          macro "_ammer_init",
-        ],
-        name: ":hlNative",
-      }],
-      kind: TypeUtils.ffunCt((macro : (/*haxe.Int64,*/ String) -> Void), macro throw 0),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_native",
-      kind: FVar(
-        (macro : Int),
-        macro {
-          _ammer_init(
-            //haxe.Int64.make(0, 0),
-            ""
-          );
-          0;
-        }
-      ),
-      access: [APrivate, AStatic],
-    });
-    lb.ail('#define HL_NAME(n) ${config.name}_ ## n');
-    lb.ail("#include \"hl.h\"");
-    boilerplate(
-      "void*",
-      "void*",
-      "",
-      // TODO: GC moving curr->key would break things (different hash bin)
-      "hl_add_root(&curr->key);",
-      "hl_remove_root(&curr->key);"
-    );
-    // TODO: could be nicer with a union?
-    //lb.ail("typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;");
-    //lb.ail("static hl_type *_ammer_haxe_int64_type;");
-    lb.ail("typedef struct { hl_type *t; vbyte *data; int32_t len; } _ammer_haxe_string;");
-    lb.ail("static hl_type *_ammer_haxe_string_type;");
-  }
-
-  public function addNamedFunction(
-    name:String,
-    ret:HashlinkTypeMarshal,
-    args:Array<HashlinkTypeMarshal>,
-    code:String,
-    pos:Position
-  ):Expr {
-    lb
-      .ai('HL_PRIM ${ret.l1Type} HL_NAME($name)(')
-      .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_$idx', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> arg.l1l2('_l1_arg_$idx', '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
-        .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('${ret.l2Type} _l2_return;')
-          .ail(ret.l3l2(config.returnIdent, "_l2_return"))
-          .ail('${ret.l1Type} _l1_return;')
-          .ail(ret.l2l1("_l2_return", "_l1_return"))
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-          .ail('return _l1_return;')
-        .ife()
-          .ail(code)
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-        .ifd()
-      .d()
-      .al("}");
-    lb
-      .ai('DEFINE_PRIM(${ret.hlType}, $name, ')
-      .map(args, arg -> arg.hlType, " ")
-      .a(args.length == 0 ? "_NO_ARG" : "")
-      .al(');');
-    tdef.fields.push({
-      pos: pos,
-      name: name,
-      meta: [{
-        pos: pos,
-        params: [
-          macro $v{config.name},
-          macro $v{name},
-        ],
-        name: ":hlNative",
-      }],
-      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
-      access: [APublic, AStatic],
-    });
-    return fieldExpr(name);
-  }
-
-  public function closureCall(
-    fn:String,
-    clType:MarshalClosure<HashlinkTypeMarshal>,
-    outputExpr:String,
-    args:Array<String>
-  ):String {
-    // TODO: ref/unref args?
-    return new LineBuf()
-      .ail("do {")
-      .i()
-        .ail('${clType.type.l2Type} _l2_fn;')
-        .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .ail("vclosure* _l1_fn;")
-        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ail('_l1_output = (_l1_fn->hasValue')
-        .ife()
-          .ail('(_l1_fn->hasValue')
-        .ifd()
-        .i()
-          .ai('? ((${clType.ret.l1Type} (*)(vdynamic *')
-          .map(clType.args, arg -> ', ${arg.l1Type}')
-          .a('))(_l1_fn->fun))(_l1_fn->value')
-          .map(args, arg -> ', ${arg}')
-          .al(")")
-          .ai(': ((${clType.ret.l1Type} (*)(')
-          .map(clType.args, arg -> arg.l1Type, ", ")
-          .a('))(_l1_fn->fun))(')
-          .map(args, arg -> arg, ", ")
-          .al("));")
-        .d()
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
-      .d()
-      .ail("} while (0);")
-      .done();
-  }
-
-  public function addCallback(
-    ret:HashlinkTypeMarshal,
-    args:Array<HashlinkTypeMarshal>,
-    code:String
-  ):String {
-    var name = mangleFunction(ret, args, code, "cb");
-    lb
-      .ai('static ${ret.l3Type} ${name}(')
-      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-      .ifi(ret.mangled != "v")
-        .ail('${ret.l3Type} ${config.returnIdent};')
-        .ail(code)
-        .ail('return ${config.returnIdent};')
-      .ife()
-        .ail(code)
-      .ifd()
-      .d()
-      .al("}");
-    return name;
-  }
-}
-
-typedef HashlinkLibraryConfig = LibraryConfig;
-typedef HashlinkTypeMarshalExt = {
-  hlType:String,
-};
-typedef HashlinkTypeMarshal = {
-  >BaseTypeMarshal,
-  >HashlinkTypeMarshalExt,
-};
 
 #end

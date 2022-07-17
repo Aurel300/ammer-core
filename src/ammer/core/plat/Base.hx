@@ -8,12 +8,14 @@ abstract class Base<
   TTypeMarshal:BaseTypeMarshal,
   TLibrary:BaseLibrary<
     TLibrary,
+    TConfig,
     TLibraryConfig,
     TTypeMarshal,
     TMarshalSet
   >,
   TMarshalSet:BaseMarshalSet<
     TMarshalSet,
+    TConfig,
     TLibraryConfig,
     TLibrary,
     TTypeMarshal
@@ -29,6 +31,7 @@ abstract class Base<
   }
 
   public function addLibrary(library:TLibrary):Void {
+    @:privateAccess library.finalise(config);
     libraries.push(library);
   }
 
@@ -40,18 +43,15 @@ abstract class Base<
     ?defines:Array<String>,
     ?linkNames:Array<String>,
     ?outputPath:TLibrary->String,
-    ?libCode:TLibrary->String,
   }):BuildProgram {
     var ops:Array<BuildOp> = [];
-    var tdefs = [];
     for (lib in libraries) {
       var ext = lib.config.abi.extension();
       ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
       ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
-      var libCode = (options.libCode != null ? options.libCode(lib) : lib.lb.done());
       ops.push(BOAlways(
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
-        WriteContent(libCode)
+        WriteContent(lib.lb.done())
       ));
       ops.push(BODependent(
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
@@ -80,10 +80,7 @@ abstract class Base<
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%DLL%'),
         Copy
       ));
-      for (tdef in lib.tdefs) {
-        tdefs.push(tdef);
-      }
     }
-    return new BuildProgram(ops, tdefs);
+    return new BuildProgram(ops);
   }
 }

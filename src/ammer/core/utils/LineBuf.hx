@@ -78,6 +78,7 @@ class LineBuf {
   }
 
   public function lmap<T>(arr:Array<T>, f:T->String):LineBuf {
+    if (arr == null) return this;
     for (i => el in arr) {
       var line = f(el);
       if (line != "") ail(line);
@@ -86,6 +87,7 @@ class LineBuf {
   }
 
   public function lmapi<T>(arr:Array<T>, f:(Int, T)->String):LineBuf {
+    if (arr == null) return this;
     for (i => el in arr) {
       var line = f(i, el);
       if (line != "") ail(line);

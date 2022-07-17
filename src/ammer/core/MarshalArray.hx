@@ -9,6 +9,7 @@ typedef MarshalArray<TTypeMarshal> = {
 
   get:(self:Expr, index:Expr)->Expr,
   set:(self:Expr, index:Expr, val:Expr)->Expr,
+  ref:(self:Expr, index:Expr)->Expr,
 
   alloc:(size:Expr)->Expr,
   zalloc:(size:Expr)->Expr,

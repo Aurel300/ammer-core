@@ -10,7 +10,6 @@ using StringTools;
 
 class BuildProgram {
   public var ops:Array<BuildOp>;
-  public var typedefs:Array<TypeDefinition>;
 
   static function extensions(path:String):String {
     return path
@@ -29,15 +28,8 @@ class BuildProgram {
     return Sys.command(cmd, args) == 0;
   }
 
-  public function new(ops:Array<BuildOp>, typedefs:Array<TypeDefinition>) {
+  public function new(ops:Array<BuildOp>) {
     this.ops = ops;
-    this.typedefs = typedefs;
-  }
-
-  public function defineTypes():Void {
-    for (t in typedefs) {
-      Context.defineType(t); // TODO: moduleDependency arg
-    }
   }
 
   public function build():Void {

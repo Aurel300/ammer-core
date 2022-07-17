@@ -37,6 +37,7 @@ typedef BaseTypeMarshalOpt = {
   ?l3l2:(l3:String, l2:String)->String,
   ?l2unref:(l2:String)->String,
   ?l2l1:(l2:String, l1:String)->String,
+
   ?arrayBits:Int,
   ?arrayType:ComplexType,
 };

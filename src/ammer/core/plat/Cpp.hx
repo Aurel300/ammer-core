@@ -6,9 +6,249 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import ammer.core.utils.*;
 
+using Lambda;
+
+@:structInit
+class CppConfig extends BaseConfig {
+  public var staticLink:Bool = true;
+}
+
+typedef CppLibraryConfig = LibraryConfig;
+
+typedef CppTypeMarshal = BaseTypeMarshal;
+
+class Cpp extends Base<
+  CppConfig,
+  CppLibraryConfig,
+  CppTypeMarshal,
+  CppLibrary,
+  CppMarshalSet
+> {
+  public function new(config:CppConfig) {
+    super("cpp-static", config);
+    if (!config.staticLink) throw "todo";
+  }
+
+  public function finalise():BuildProgram {
+    var ops:Array<BuildOp> = [];
+    for (lib in libraries) {
+      var ext = lib.config.abi.extension();
+      var exth = lib.config.abi.extensionHeader();
+      ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
+      ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
+      ops.push(BOAlways(
+        File('${config.buildPath}/${lib.config.name}/lib.cpp_static.$exth'),
+        WriteContent(lib.lbHeader.done())
+      ));
+      ops.push(BOAlways(
+        File('${config.buildPath}/${lib.config.name}/lib.cpp_static.$ext'),
+        WriteContent(lib.lb.done())
+      ));
+    }
+    return new BuildProgram(ops);
+  }
+}
+
+@:allow(ammer.core.plat.Cpp)
+class CppLibrary extends BaseLibrary<
+  CppLibrary,
+  CppConfig,
+  CppLibraryConfig,
+  CppTypeMarshal,
+  CppMarshalSet
+> {
+  var lbHeader = new LineBuf();
+  var nativeTypes:Map<String, {
+    tdef:TypeDefinition,
+    fields:Map<String, Bool>,
+  }> = new Map();
+
+  public function new(config:CppLibraryConfig) {
+    super(config, new CppMarshalSet(this));
+    boilerplate(
+      "void*",
+      "hx::Object*",
+      "",
+      // TODO: GC moving curr->key would break things (different hash bin)
+      "hx::GCAddRoot(&curr->key);",
+      "hx::GCRemoveRoot(&curr->key);"
+    );
+  }
+
+  override function finalise(platConfig:CppConfig):Void {
+    var ext = config.abi.extension();
+    var exth = config.abi.extensionHeader();
+    var absLibPath = sys.FileSystem.absolutePath('${platConfig.buildPath}/${config.name}');
+    var headerPath = '$absLibPath/lib.cpp_static.$exth';
+    var codePath = '$absLibPath/lib.cpp_static.$ext';
+    tdef.meta.push({
+      pos: Context.currentPos(),
+      params: [macro $v{"#include \"" + headerPath + "\""}],
+      name: ":headerCode",
+    });
+    tdef.meta.push({
+      pos: Context.currentPos(),
+      params: [macro $v{"#include \"" + codePath + "\""}],
+      name: ":cppFileCode",
+    });
+    for (nativeType in nativeTypes) {
+      nativeType.tdef.meta.push({
+        pos: config.pos,
+        params: [macro $v{"#include \"" + headerPath + "\""}],
+        name: ":headerCode",
+      });
+    }
+    var xml = new LineBuf()
+      .ail('<files id="haxe">')
+      .i()
+        .lmap(config.includePaths, path -> '<compilerflag value="-I$path"/>')
+      .d()
+      .ail("</files>")
+      //.ifi(!platConfig.staticLink)
+        .ail('<target id="haxe">')
+        .i()
+          .lmap(config.libraryPaths, path -> '<libpath name="$path"/>')
+          .lmap(config.linkNames, name -> '<lib name="-l$name" unless="windows" />')
+          .lmap(config.linkNames, name -> '<lib name="$name" if="windows" />')
+        .d()
+        .ail("</target>")
+      //.ifd()
+      .done();
+    tdef.meta.push({
+      name: ":buildXml",
+      params: [{expr: EConst(CString(xml)), pos: config.pos}],
+      pos: config.pos
+    });
+    //tdef.meta.push({
+    //  name: ":fileXml",
+    //  params: [{expr: EConst(CString(xml)), pos: config.pos}],
+    //  pos: config.pos
+    //});
+    super.finalise(platConfig);
+  }
+
+  override public function addInclude(include:SourceInclude):Void {
+    super.addInclude(include);
+    lbHeader.ail(include.toCode());
+  }
+
+  override public function addHeaderCode(code:String):Void {
+    lbHeader.ail(code);
+  }
+
+  public function addNamedFunction(
+    name:String,
+    ret:CppTypeMarshal,
+    args:Array<CppTypeMarshal>,
+    code:String,
+    options:FunctionOptions
+  ):Expr {
+    lb
+      .ai('${ret.l1Type} ${name}(')
+      .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_$idx', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i();
+    baseAddNamedFunction(
+      args,
+      args.mapi((idx, arg) -> '_l1_arg_$idx'),
+      ret,
+      "_l1_return",
+      code,
+      lb,
+      options
+    );
+    lb
+        .ifi(ret.mangled != "v")
+          .ail('return _l1_return;')
+        .ifd()
+      .d()
+      .ail("}");
+    lbHeader
+      .ai('${ret.l1Type} ${name}(')
+      .map(args, arg -> arg.l1Type, ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(");");
+    tdef.fields.push({
+      pos: options.pos,
+      name: name,
+      meta: [{
+        pos: options.pos,
+        params: [macro $v{name}],
+        name: ":native",
+      }],
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
+      access: [APublic, AStatic],
+    });
+    return fieldExpr(name);
+  }
+
+  public function closureCall(
+    fn:String,
+    clType:MarshalClosure<CppTypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    // TODO: ref/unref args?
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('${clType.type.l2Type} _l2_fn;')
+        .ail(clType.type.l3l2(fn, "_l2_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
+        .ail('${clType.type.l1Type} _l1_fn;')
+        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l1Type} _l1_output;')
+          .ai('_l1_output = (${clType.ret.l1Type})(_l1_fn(')
+        .ife()
+          .ai('(${clType.ret.l1Type})(_l1_fn(')
+        .ifd()
+        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
+        .al("));")
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l2Type} _l2_output;')
+          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
+          .ail(clType.ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function addCallback(
+    ret:CppTypeMarshal,
+    args:Array<CppTypeMarshal>,
+    code:String
+  ):String {
+    var name = mangleFunction(ret, args, code, "cb");
+    lb
+      .ai('static ${ret.l3Type} ${name}(')
+      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i()
+        .ail("::hx::NativeAttach _cpp_attach_gc;")
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l3Type} ${config.returnIdent};')
+          .ail(code)
+          .ail('return ${config.returnIdent};')
+        .ife()
+          .ail(code)
+        .ifd()
+      .d()
+      .al("}");
+    return name;
+  }
+}
+
 @:allow(ammer.core.plat.Cpp)
 class CppMarshalSet extends BaseMarshalSet<
   CppMarshalSet,
+  CppConfig,
   CppLibraryConfig,
   CppLibrary,
   CppTypeMarshal
@@ -130,7 +370,7 @@ class CppMarshalSet extends BaseMarshalSet<
     };
   }
 
-  function opaquePtrInternal(name:String):CppTypeMarshal {
+  function opaqueInternal(name:String):MarshalOpaque<CppTypeMarshal> {
     var native = library.typeDefCreate();
     native.name = '${library.config.typeDefName}_Native_${Mangle.identifier(name)}';
     native.isExtern = true;
@@ -143,16 +383,22 @@ class CppMarshalSet extends BaseMarshalSet<
       tdef: native,
       fields: new Map(),
     };
-    return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
-      haxeType: TPath({
-        params: [TPType(TPath({
-          pack: library.config.typeDefPack,
-          name: native.name,
-        }))],
-        pack: ["cpp"],
-        name: "Pointer", // Star?
-      }),
+    var haxeType:ComplexType = TPath({
+      params: [TPType(TPath({
+        pack: library.config.typeDefPack,
+        name: native.name,
+      }))],
+      pack: ["cpp"],
+      name: "Pointer", // Star?
     });
+    return {
+      type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+        haxeType: haxeType,
+      }),
+      typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+        haxeType: haxeType,
+      }),
+    };
   }
 
   function arrayPtrInternalType(element:CppTypeMarshal):CppTypeMarshal {
@@ -304,217 +550,5 @@ class CppMarshalSet extends BaseMarshalSet<
     super(library);
   }
 }
-
-class Cpp extends Base<
-  CppConfig,
-  CppLibraryConfig,
-  CppTypeMarshal,
-  CppLibrary,
-  CppMarshalSet
-> {
-  public function new(config:CppConfig) {
-    super("cpp-static", config);
-    if (!config.staticLink) throw "todo";
-  }
-
-  public function finalise():BuildProgram {
-    var ops:Array<BuildOp> = [];
-    var tdefs = [];
-    for (lib in libraries) {
-      var ext = lib.config.abi.extension();
-      var exth = lib.config.abi.extensionHeader();
-      var absLibPath = sys.FileSystem.absolutePath('${config.buildPath}/${lib.config.name}');
-      var headerPath = '$absLibPath/lib.cpp_static.$exth';
-      var codePath = '$absLibPath/lib.cpp_static.$ext';
-      lib.tdef.meta.push({
-        pos: Context.currentPos(),
-        params: [macro $v{"#include \"" + headerPath + "\""}],
-        name: ":headerCode",
-      });
-      lib.tdef.meta.push({
-        pos: Context.currentPos(),
-        params: [macro $v{"#include \"" + codePath + "\""}],
-        name: ":cppFileCode",
-      });
-      ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
-      ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
-      ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/lib.cpp_static.$exth'),
-        WriteContent(lib.lbHeader.done())
-      ));
-      ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/lib.cpp_static.$ext'),
-        WriteContent(lib.lb.done())
-      ));
-      for (tdef in lib.tdefs) {
-        tdefs.push(tdef);
-      }
-      for (nativeType in lib.nativeTypes) {
-        nativeType.tdef.meta.push({
-          pos: lib.config.pos,
-          params: [macro $v{"#include \"" + headerPath + "\""}],
-          name: ":headerCode",
-        });
-      }
-    }
-    return new BuildProgram(ops, tdefs);
-  }
-}
-
-@:structInit
-class CppConfig extends BaseConfig {
-  public var staticLink:Bool = true;
-}
-
-@:allow(ammer.core.plat.Cpp)
-class CppLibrary extends BaseLibrary<
-  CppLibrary,
-  CppLibraryConfig,
-  CppTypeMarshal,
-  CppMarshalSet
-> {
-  var lbHeader = new LineBuf();
-  var nativeTypes:Map<String, {
-    tdef:TypeDefinition,
-    fields:Map<String, Bool>,
-  }> = new Map();
-
-  public function new(config:CppLibraryConfig) {
-    super(config, new CppMarshalSet(this));
-    boilerplate(
-      "void*",
-      "hx::Object*",
-      "",
-      // TODO: GC moving curr->key would break things (different hash bin)
-      "hx::GCAddRoot(&curr->key);",
-      "hx::GCRemoveRoot(&curr->key);"
-    );
-  }
-
-  override public function addInclude(include:SourceInclude):Void {
-    super.addInclude(include);
-    lbHeader.ail(include.toCode());
-  }
-
-  override public function addHeaderCode(code:String):Void {
-    lbHeader.ail(code);
-  }
-
-  public function addNamedFunction(
-    name:String,
-    ret:CppTypeMarshal,
-    args:Array<CppTypeMarshal>,
-    code:String,
-    pos:Position
-  ):Expr {
-    lb
-      .ai('${ret.l1Type} ${name}(')
-      .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_$idx', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> arg.l1l2('_l1_arg_$idx', '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
-        .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('${ret.l2Type} _l2_return;')
-          .ail(ret.l3l2(config.returnIdent, "_l2_return"))
-          .ail('${ret.l1Type} _l1_return;')
-          .ail(ret.l2l1("_l2_return", "_l1_return"))
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-          .ail('return _l1_return;')
-        .ife()
-          .ail(code)
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-        .ifd()
-      .d()
-      .al("}");
-    lbHeader
-      .ai('${ret.l1Type} ${name}(')
-      .map(args, arg -> arg.l1Type, ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(");");
-    tdef.fields.push({
-      pos: pos,
-      name: name,
-      meta: [{
-        pos: pos,
-        params: [macro $v{name}],
-        name: ":native",
-      }],
-      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
-      access: [APublic, AStatic],
-    });
-    return fieldExpr(name);
-  }
-
-  public function closureCall(
-    fn:String,
-    clType:MarshalClosure<CppTypeMarshal>,
-    outputExpr:String,
-    args:Array<String>
-  ):String {
-    // TODO: ref/unref args?
-    return new LineBuf()
-      .ail("do {")
-      .i()
-        .ail('${clType.type.l2Type} _l2_fn;')
-        .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .ail('${clType.type.l1Type} _l1_fn;')
-        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai('_l1_output = (${clType.ret.l1Type})(_l1_fn(')
-        .ife()
-          .ai('(${clType.ret.l1Type})(_l1_fn(')
-        .ifd()
-        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
-        .al("));")
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
-      .d()
-      .ail("} while (0);")
-      .done();
-  }
-
-  public function addCallback(
-    ret:CppTypeMarshal,
-    args:Array<CppTypeMarshal>,
-    code:String
-  ):String {
-    var name = mangleFunction(ret, args, code, "cb");
-    lb
-      .ai('static ${ret.l3Type} ${name}(')
-      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .ail("::hx::NativeAttach _cpp_attach_gc;")
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('return ${config.returnIdent};')
-        .ife()
-          .ail(code)
-        .ifd()
-      .d()
-      .al("}");
-    return name;
-  }
-}
-
-typedef CppLibraryConfig = LibraryConfig;
-typedef CppTypeMarshal = BaseTypeMarshal;
 
 #end

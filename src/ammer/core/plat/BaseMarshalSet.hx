@@ -8,9 +8,10 @@ import ammer.core.utils.*;
 using Lambda;
 
 abstract class BaseMarshalSet<
-  TSelf:BaseMarshalSet<TSelf, TLibraryConfig, TLibrary, TTypeMarshal>,
+  TSelf:BaseMarshalSet<TSelf, TConfig, TLibraryConfig, TLibrary, TTypeMarshal>,
+  TConfig:BaseConfig,
   TLibraryConfig:LibraryConfig,
-  TLibrary:BaseLibrary<TLibrary, TLibraryConfig, TTypeMarshal, TSelf>,
+  TLibrary:BaseLibrary<TLibrary, TConfig, TLibraryConfig, TTypeMarshal, TSelf>,
   TTypeMarshal:BaseTypeMarshal
 > {
   static final MARSHAL_NOOP1 = (_:String) -> "";
@@ -20,7 +21,8 @@ abstract class BaseMarshalSet<
 
   public var library:TLibrary;
 
-  var cacheOpaque:Map<String, TTypeMarshal> = [];
+  var cacheOpaque:Map<String, MarshalOpaque<TTypeMarshal>> = [];
+  var cacheBox:Map<String, MarshalBox<TTypeMarshal>> = [];
   var cacheStruct:Map<String, MarshalStruct<TTypeMarshal>> = [];
   var cacheArray:Map<String, MarshalArray<TTypeMarshal>> = [];
   var cacheHaxe:Map<String, TTypeMarshal> = [];
@@ -355,10 +357,10 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     fromBytesRef:Null<(bytes:Expr)->Expr>,
   };
 
-  public function opaquePtr(name:String):TTypeMarshal {
+  public function opaque(name:String):MarshalOpaque<TTypeMarshal> {
     if (cacheOpaque.exists(name))
       return cacheOpaque[name];
-    return cacheOpaque[name] = opaquePtrInternal(name);
+    return cacheOpaque[name] = opaqueInternal(name);
   }
 
   static function baseOpaquePtrInternal(name:String):BaseTypeMarshal return {
@@ -374,7 +376,64 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
-  abstract function opaquePtrInternal(name:String):TTypeMarshal;
+  static function baseOpaqueDirectInternal(name:String):BaseTypeMarshal return {
+    haxeType: (macro : Void), // must be overridden
+    l1Type: '$name*',
+    l2Type: '$name*',
+    l3Type: '$name',
+    mangled: 'd${Mangle.identifier(name)}_',
+    l1l2: MARSHAL_CONVERT_DIRECT,
+    l2ref: MARSHAL_NOOP1,
+    l2l3: (l2, l3) -> '$l3 = *(($name*)$l2);',
+    l3l2: (l3, l2) -> '$l2 = ($name*)(&($l3));',
+    l2unref: MARSHAL_NOOP1,
+    l2l1: MARSHAL_CONVERT_DIRECT,
+  };
+  abstract function opaqueInternal(name:String):MarshalOpaque<TTypeMarshal>;
+
+  public function boxPtr(
+    valueType:TTypeMarshal
+  ):MarshalBox<TTypeMarshal> {
+    // TODO: check valueType is primitive
+    if (cacheBox.exists(valueType.mangled))
+      return cacheBox[valueType.mangled];
+
+    var types = opaque(valueType.l3Type);
+    var get = library.addFunction(
+      valueType,
+      [types.type],
+      '_return = *_arg0;'
+    );
+    var set = library.addFunction(
+      void(),
+      [types.type, valueType],
+      '*_arg0 = _arg1;'
+    );
+    var nullPtr = library.addFunction(
+      types.type,
+      [],
+      '_return = (${valueType.l3Type}*)0;'
+    );
+    var alloc = library.addFunction(
+      types.type,
+      [],
+      '_return = (${valueType.l3Type}*)${library.config.callocFunction}(1, sizeof(${valueType.l3Type}));'
+    );
+    var free = library.addFunction(
+      void(),
+      [types.type],
+      '${library.config.freeFunction}(_arg0);'
+    );
+
+    return cacheBox[valueType.mangled] = {
+      type: types.type,
+      get: (self) -> macro $get($self),
+      set: (self, val) -> macro $set($self, $val),
+      alloc: macro $alloc(),
+      free: (self) -> macro $free($self),
+      nullPtr: macro $nullPtr(),
+    };
+  }
 
   public function structPtr(
     name:String,
@@ -385,26 +444,36 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
       (allocatable ? "a" : ""),
       name,
     ].concat(fields.map(field -> [
-      field.name,
+      field.owned ? "o" : "",
       field.type.mangled,
+      field.name,
     ]).flatten()));
     if (cacheStruct.exists(cacheKey))
       return cacheStruct[cacheKey];
 
-    var type = opaquePtr(name);
-    var getters = new Map();
-    var setters = new Map();
+    var types = opaque(name);
+    var fieldGet = new Map();
+    var fieldSet = new Map();
+    var fieldRef = new Map();
     var libExpr = library.typeDefExpr();
     for (field in fields) {
-      if (field.read) {
-        getters[field.name] = structPtrInternalFieldGetter(name, type, field);
+      if (field.read == null || field.read) {
+        fieldGet[field.name] = structPtrInternalFieldGetter(name, types.type, field);
       }
-      if (field.write) {
-        setters[field.name] = structPtrInternalFieldSetter(name, type, field);
+      if (field.write == null || field.write) {
+        fieldSet[field.name] = structPtrInternalFieldSetter(name, types.type, field);
+      }
+      if (field.ref == null || field.ref) {
+        fieldRef[field.name] = structPtrInternalFieldReffer(name, types.type, {
+          name: field.name,
+          type: boxPtr(field.type).type,
+          // others should not be needed (unless structPtrInternalFieldReffer
+          // is overridden weirdly)
+        });
       }
     }
     var nullPtrF = library.addFunction(
-      type,
+      types.type,
       [],
       '_return = ($name*)0;'
     );
@@ -413,13 +482,13 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     var free = null;
     if (allocatable) {
       var allocF = library.addFunction(
-        type,
+        types.type,
         [],
         '_return = ($name*)${library.config.callocFunction}(1, sizeof($name));'
       );
       var freeF = library.addFunction(
         void(),
-        [type],
+        [types.type],
         new LineBuf()
           .lmapi(fields.filter(field -> field.owned), (idx, field)
             -> '${field.type.l2Type} _l2_field_$idx;
@@ -432,13 +501,32 @@ ${field.type.l2unref('_l2_field_$idx')}')
       free = (self) -> macro $freeF($self);
     }
     return cacheStruct[cacheKey] = {
-      type: type,
-      getters: getters,
-      setters: setters,
+      type: types.type,
+      typeDeref: types.typeDeref,
+      fieldGet: fieldGet,
+      fieldSet: fieldSet,
+      fieldRef: fieldRef,
       alloc: alloc,
       free: free,
       nullPtr: nullPtr,
     };
+  }
+
+  function structPtrInternalFieldReffer(
+    structName:String,
+    type:TTypeMarshal,
+    field:BaseFieldRef<TTypeMarshal>
+  ):(self:Expr)->Expr {
+    var fname = field.name;
+    var refferF = library.addFunction(
+      field.type,
+      [type],
+      "",
+      {
+        l3Return: '&_arg0->${fname}',
+      }
+    );
+    return (self) -> macro $refferF($self);
   }
 
   function structPtrInternalFieldGetter(
@@ -450,7 +538,12 @@ ${field.type.l2unref('_l2_field_$idx')}')
     var getterF = library.addFunction(
       field.type,
       [type],
-      '_return = _arg0->${fname};'
+      "",
+      {
+        // L3 return directly pointing to field, so that nested structs are not
+        // copied out when referencing
+        l3Return: '_arg0->${fname}',
+      }
     );
     return (self) -> macro $getterF($self);
   }
@@ -475,9 +568,13 @@ _arg0->${fname} = _arg1;'
     return (self, val) -> macro $setterF($self, $val);
   }
 
-  public function arrayPtr(element:TTypeMarshal):MarshalArray<TTypeMarshal> {
-    if (cacheArray.exists(element.mangled))
-      return cacheArray[element.mangled];
+  public function arrayPtr(element:TTypeMarshal, owned:Bool = false):MarshalArray<TTypeMarshal> {
+    var cacheKey = Mangle.parts([
+      owned ? "o" : "",
+      element.mangled,
+    ]);
+    if (cacheArray.exists(cacheKey))
+      return cacheArray[cacheKey];
 
     // var cType = '${element.l3Type}*';
     var type = arrayPtrInternalType(element);
@@ -505,8 +602,9 @@ _arg0->${fname} = _arg1;'
     });
 
     var libExpr = library.typeDefExpr();
-    var get = library.addFunction(element, [type, int32()], '_return = _arg0[_arg1];');
-    var set = library.addFunction(void(), [type, int32(), element], '_arg0[_arg1] = _arg2;');
+    var get = arrayPtrInternalGetter(type, element);
+    var set = arrayPtrInternalSetter(type, element, owned);
+    var ref = arrayPtrInternalReffer(type, boxPtr(element).type);
     var zalloc = library.addFunction(
       type,
       [int32()],
@@ -519,8 +617,9 @@ _arg0->${fname} = _arg1;'
     );
     return cacheArray[element.mangled] = {
       type: type,
-      get: (self, index) -> macro $get($self, $index),
-      set: (self, index, val) -> macro $set($self, $index, $val),
+      get: get,
+      set: set,
+      ref: ref,
       alloc: alloc,
       zalloc: (size) -> macro $zalloc($size),
       free: (self) -> macro $free($self),
@@ -531,123 +630,81 @@ _arg0->${fname} = _arg1;'
         var _self = ($self : $defaultArrayType);
         var _size = ($size : Int);
         var _ret = new haxe.ds.Vector<$defaultElType>(_size);
-        for (i in 0..._size) _ret[i] = $get(_self, i);
+        for (i in 0..._size) _ret[i] = $e{get(macro _self, macro i)};
         _ret;
       },
       fromHaxeCopy: platform.fromHaxeCopy != null ? platform.fromHaxeCopy : (vector) -> macro {
         var _vector = ($vector : $defaultVectorType);
         var _ret = $allocF(_vector.length);
-        for (i in 0..._vector.length) $set(_ret, i, _vector[i]);
+        for (i in 0..._vector.length) $e{set(macro _ret, macro i, macro _vector[i])};
         _ret;
       },
       toHaxeRef: platform.toHaxeRef,
       fromHaxeRef: platform.fromHaxeRef,
     };
+  }
 
-    /*
-    var type = bytesInternalType();
-
-    var allocF = library.addFunction(
-      type,
-      [int32()],
-      '_return = (uint8_t*)${library.config.mallocFunction}(_arg0);'
-    );
-    var alloc = (size) -> macro $allocF($size);
-    var blitF = library.addFunction(
-      void(),
-      [type, int32(), type, int32(), int32()],
-      '${library.config.memcpyFunction}(&_arg2[_arg3], &_arg0[_arg1], _arg4);'
-    );
-    var blit = (source, srcpos, dest, dstpos, size) -> macro $blitF($source, $srcpos, $dest, $dstpos, $size);
-    var platform = bytesInternalOps(alloc, blit);
-
-    var libExpr = library.typeDefExpr();
-    var get8  = library.addFunction(uint8(),  [type, int32()], '_return = _arg0[_arg1];');
-    var get16 = library.addFunction(uint16(), [type, int32()], '${library.config.memcpyFunction}(&_return, &_arg0[_arg1], 2);');
-    var get32 = library.addFunction(uint32(), [type, int32()], '${library.config.memcpyFunction}(&_return, &_arg0[_arg1], 4);');
-    var set8  = library.addFunction(void(), [type, int32(), uint8() ], '_arg0[_arg1] = _arg2;');
-    var set16 = library.addFunction(void(), [type, int32(), uint16()], '${library.config.memcpyFunction}(&_arg0[_arg1], &_arg2, 2);');
-    var set32 = library.addFunction(void(), [type, int32(), uint32()], '${library.config.memcpyFunction}(&_arg0[_arg1], &_arg2, 4);');
-    var zalloc = library.addFunction(
-      type,
-      [int32()],
-      '_return = (uint8_t*)${library.config.callocFunction}(_arg0, 1);'
-    );
-    // TODO: free should decref all owned fields
-    var free = library.addFunction(
-      void(),
-      [type],
-      '${library.config.freeFunction}(_arg0);'
-    );
-    var copy = library.addFunction(
-      type,
+  function arrayPtrInternalReffer(
+    type:TTypeMarshal,
+    element:TTypeMarshal
+  ):(self:Expr, index:Expr)->Expr {
+    var refferF = library.addFunction(
+      element,
       [type, int32()],
-      '_return = (uint8_t*)${library.config.mallocFunction}(_arg1);
-${library.config.memcpyFunction}(_return, _arg0, _arg1);'
+      "",
+      {
+        l3Return: "&_arg0[_arg1]",
+      });
+    return (self, index) -> macro $refferF($self, $index);
+  }
+
+  function arrayPtrInternalGetter(
+    type:TTypeMarshal,
+    element:TTypeMarshal
+  ):(self:Expr, index:Expr)->Expr {
+    var getterF = library.addFunction(
+      element,
+      [type, int32()],
+      "",
+      {
+        // L3 return directly pointing to index, so that nested structs are not
+        // copied out when referencing
+        l3Return: "_arg0[_arg1]",
+      });
+    return (self, index) -> macro $getterF($self, $index);
+  }
+
+  function arrayPtrInternalSetter(
+    type:TTypeMarshal,
+    element:TTypeMarshal,
+    owned:Bool
+  ):(self:Expr, index:Expr, val:Expr)->Expr {
+    var setterF = library.addFunction(
+      void(),
+      [type, int32(), element],
+      owned
+        ? '${element.l2Type} _l2_old;
+${element.l3l2("_arg0[_arg1]", "_l2_old")}
+${element.l2ref("_l2_arg_2")}
+${element.l2unref("_l2_old")}
+_arg0[_arg1] = _arg2;'
+        : "_arg0[_arg1] = _arg2;"
     );
-    return cacheBytes = {
-      type: type,
-
-      get8:  (self, index) -> macro $get8 ($self, $index),
-      get16: (self, index) -> macro $get16($self, $index),
-      get32: (self, index) -> macro $get32($self, $index),
-
-      set8:  (self, index, val) -> macro $set8 ($self, $index, $val),
-      set16: (self, index, val) -> macro $set16($self, $index, $val),
-      set32: (self, index, val) -> macro $set32($self, $index, $val),
-
-      alloc: alloc,
-      zalloc: (size) -> macro $zalloc($size),
-      free: (self) -> macro $free($self),
-      copy: (self, size) -> macro $copy($self, $size),
-      blit: blit,
-
-      toBytesCopy: platform.toBytesCopy,
-      fromBytesCopy: platform.fromBytesCopy,
-      toBytesRef: platform.toBytesRef,
-      fromBytesRef: platform.fromBytesRef,
-    };
-    */
-
-
-    /*
-    {
-          type: type,
-
-          get8:  (self, index) -> macro $get8 ($self, $index),
-          get16: (self, index) -> macro $get16($self, $index),
-          get32: (self, index) -> macro $get32($self, $index),
-
-          set8:  (self, index, val) -> macro $set8 ($self, $index, $val),
-          set16: (self, index, val) -> macro $set16($self, $index, $val),
-          set32: (self, index, val) -> macro $set32($self, $index, $val),
-
-          alloc: alloc,
-          zalloc: (size) -> macro $zalloc($size),
-          free: (self) -> macro $free($self),
-          copy: (self, size) -> macro $copy($self, $size),
-          blit: blit,
-
-          toBytesCopy: platform.toBytesCopy,
-          fromBytesCopy: platform.fromBytesCopy,
-          toBytesRef: platform.toBytesRef,
-          fromBytesRef: platform.fromBytesRef,
-        }
-*/
+    return (self, index, val) -> macro $setterF($self, $index, $val);
   }
 
   static function baseArrayPtrInternal(element:BaseTypeMarshal):BaseTypeMarshal return {
     haxeType: (macro : Void), // must be overridden
-    l1Type: '${element.l2Type}*',
+    l1Type: '${element.l1Type}*', // L2?
     l2Type: '${element.l2Type}*',
     l3Type: '${element.l3Type}*',
     mangled: 'a${Mangle.identifier(element.l3Type)}_',
-    l1l2: MARSHAL_CONVERT_DIRECT,
+    l1l2: MARSHAL_CONVERT_CAST('${element.l2Type}*'),
     l2ref: MARSHAL_NOOP1,
-    l2l3: MARSHAL_CONVERT_DIRECT,
-    l3l2: MARSHAL_CONVERT_DIRECT,
+    l2l3: MARSHAL_CONVERT_CAST('${element.l3Type}*'),
+    l3l2: MARSHAL_CONVERT_CAST('${element.l2Type}*'),
     l2unref: MARSHAL_NOOP1,
-    l2l1: MARSHAL_CONVERT_DIRECT,
+    l2l1: MARSHAL_CONVERT_CAST('${element.l1Type}*'),
   };
   function baseArrayRef(
     element:TTypeMarshal,

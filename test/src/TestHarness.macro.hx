@@ -83,7 +83,6 @@ class TestHarness {
     });
     plat.addLibrary(library);
     var program = plat.finalise();
-    program.defineTypes();
     program.build();
 
     return macro $b{testExprs};

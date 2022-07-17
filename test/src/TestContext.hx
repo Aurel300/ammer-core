@@ -10,6 +10,7 @@ class TestContext {
   public var gcMajor:Expr;
   public var library:Library;
   public var marshal:Marshal;
+  public var failed:Bool = false;
 }
 
 #end

@@ -7,10 +7,336 @@ import haxe.macro.Expr;
 import ammer.core.utils.*;
 
 using StringTools;
+using Lambda;
+
+@:structInit
+class JavaConfig extends BaseConfig {
+  public var javaIncludePaths:Array<String> = null;
+  public var javaLibraryPaths:Array<String> = null;
+}
+
+@:structInit
+class JavaLibraryConfig extends LibraryConfig {
+  public var jvm:Bool; // TODO: this should be on JavaConfig ...
+}
+
+typedef JavaTypeMarshalExt = {
+  primitive:Bool,
+  javaMangle:String,
+};
+typedef JavaTypeMarshal = {
+  >BaseTypeMarshal,
+  >JavaTypeMarshalExt,
+};
+
+class Java extends Base<
+  JavaConfig,
+  JavaLibraryConfig,
+  JavaTypeMarshal,
+  JavaLibrary,
+  JavaMarshalSet
+> {
+  public function new(config:JavaConfig) {
+    super("java", config);
+  }
+
+  public function finalise():BuildProgram {
+    return baseDynamicLinkProgram({
+      includePaths: config.javaIncludePaths,
+      libraryPaths: config.javaLibraryPaths,
+    });
+  }
+}
+
+@:allow(ammer.core.plat.Java)
+class JavaLibrary extends BaseLibrary<
+  JavaLibrary,
+  JavaConfig,
+  JavaLibraryConfig,
+  JavaTypeMarshal,
+  JavaMarshalSet
+> {
+  public function new(config:JavaLibraryConfig) {
+    super(config, new JavaMarshalSet(this));
+    tdef.meta.push({
+      pos: config.pos,
+      name: ":nativeGen",
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_java_tobytescopy",
+      meta: [{
+        pos: config.pos,
+        name: ":java.native",
+      }],
+      kind: TypeUtils.ffunCt((macro : (haxe.Int64, Int) -> haxe.io.BytesData)),
+      access: [APrivate, AStatic, AInline],
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_java_frombytescopy",
+      meta: [{
+        pos: config.pos,
+        name: ":java.native",
+      }],
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData) -> haxe.Int64)),
+      access: [APrivate, AStatic, AInline],
+    });
+
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_java_frombytesref",
+      meta: [{
+        pos: config.pos,
+        name: ":java.native",
+      }],
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData) -> haxe.Int64)),
+      access: [APrivate, AStatic, AInline],
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_java_frombytesunref",
+      meta: [{
+        pos: config.pos,
+        name: ":java.native",
+      }],
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData, haxe.Int64) -> Void)),
+      access: [APrivate, AStatic, AInline],
+    });
+
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : Int),
+        macro {
+          java.lang.System.loadLibrary($v{config.name});
+          0;
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+    lb.ail("#include <jni.h>");
+    lb.ail("static size_t _ammer_ctr = 0;"); // TODO: internalPrefix
+    boilerplate(
+      "JavaVM*",
+      "void*",
+      "jobject ref;",
+      "",
+      'JavaVM* _java_vm = ${config.internalPrefix}registry.ctx;
+JNIEnv* _java_env;
+(*_java_vm)->GetEnv(_java_vm, (void**)&_java_env, JNI_VERSION_1_6);
+(*_java_env)->DeleteGlobalRef(_java_env, curr->ref);'
+    );
+    lb.ail('
+JNIEXPORT jbyteArray ${javaMangle("_ammer_java_tobytescopy")}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
+  jbyteArray res = (*_java_env)->NewByteArray(_java_env, size);
+  (*_java_env)->SetByteArrayRegion(_java_env, res, 0, size, (const jbyte*)data);
+  return res;
+}
+JNIEXPORT jlong ${javaMangle("_ammer_java_frombytescopy")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
+  jsize size = (*_java_env)->GetArrayLength(_java_env, data);
+  uint8_t* data_res = (uint8_t*)${config.mallocFunction}(size);
+  (*_java_env)->GetByteArrayRegion(_java_env, data, 0, size, (jbyte*)data_res);
+  return (jlong)data_res;
+}
+
+JNIEXPORT jlong ${javaMangle("_ammer_java_frombytesref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
+  uint8_t* data_res = (uint8_t*)((*_java_env)->GetByteArrayElements(_java_env, data, NULL));
+  return (jlong)data_res;
+}
+JNIEXPORT void ${javaMangle("_ammer_java_frombytesunref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data, jlong ptr) {
+  (*_java_env)->ReleaseByteArrayElements(_java_env, data, (jbyte*)ptr, 0);
+}
+');
+    // TODO: multithread attach/detach counting?
+    // TODO: configure JNI version?
+    // https://docs.oracle.com/javase/9/docs/specs/jni/invocation.html#jni_onload
+    lb.ail('jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+  ${config.internalPrefix}registry.ctx = vm;
+  return JNI_VERSION_1_6;
+}');
+  }
+
+  function javaMangle(
+    method:String
+    // TODO: module ?
+  ):String {
+    var pack = config.typeDefPack;
+    var type = config.typeDefName;
+    pack = pack.length > 0 ? pack : ["haxe", "root"];
+    function subMangle(s:String):String {
+      // TODO: more thorough mangling
+      return s.replace("_", "_1");
+    }
+    return 'Java_${pack.join("_")}_${subMangle(type)}_${subMangle(method)}';
+  }
+
+  public function addNamedFunction(
+    name:String,
+    ret:JavaTypeMarshal,
+    args:Array<JavaTypeMarshal>,
+    code:String,
+    options:FunctionOptions
+  ):Expr {
+    var mangledName = javaMangle(name);
+    lb
+      .ai('JNIEXPORT ${ret.l1Type} $mangledName(JNIEnv *_java_env, jclass _java_cls')
+      .mapi(args, (idx, arg) -> ', ${arg.l1Type} _l1_arg_$idx')
+      .al(') {')
+      .i();
+    baseAddNamedFunction(
+      args,
+      args.mapi((idx, arg) -> '_l1_arg_$idx'),
+      ret,
+      "_l1_return",
+      code,
+      lb,
+      options
+    );
+    lb
+        .ifi(ret.mangled != "v")
+          .ail('return _l1_return;')
+        .ifd()
+      .d()
+      .ail("}");
+    tdef.fields.push({
+      pos: options.pos,
+      name: name,
+      meta: [{
+        pos: options.pos,
+        name: ":java.native",
+      }],
+      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
+      access: [APublic, AStatic, AInline],
+    });
+    return fieldExpr(name);
+  }
+
+  public function closureCall(
+    fn:String,
+    clType:MarshalClosure<JavaTypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    // TODO: ref/unref args?
+    var lb = new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('${clType.type.l2Type} _l2_fn;')
+        .ail(clType.type.l3l2(fn, "_l2_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
+        .ail('${clType.type.l1Type} _l1_fn;')
+        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+        .ail("jclass _l1_fn_cls = (*_java_env)->GetObjectClass(_java_env, _l1_fn);");
+    if (config.jvm) {
+      lb
+        .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, "invoke", "(')
+        .mapi(args, (idx, arg) -> clType.args[idx].javaMangle)
+        .al(')${clType.ret.javaMangle}");')
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l1Type} _l1_output;')
+          .ai("_l1_output = (*_java_env)->Call")
+        .ife()
+          .ai("(*_java_env)->Call")
+        .ifd()
+        .a(switch (clType.ret) {
+          case JavaMarshalSet.MARSHAL_VOID: "Void";
+          case JavaMarshalSet.MARSHAL_BOOL: "Boolean";
+          case JavaMarshalSet.MARSHAL_UINT8: "Boolean";
+          case JavaMarshalSet.MARSHAL_INT8: "Byte";
+          case JavaMarshalSet.MARSHAL_UINT16: "Char";
+          case JavaMarshalSet.MARSHAL_INT16: "Short";
+          case JavaMarshalSet.MARSHAL_UINT32: "Int";
+          case JavaMarshalSet.MARSHAL_INT32: "Int";
+          case JavaMarshalSet.MARSHAL_UINT64: "Long";
+          case JavaMarshalSet.MARSHAL_INT64: "Long";
+          case JavaMarshalSet.MARSHAL_FLOAT32: "Float";
+          case JavaMarshalSet.MARSHAL_FLOAT64: "Double";
+          case _: "Object";
+        })
+        .a("Method(_java_env, _l1_fn, _java_method")
+        .mapi(args, (idx, arg) -> ', _l1_arg_${idx}')
+        .al(');');
+    } else {
+      lb
+        .ail('jclass _java_class = (*_java_env)->FindClass(_java_env, "java/lang/Class");')
+        .ail('jmethodID _java_name = (*_java_env)->GetMethodID(_java_env, _java_class, "getName", "()Ljava/lang/String;");')
+        .ail('jstring _java_name_fn = (*_java_env)->CallObjectMethod(_java_env, _l1_fn_cls, _java_name);')
+        .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, ')
+        .a('"__hx_invoke${args.length}_${clType.ret.primitive ? "f" : "o"}", "(')
+        .map(args, arg -> "DLjava/lang/Object;")
+        .al(')${clType.ret.primitive ? "D" : "Ljava/lang/Object;"}");')
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l1Type} _l1_output;')
+          .ai('_l1_output = (${clType.ret.l1Type})')
+        .ife()
+          .ai("")
+        .ifd()
+        .a(clType.ret.primitive
+          ? '(*_java_env)->CallDoubleMethod(_java_env, _l1_fn, _java_method'
+          : '(*_java_env)->CallObjectMethod(_java_env, _l1_fn, _java_method')
+        .mapi(args, (idx, arg) -> clType.args[idx].primitive
+          ? ', (jdouble)_l1_arg_${idx}, _java_undef'
+          : ', 0.0, _l1_arg_${idx}')
+        .al(');');
+    }
+    return lb
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l2Type} _l2_output;')
+          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
+          .ail(clType.ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function addCallback(
+    ret:JavaTypeMarshal,
+    args:Array<JavaTypeMarshal>,
+    code:String
+  ):String {
+    var name = mangleFunction(ret, args, code, "cb");
+    lb
+      .ai('static ${ret.l3Type} ${name}(')
+      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i()
+        .ail('JavaVM* _java_vm = ${config.internalPrefix}registry.ctx;')
+        .ail('JNIEnv* _java_env;')
+        .ail('(*_java_vm)->AttachCurrentThread(_java_vm, (void**)&_java_env, NULL);');
+    if (!config.jvm) {
+      lb
+        .ail('jclass _java_runtime = (*_java_env)->FindClass(_java_env, "haxe/lang/Runtime");')
+        .ail('jfieldID _java_undef_f = (*_java_env)->GetStaticFieldID(_java_env, _java_runtime, "undefined", "Ljava/lang/Object;");')
+        .ail('jobject _java_undef = (*_java_env)->GetStaticObjectField(_java_env, _java_runtime, _java_undef_f);');
+    }
+    if (ret.mangled != "v") {
+      lb
+        .ail('${ret.l3Type} ${config.returnIdent};')
+        .ail(code)
+        .ail('return ${config.returnIdent};');
+    } else {
+      lb
+        .ail(code);
+    }
+    // TODO: detach???
+    lb
+      .d()
+      .al("}");
+    return name;
+  }
+}
 
 @:allow(ammer.core.plat.Java)
 class JavaMarshalSet extends BaseMarshalSet<
   JavaMarshalSet,
+  JavaConfig,
   JavaLibraryConfig,
   JavaLibrary,
   JavaTypeMarshal
@@ -181,15 +507,26 @@ $l2->ref = (*_java_env)->NewGlobalRef(_java_env, $l1);';
     };
   }
 
-  function opaquePtrInternal(name:String):JavaTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
-    primitive: false,
-    javaMangle: "J",
-  }, {
-    haxeType: (macro : haxe.Int64),
-    l1Type: "jlong",
-    l1l2: BaseMarshalSet.MARSHAL_CONVERT_CAST('$name*'),
-    l2l1: BaseMarshalSet.MARSHAL_CONVERT_CAST("jlong"),
-  });
+  function opaqueInternal(name:String):MarshalOpaque<JavaTypeMarshal> return {
+    type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+      primitive: false,
+      javaMangle: "J",
+    }, {
+      haxeType: (macro : haxe.Int64),
+      l1Type: "jlong",
+      l1l2: BaseMarshalSet.MARSHAL_CONVERT_CAST('$name*'),
+      l2l1: BaseMarshalSet.MARSHAL_CONVERT_CAST("jlong"),
+    }),
+    typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+      primitive: false,
+      javaMangle: "J",
+    }, {
+      haxeType: (macro : haxe.Int64),
+      l1Type: "jlong",
+      l1l2: BaseMarshalSet.MARSHAL_CONVERT_CAST('$name*'),
+      l2l1: BaseMarshalSet.MARSHAL_CONVERT_CAST("jlong"),
+    }),
+  };
 
   function arrayPtrInternalType(element:JavaTypeMarshal):JavaTypeMarshal return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
     primitive: false,
@@ -341,332 +678,5 @@ JNIEXPORT void ${library.javaMangle(unrefFrom)}(JNIEnv *_java_env, jclass _java_
     super(library);
   }
 }
-
-class Java extends Base<
-  JavaConfig,
-  JavaLibraryConfig,
-  JavaTypeMarshal,
-  JavaLibrary,
-  JavaMarshalSet
-> {
-  public function new(config:JavaConfig) {
-    super("java", config);
-  }
-
-  public function finalise():BuildProgram {
-    return baseDynamicLinkProgram({
-      includePaths: config.javaIncludePaths,
-      libraryPaths: config.javaLibraryPaths,
-    });
-  }
-}
-
-@:structInit
-class JavaConfig extends BaseConfig {
-  public var javaIncludePaths:Array<String> = null;
-  public var javaLibraryPaths:Array<String> = null;
-}
-
-@:allow(ammer.core.plat.Java)
-class JavaLibrary extends BaseLibrary<
-  JavaLibrary,
-  JavaLibraryConfig,
-  JavaTypeMarshal,
-  JavaMarshalSet
-> {
-  public function new(config:JavaLibraryConfig) {
-    super(config, new JavaMarshalSet(this));
-    tdef.meta.push({
-      pos: config.pos,
-      name: ":nativeGen",
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_java_tobytescopy",
-      meta: [{
-        pos: config.pos,
-        name: ":java.native",
-      }],
-      kind: TypeUtils.ffunCt((macro : (haxe.Int64, Int) -> haxe.io.BytesData)),
-      access: [APrivate, AStatic, AInline],
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_java_frombytescopy",
-      meta: [{
-        pos: config.pos,
-        name: ":java.native",
-      }],
-      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData) -> haxe.Int64)),
-      access: [APrivate, AStatic, AInline],
-    });
-
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_java_frombytesref",
-      meta: [{
-        pos: config.pos,
-        name: ":java.native",
-      }],
-      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData) -> haxe.Int64)),
-      access: [APrivate, AStatic, AInline],
-    });
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_java_frombytesunref",
-      meta: [{
-        pos: config.pos,
-        name: ":java.native",
-      }],
-      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData, haxe.Int64) -> Void)),
-      access: [APrivate, AStatic, AInline],
-    });
-
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_native",
-      kind: FVar(
-        (macro : Int),
-        macro {
-          java.lang.System.loadLibrary($v{config.name});
-          0;
-        }
-      ),
-      access: [APrivate, AStatic],
-    });
-    lb.ail("#include <jni.h>");
-    lb.ail("static size_t _ammer_ctr = 0;"); // TODO: internalPrefix
-    boilerplate(
-      "JavaVM*",
-      "void*",
-      "jobject ref;",
-      "",
-      'JavaVM* _java_vm = ${config.internalPrefix}registry.ctx;
-JNIEnv* _java_env;
-(*_java_vm)->GetEnv(_java_vm, (void**)&_java_env, JNI_VERSION_1_6);
-(*_java_env)->DeleteGlobalRef(_java_env, curr->ref);'
-    );
-    lb.ail('
-JNIEXPORT jbyteArray ${javaMangle("_ammer_java_tobytescopy")}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
-  jbyteArray res = (*_java_env)->NewByteArray(_java_env, size);
-  (*_java_env)->SetByteArrayRegion(_java_env, res, 0, size, (const jbyte*)data);
-  return res;
-}
-JNIEXPORT jlong ${javaMangle("_ammer_java_frombytescopy")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
-  jsize size = (*_java_env)->GetArrayLength(_java_env, data);
-  uint8_t* data_res = (uint8_t*)${config.mallocFunction}(size);
-  (*_java_env)->GetByteArrayRegion(_java_env, data, 0, size, (jbyte*)data_res);
-  return (jlong)data_res;
-}
-
-JNIEXPORT jlong ${javaMangle("_ammer_java_frombytesref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
-  uint8_t* data_res = (uint8_t*)((*_java_env)->GetByteArrayElements(_java_env, data, NULL));
-  return (jlong)data_res;
-}
-JNIEXPORT void ${javaMangle("_ammer_java_frombytesunref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data, jlong ptr) {
-  (*_java_env)->ReleaseByteArrayElements(_java_env, data, (jbyte*)ptr, 0);
-}
-');
-    // TODO: multithread attach/detach counting?
-    // TODO: configure JNI version?
-    // https://docs.oracle.com/javase/9/docs/specs/jni/invocation.html#jni_onload
-    lb.ail('jint JNI_OnLoad(JavaVM* vm, void* reserved) {
-  ${config.internalPrefix}registry.ctx = vm;
-  return JNI_VERSION_1_6;
-}');
-  }
-
-  function javaMangle(
-    method:String
-    // TODO: module ?
-  ):String {
-    var pack = config.typeDefPack;
-    var type = config.typeDefName;
-    pack = pack.length > 0 ? pack : ["haxe", "root"];
-    function subMangle(s:String):String {
-      // TODO: more thorough mangling
-      return s.replace("_", "_1");
-    }
-    return 'Java_${pack.join("_")}_${subMangle(type)}_${subMangle(method)}';
-  }
-
-  public function addNamedFunction(
-    name:String,
-    ret:JavaTypeMarshal,
-    args:Array<JavaTypeMarshal>,
-    code:String,
-    pos:Position
-  ):Expr {
-    var mangledName = javaMangle(name);
-    lb
-      .ai('JNIEXPORT ${ret.l1Type} $mangledName(JNIEnv *_java_env, jclass _java_cls')
-      .mapi(args, (idx, arg) -> ', ${arg.l1Type} _l1_arg_$idx')
-      .al(') {')
-      .i()
-        .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> arg.l1l2('_l1_arg_$idx', '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
-        .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('${ret.l2Type} _l2_return;')
-          .ail(ret.l3l2(config.returnIdent, "_l2_return"))
-          .ail('${ret.l1Type} _l1_return;')
-          .ail(ret.l2l1("_l2_return", "_l1_return"))
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-          .ail('return _l1_return;')
-        .ife()
-          .ail(code)
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-        .ifd()
-      .d()
-      .al("}");
-    tdef.fields.push({
-      pos: Context.currentPos(),
-      name: name,
-      meta: [{
-        pos: Context.currentPos(),
-        name: ":java.native",
-      }],
-      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
-      access: [APublic, AStatic, AInline],
-    });
-    return fieldExpr(name);
-  }
-
-  public function closureCall(
-    fn:String,
-    clType:MarshalClosure<JavaTypeMarshal>,
-    outputExpr:String,
-    args:Array<String>
-  ):String {
-    // TODO: ref/unref args?
-    var lb = new LineBuf()
-      .ail("do {")
-      .i()
-        .ail('${clType.type.l2Type} _l2_fn;')
-        .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .ail('${clType.type.l1Type} _l1_fn;')
-        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ail("jclass _l1_fn_cls = (*_java_env)->GetObjectClass(_java_env, _l1_fn);");
-    if (config.jvm) {
-      lb
-        .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, "invoke", "(')
-        .mapi(args, (idx, arg) -> clType.args[idx].javaMangle)
-        .al(')${clType.ret.javaMangle}");')
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai("_l1_output = (*_java_env)->Call")
-        .ife()
-          .ai("(*_java_env)->Call")
-        .ifd()
-        .a(switch (clType.ret) {
-          case JavaMarshalSet.MARSHAL_VOID: "Void";
-          case JavaMarshalSet.MARSHAL_BOOL: "Boolean";
-          case JavaMarshalSet.MARSHAL_UINT8: "Boolean";
-          case JavaMarshalSet.MARSHAL_INT8: "Byte";
-          case JavaMarshalSet.MARSHAL_UINT16: "Char";
-          case JavaMarshalSet.MARSHAL_INT16: "Short";
-          case JavaMarshalSet.MARSHAL_UINT32: "Int";
-          case JavaMarshalSet.MARSHAL_INT32: "Int";
-          case JavaMarshalSet.MARSHAL_UINT64: "Long";
-          case JavaMarshalSet.MARSHAL_INT64: "Long";
-          case JavaMarshalSet.MARSHAL_FLOAT32: "Float";
-          case JavaMarshalSet.MARSHAL_FLOAT64: "Double";
-          case _: "Object";
-        })
-        .a("Method(_java_env, _l1_fn, _java_method")
-        .mapi(args, (idx, arg) -> ', _l1_arg_${idx}')
-        .al(');');
-    } else {
-      lb
-        .ail('jclass _java_class = (*_java_env)->FindClass(_java_env, "java/lang/Class");')
-        .ail('jmethodID _java_name = (*_java_env)->GetMethodID(_java_env, _java_class, "getName", "()Ljava/lang/String;");')
-        .ail('jstring _java_name_fn = (*_java_env)->CallObjectMethod(_java_env, _l1_fn_cls, _java_name);')
-        .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, ')
-        .a('"__hx_invoke${args.length}_${clType.ret.primitive ? "f" : "o"}", "(')
-        .map(args, arg -> "DLjava/lang/Object;")
-        .al(')${clType.ret.primitive ? "D" : "Ljava/lang/Object;"}");')
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai('_l1_output = (${clType.ret.l1Type})')
-        .ife()
-          .ai("")
-        .ifd()
-        .a(clType.ret.primitive
-          ? '(*_java_env)->CallDoubleMethod(_java_env, _l1_fn, _java_method'
-          : '(*_java_env)->CallObjectMethod(_java_env, _l1_fn, _java_method')
-        .mapi(args, (idx, arg) -> clType.args[idx].primitive
-          ? ', (jdouble)_l1_arg_${idx}, _java_undef'
-          : ', 0.0, _l1_arg_${idx}')
-        .al(');');
-    }
-    return lb
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
-      .d()
-      .ail("} while (0);")
-      .done();
-  }
-
-  public function addCallback(
-    ret:JavaTypeMarshal,
-    args:Array<JavaTypeMarshal>,
-    code:String
-  ):String {
-    var name = mangleFunction(ret, args, code, "cb");
-    lb
-      .ai('static ${ret.l3Type} ${name}(')
-      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .ail('JavaVM* _java_vm = ${config.internalPrefix}registry.ctx;')
-        .ail('JNIEnv* _java_env;')
-        .ail('(*_java_vm)->AttachCurrentThread(_java_vm, (void**)&_java_env, NULL);');
-    if (!config.jvm) {
-      lb
-        .ail('jclass _java_runtime = (*_java_env)->FindClass(_java_env, "haxe/lang/Runtime");')
-        .ail('jfieldID _java_undef_f = (*_java_env)->GetStaticFieldID(_java_env, _java_runtime, "undefined", "Ljava/lang/Object;");')
-        .ail('jobject _java_undef = (*_java_env)->GetStaticObjectField(_java_env, _java_runtime, _java_undef_f);');
-    }
-    if (ret.mangled != "v") {
-      lb
-        .ail('${ret.l3Type} ${config.returnIdent};')
-        .ail(code)
-        .ail('return ${config.returnIdent};');
-    } else {
-      lb
-        .ail(code);
-    }
-    // TODO: detach???
-    lb
-      .d()
-      .al("}");
-    return name;
-  }
-}
-
-@:structInit
-class JavaLibraryConfig extends LibraryConfig {
-  public var jvm:Bool; // TODO: this should be on JavaConfig ...
-}
-typedef JavaTypeMarshalExt = {
-  primitive:Bool,
-  javaMangle:String,
-};
-typedef JavaTypeMarshal = {
-  >BaseTypeMarshal,
-  >JavaTypeMarshalExt,
-};
 
 #end

@@ -11,14 +11,10 @@ class TestCallbacks extends TestBase {
     var type = marshal.structPtr(typeNative, [{
       name: "field_cl",
       type: closureType.type,
-      read: true,
-      write: true,
       owned: true,
     }, {
       name: "field_cl2",
       type: closureType2.type,
-      read: true,
-      write: true,
       owned: true,
     }]);
 
@@ -73,8 +69,8 @@ class TestCallbacks extends TestBase {
             a + b;
           };
           var cb2 = () -> { callLog++; }
-          $e{type.setters["field_cl"](macro struct, macro cb)};
-          $e{type.setters["field_cl2"](macro struct, macro cb2)};
+          $e{type.fieldSet["field_cl"](macro struct, macro cb)};
+          $e{type.fieldSet["field_cl2"](macro struct, macro cb2)};
         }
       });
       run(macro nested());
@@ -82,9 +78,9 @@ class TestCallbacks extends TestBase {
       assertEq(macro $useCallback(struct, 1, 2), macro 3);
       run(gcMajor);
       assertEq(macro $useCallback(struct, 3, 4), macro 7);
-      assertEq(macro $e{type.getters["field_cl"](macro struct)}(5, 6), macro 11);
+      assertEq(macro $e{type.fieldGet["field_cl"](macro struct)}(5, 6), macro 11);
       assertEq(macro addLog.join(","), macro "1+2,3+4,5+6");
-      run(macro $e{type.getters["field_cl2"](macro struct)}());
+      run(macro $e{type.fieldGet["field_cl2"](macro struct)}());
       assertEq(macro callLog, macro 1);
       run(macro $useCallback2(struct));
       assertEq(macro callLog, macro 2);

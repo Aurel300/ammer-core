@@ -9,9 +9,326 @@ import ammer.core.utils.*;
 using Lambda;
 using StringTools;
 
+typedef CsConfig = BaseConfig;
+
+typedef CsLibraryConfig = LibraryConfig;
+
+typedef CsTypeMarshalExt = {
+  primitive:Bool,
+  csType:String,
+};
+typedef CsTypeMarshal = {
+  >BaseTypeMarshal,
+  >CsTypeMarshalExt,
+};
+
+class Cs extends Base<
+  CsConfig,
+  CsLibraryConfig,
+  CsTypeMarshal,
+  CsLibrary,
+  CsMarshalSet
+> {
+  public function new(config:CsConfig) {
+    super("cs", config);
+  }
+
+  public function finalise():BuildProgram {
+    return baseDynamicLinkProgram({});
+  }
+}
+
+@:allow(ammer.core.plat.Cs)
+class CsLibrary extends BaseLibrary<
+  CsLibrary,
+  CsConfig,
+  CsLibraryConfig,
+  CsTypeMarshal,
+  CsMarshalSet
+> {
+  var lbImport = new LineBuf();
+
+  public function new(config:CsLibraryConfig) {
+    super(config, new CsMarshalSet(this));
+    tdef.meta.push({
+      pos: config.pos,
+      name: ":nativeGen",
+    });
+    lb
+      .ail("void** _ammer_delegates;");
+    // C# version of boilerplate
+    lbImport
+      .ail("static int _ammer_refctr = 1;")
+      .ail("static System.Collections.Generic.Dictionary<object, int> _ammer_refs_handle "
+        + "= new System.Collections.Generic.Dictionary<object, int>();")
+      .ail("static System.Collections.Generic.Dictionary<object, int> _ammer_refs_counter "
+        + "= new System.Collections.Generic.Dictionary<object, int>();")
+      .ail("static System.Collections.Generic.Dictionary<int, object> _ammer_refs_reverse "
+        + "= new System.Collections.Generic.Dictionary<int, object>();")
+      .ail("private static int _ammer_incref(object val) {
+  if (!_ammer_refs_handle.ContainsKey(val)) {
+    _ammer_refs_handle[val] = _ammer_refctr;
+    _ammer_refs_counter[val] = 1;
+    _ammer_refs_reverse[_ammer_refctr] = val;
+    return _ammer_refctr++;
+  }
+  _ammer_refs_counter[val]++;
+  return _ammer_refs_handle[val];
+}
+private static void _ammer_decref(object val) {
+  if (_ammer_refs_handle.ContainsKey(val)) {
+    if (--_ammer_refs_counter[val] <= 0) {
+      _ammer_refs_reverse.Remove(_ammer_refs_handle[val]);
+      _ammer_refs_handle.Remove(val);
+      _ammer_refs_counter.Remove(val);
+    }
+  }
+}");
+    lb.ail('void _ammer_cs_tobytescopy(uint8_t* data, int size, uint8_t* res, int res_size) {
+  ${config.memcpyFunction}(res, data, size);
+}
+uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
+  uint8_t* res = (uint8_t*)${config.mallocFunction}(size);
+  ${config.memcpyFunction}(res, data, size);
+  return res;
+}');
+    lbImport
+      .ai("[System.Runtime.InteropServices.DllImport(")
+        // TODO: OS dependent
+        .al('"${config.name}.dylib")]')
+      .ail("public static extern void _ammer_cs_tobytescopy(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] byte[] res, int res_size);");
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_cs_tobytescopy",
+      kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Int, haxe.io.BytesData, Int) -> Void)),
+      access: [APrivate, AStatic, AExtern],
+    });
+    lbImport
+      .ai("[System.Runtime.InteropServices.DllImport(")
+        // TODO: OS dependent
+        .al('"${config.name}.dylib")]')
+      .ail("public static extern System.IntPtr _ammer_cs_frombytescopy(byte[] data, int size);");
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_cs_frombytescopy",
+      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData, Int) -> cs.system.IntPtr)),
+      access: [APrivate, AStatic, AExtern],
+    });
+  }
+
+  override function finalise(platConfig:CsConfig):Void {
+    lb
+      .ail('
+int _ammer_init(void* delegates[${delegateCtr}]) {
+  _ammer_delegates = (void**)${config.mallocFunction}(sizeof(void*) * ${delegateCtr});
+  ${config.memcpyFunction}(_ammer_delegates, delegates, sizeof(void*) * ${delegateCtr});
+  return 0;
+}');
+    lbImport
+      .ai("[System.Runtime.InteropServices.DllImport(")
+        // TODO: OS dependent
+        .al('"${config.name}.dylib")]')
+      .ail("public static extern int _ammer_init([System.Runtime.InteropServices.MarshalAs(")
+        .a("System.Runtime.InteropServices.UnmanagedType.LPArray,")
+        .a('SizeConst = ${delegateCtr}')
+        .a(")] System.IntPtr[] delegates);")
+      .ail("static int _ammer_native = _ammer_init(new System.IntPtr[]{")
+        .lmap([ for (idx in 0...delegateCtr) idx ], (idx) ->
+          // TODO: what even is this
+          'System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate('
+            + 'System.Delegate.CreateDelegate(typeof(ClosureDelegate${idx}), typeof(CoreExtern_example), "ImplClosureDelegate${idx}")),')
+      .ail("});");
+    tdef.meta.push({
+      pos: Context.currentPos(),
+      params: [macro $v{lbImport.done()}],
+      name: ":classCode",
+    });
+    super.finalise(platConfig);
+  }
+
+  static function needsHandle(t:CsTypeMarshal):Bool {
+    return t.l2ref == CsMarshalSet.MARSHAL_REGISTRY_REF;
+  }
+
+  public function addNamedFunction(
+    name:String,
+    ret:CsTypeMarshal,
+    args:Array<CsTypeMarshal>,
+    code:String,
+    options:FunctionOptions
+  ):Expr {
+    var needsHandles = args.exists(needsHandle) || needsHandle(ret);
+    var nameNative = needsHandles ? '${name}_internal' : name;
+    lb
+      .ai('${ret.l1Type} ${nameNative}(')
+      .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx}', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i();
+    baseAddNamedFunction(
+      args,
+      args.mapi((idx, arg) -> '_l1_arg_$idx'),
+      ret,
+      "_l1_return",
+      code,
+      lb,
+      options
+    );
+    lb
+        .ifi(ret.mangled != "v")
+          .ail('return _l1_return;')
+        .ifd()
+      .d()
+      .ail("}");
+    lbImport
+      .ai("[System.Runtime.InteropServices.DllImport(")
+        // TODO: OS dependent
+        .a('"${config.name}.dylib", ')
+        // TODO: send strings as byte arrays to avoid this...
+        .a("CharSet = System.Runtime.InteropServices.CharSet.Ansi")
+      .al(")]")
+      .ai('public static extern ${ret.csType} ${nameNative}(')
+      .mapi(args, (idx, arg) -> '${arg.csType} arg${idx}', ", ")
+      .al(");");
+    if (needsHandles) {
+      var handleArgs = [ for (i in 0...args.length) if (needsHandle(args[i])) i ];
+      lbImport
+        .ai('public static ${needsHandle(ret) ? "object" : ret.csType} ${name}(')
+        .mapi(args, (idx, arg) -> '${needsHandle(arg) ? "object" : arg.csType} arg${idx}', ", ")
+        .al(") {")
+        .i()
+          .lmap(handleArgs, idx -> 'int handle_arg${idx} = _ammer_incref(arg${idx});')
+          .ifi(needsHandle(ret))
+            .ai('int handle_ret = ${nameNative}(')
+            .mapi(args, (idx, arg) -> needsHandle(arg)
+              ? 'handle_arg${idx}'
+              : 'arg${idx}', ", ")
+            .al(");")
+            .lmap(handleArgs, idx -> '_ammer_decref(arg${idx});')
+            .ail("return _ammer_refs_reverse[handle_ret];")
+          .ife()
+            .ai(ret == CsMarshalSet.MARSHAL_VOID ? "" : "return ")
+            .a('${nameNative}(')
+            .mapi(args, (idx, arg) -> needsHandle(arg)
+              ? 'handle_arg${idx}'
+              : 'arg${idx}', ", ")
+            .al(");")
+            .lmap(handleArgs, idx -> '_ammer_decref(arg${idx});')
+          .ifd()
+        .d()
+        .ail("}");
+    }
+    tdef.fields.push({
+      pos: options.pos,
+      name: name,
+      kind: TypeUtils.ffun(
+        args.map(arg -> needsHandle(arg) ? (macro : Dynamic) : arg.haxeType),
+        needsHandle(ret) ? (macro : Dynamic) : ret.haxeType
+      ),
+      access: [APublic, AStatic, AExtern],
+    });
+    return fieldExpr(name);
+  }
+
+  var delegateCtr = 0;
+  var delegates:Map<String, Int> = [];
+
+  public function closureCall(
+    fn:String,
+    clType:MarshalClosure<CsTypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    // TODO: use mangled as identifier instead of counter
+    var delegateId = delegates[clType.type.mangled];
+    if (delegateId == null) {
+      delegates[clType.type.mangled] = (delegateId = delegateCtr++);
+      lbImport
+        .ai('private delegate ${clType.ret.csType} ClosureDelegate$delegateId(int handle_cl')
+        .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
+        .al(");");
+      lbImport
+        .ai('private static ${clType.ret.csType} ImplClosureDelegate$delegateId(int handle_cl')
+        .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
+        .al(") {")
+        .i()
+          .ail("object _cs_undef = global::haxe.lang.Runtime.undefined;")
+          // TODO: handle refs for args (and ret) here as well?
+          .ail("global::haxe.lang.Function cl = (global::haxe.lang.Function)_ammer_refs_reverse[handle_cl];")
+          .ifi(clType.ret.mangled != "v")
+            .ai('return (${clType.ret.csType})')
+          .ife()
+            .ai("")
+          .ifd()
+          .a('cl.__hx_invoke${clType.args.length}_${clType.ret.primitive ? "f" : "o"}(')
+          .mapi(clType.args, (idx, arg) -> clType.args[idx].primitive
+            ? '(double)arg${idx}, _cs_undef'
+            : '0.0, arg${idx}', ", ")
+          .al(");")
+        .d()
+        .ail("}");
+    }
+    // TODO: ref/unref args?
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l1Type} _l1_output;')
+          .ai('_l1_output = ')
+        .ife()
+          .ai("")
+        .ifd()
+        .a('((${clType.ret.l1Type} (*)(int32_t')
+        .map(clType.args, arg -> ', ${arg.l1Type}')
+        .a('))(_ammer_delegates[$delegateId]))((int32_t)$fn')
+        .mapi(args, (idx, arg) ->
+          clType.args[idx].l1Type == "int32_t" && clType.args[idx].l2Type == "void*"
+          ? ', (int32_t)${arg}'
+          : ', ${arg}')
+        .al(');')
+        .ifi(clType.ret.mangled != "v")
+          .ail('${clType.ret.l2Type} _l2_output;')
+          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
+          .ail(clType.ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function addCallback(
+    ret:CsTypeMarshal,
+    args:Array<CsTypeMarshal>,
+    code:String
+  ):String {
+    var name = mangleFunction(ret, args, code, "cb");
+    lb
+      .ai('static ${ret.l3Type} ${name}(')
+      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
+      .a(args.length == 0 ? "void" : "")
+      .al(") {")
+      .i()
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l3Type} ${config.returnIdent};')
+          .ail(code)
+          .ail('return ${config.returnIdent};')
+        .ife()
+          .ail(code)
+        .ifd()
+      .d()
+      .al("}");
+    return name;
+  }
+}
+
 @:allow(ammer.core.plat.Cs)
 class CsMarshalSet extends BaseMarshalSet<
   CsMarshalSet,
+  CsConfig,
   CsLibraryConfig,
   CsLibrary,
   CsTypeMarshal
@@ -152,12 +469,20 @@ class CsMarshalSet extends BaseMarshalSet<
     };
   }
 
-  function opaquePtrInternal(name:String):CsTypeMarshal return baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
-    primitive: false,
-    csType: "System.IntPtr",
-  }, {
-    haxeType: (macro : cs.system.IntPtr),
-  });
+  function opaqueInternal(name:String):MarshalOpaque<CsTypeMarshal> return {
+    type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+      primitive: false,
+      csType: "System.IntPtr",
+    }, {
+      haxeType: (macro : cs.system.IntPtr),
+    }),
+    typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+      primitive: false,
+      csType: "System.IntPtr",
+    }, {
+      haxeType: (macro : cs.system.IntPtr),
+    }),
+  };
 
   function arrayPtrInternalType(element:CsTypeMarshal):CsTypeMarshal {
     var elType = element.arrayType != null ? element.arrayType : element.haxeType;
@@ -307,6 +632,55 @@ return old_val;';
     return super.structPtrInternalFieldSetter(structName, type, field);
   }
 
+  override function arrayPtrInternalSetter(
+    type:CsTypeMarshal,
+    element:CsTypeMarshal,
+    owned:Bool
+  ):(self:Expr, index:Expr, val:Expr)->Expr {
+    if (owned) {
+      var code = 'int old_val = (int)_arg0[_arg1];
+_arg0[_arg1] = (void*)(intptr_t)_arg2;
+return old_val;';
+      var name = library.mangleFunction(MARSHAL_INT32, [type, MARSHAL_INT32, element], code);
+      var nameNative = '${name}_internal';
+      library.lb
+        .ai('int ${nameNative}(')
+        .a('void** _arg0, int _arg1, ${element.l1Type} _arg2')
+        .al(") {")
+        .i()
+          .ail(code)
+        .d()
+        .al("}");
+      library.lbImport
+        .ai("[System.Runtime.InteropServices.DllImport(")
+          // TODO: OS dependent
+          .al('"${library.config.name}.dylib")]')
+        .ai('public static extern int ${nameNative}(')
+        .a("System.IntPtr arg0, int arg1, int arg2")
+        .al(");");
+      library.lbImport
+        .ai('public static void ${name}(')
+        .a("System.IntPtr arg0, int arg1, object arg2")
+        .al(") {")
+        .i()
+          .ail("int handle_arg2 = _ammer_incref(arg2);")
+          .ail('int handle_old = ${nameNative}(arg0, arg1, handle_arg2);')
+          .ail("_ammer_decref(handle_old);")
+        .d()
+        .ail("}");
+      library.tdef.fields.push({
+        pos: library.config.pos,
+        name: name,
+        kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Int, Dynamic) -> Void)),
+        access: [APublic, AStatic, AExtern],
+      });
+      var setterF = library.fieldExpr(name);
+      return (self, index, val) -> macro $setterF($self, $index, $val);
+    }
+    return super.arrayPtrInternalSetter(type, element, owned);
+  }
+
+
   function haxePtrInternal(haxeType:ComplexType):CsTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
     primitive: false,
     csType: "int",
@@ -323,322 +697,5 @@ return old_val;';
     super(library);
   }
 }
-
-class Cs extends Base<
-  CsConfig,
-  CsLibraryConfig,
-  CsTypeMarshal,
-  CsLibrary,
-  CsMarshalSet
-> {
-  public function new(config:CsConfig) {
-    super("cs", config);
-  }
-
-  public function finalise():BuildProgram {
-    for (lib in libraries) {
-      lib.lb
-        .ail('
-int _ammer_init(void* delegates[${lib.delegateCtr}]) {
-  _ammer_delegates = (void**)${lib.config.mallocFunction}(sizeof(void*) * ${lib.delegateCtr});
-  ${lib.config.memcpyFunction}(_ammer_delegates, delegates, sizeof(void*) * ${lib.delegateCtr});
-  return 0;
-}');
-      lib.lbImport
-        .ai("[System.Runtime.InteropServices.DllImport(")
-          // TODO: OS dependent
-          .al('"${lib.config.name}.dylib")]')
-        .ail("public static extern int _ammer_init([System.Runtime.InteropServices.MarshalAs(")
-          .a("System.Runtime.InteropServices.UnmanagedType.LPArray,")
-          .a('SizeConst = ${lib.delegateCtr}')
-          .a(")] System.IntPtr[] delegates);")
-        .ail("static int _ammer_native = _ammer_init(new System.IntPtr[]{")
-          .lmap([ for (idx in 0...lib.delegateCtr) idx ], (idx) ->
-            // TODO: what even is this
-            'System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate('
-              + 'System.Delegate.CreateDelegate(typeof(ClosureDelegate${idx}), typeof(CoreExtern_example), "ImplClosureDelegate${idx}")),')
-        .ail("});");
-      lib.tdef.meta.push({
-        pos: Context.currentPos(),
-        params: [macro $v{lib.lbImport.done()}],
-        name: ":classCode",
-      });
-    }
-    return baseDynamicLinkProgram({});
-  }
-}
-
-typedef CsConfig = BaseConfig;
-
-@:allow(ammer.core.plat.Cs)
-class CsLibrary extends BaseLibrary<
-  CsLibrary,
-  CsLibraryConfig,
-  CsTypeMarshal,
-  CsMarshalSet
-> {
-  var lbImport = new LineBuf();
-
-  public function new(config:CsLibraryConfig) {
-    super(config, new CsMarshalSet(this));
-    tdef.meta.push({
-      pos: config.pos,
-      name: ":nativeGen",
-    });
-    lb
-      .ail("void** _ammer_delegates;");
-    // C# version of boilerplate
-    lbImport
-      .ail("static int _ammer_refctr = 1;")
-      .ail("static System.Collections.Generic.Dictionary<object, int> _ammer_refs_handle "
-        + "= new System.Collections.Generic.Dictionary<object, int>();")
-      .ail("static System.Collections.Generic.Dictionary<object, int> _ammer_refs_counter "
-        + "= new System.Collections.Generic.Dictionary<object, int>();")
-      .ail("static System.Collections.Generic.Dictionary<int, object> _ammer_refs_reverse "
-        + "= new System.Collections.Generic.Dictionary<int, object>();")
-      .ail("private static int _ammer_incref(object val) {
-  if (!_ammer_refs_handle.ContainsKey(val)) {
-    _ammer_refs_handle[val] = _ammer_refctr;
-    _ammer_refs_counter[val] = 1;
-    _ammer_refs_reverse[_ammer_refctr] = val;
-    return _ammer_refctr++;
-  }
-  _ammer_refs_counter[val]++;
-  return _ammer_refs_handle[val];
-}
-private static void _ammer_decref(object val) {
-  if (_ammer_refs_handle.ContainsKey(val)) {
-    if (--_ammer_refs_counter[val] <= 0) {
-      _ammer_refs_reverse.Remove(_ammer_refs_handle[val]);
-      _ammer_refs_handle.Remove(val);
-      _ammer_refs_counter.Remove(val);
-    }
-  }
-}");
-    lb.ail('void _ammer_cs_tobytescopy(uint8_t* data, int size, uint8_t* res, int res_size) {
-  ${config.memcpyFunction}(res, data, size);
-}
-uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
-  uint8_t* res = (uint8_t*)${config.mallocFunction}(size);
-  ${config.memcpyFunction}(res, data, size);
-  return res;
-}');
-    lbImport
-      .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${config.name}.dylib")]')
-      .ail("public static extern void _ammer_cs_tobytescopy(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] byte[] res, int res_size);");
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_cs_tobytescopy",
-      kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Int, haxe.io.BytesData, Int) -> Void)),
-      access: [APrivate, AStatic, AExtern],
-    });
-    lbImport
-      .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${config.name}.dylib")]')
-      .ail("public static extern System.IntPtr _ammer_cs_frombytescopy(byte[] data, int size);");
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_cs_frombytescopy",
-      kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData, Int) -> cs.system.IntPtr)),
-      access: [APrivate, AStatic, AExtern],
-    });
-  }
-
-  static function needsHandle(t:CsTypeMarshal):Bool {
-    return t.l2ref == CsMarshalSet.MARSHAL_REGISTRY_REF;
-  }
-
-  public function addNamedFunction(
-    name:String,
-    ret:CsTypeMarshal,
-    args:Array<CsTypeMarshal>,
-    code:String,
-    pos:Position
-  ):Expr {
-    var needsHandles = args.exists(needsHandle) || needsHandle(ret);
-    var nameNative = needsHandles ? '${name}_internal' : name;
-    lb
-      .ai('${ret.l1Type} ${nameNative}(')
-      .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx}', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> arg.l1l2('_l1_arg_$idx', '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
-        .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('${ret.l2Type} _l2_return;')
-          .ail(ret.l3l2(config.returnIdent, "_l2_return"))
-          .ail('${ret.l1Type} _l1_return;')
-          .ail(ret.l2l1("_l2_return", "_l1_return"))
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-          .ail('return _l1_return;')
-        .ife()
-          .ail(code)
-          .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'))
-        .ifd()
-      .d()
-      .al("}");
-    lbImport
-      .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .a('"${config.name}.dylib", ')
-        // TODO: send strings as byte arrays to avoid this...
-        .a("CharSet = System.Runtime.InteropServices.CharSet.Ansi")
-      .al(")]")
-      .ai('public static extern ${ret.csType} ${nameNative}(')
-      .mapi(args, (idx, arg) -> '${arg.csType} arg${idx}', ", ")
-      .al(");");
-    if (needsHandles) {
-      var handleArgs = [ for (i in 0...args.length) if (needsHandle(args[i])) i ];
-      lbImport
-        .ai('public static ${needsHandle(ret) ? "object" : ret.csType} ${name}(')
-        .mapi(args, (idx, arg) -> '${needsHandle(arg) ? "object" : arg.csType} arg${idx}', ", ")
-        .al(") {")
-        .i()
-          .lmap(handleArgs, idx -> 'int handle_arg${idx} = _ammer_incref(arg${idx});')
-          .ifi(needsHandle(ret))
-            .ai('int handle_ret = ${nameNative}(')
-            .mapi(args, (idx, arg) -> needsHandle(arg)
-              ? 'handle_arg${idx}'
-              : 'arg${idx}', ", ")
-            .al(");")
-            .lmap(handleArgs, idx -> '_ammer_decref(arg${idx});')
-            .ail("return _ammer_refs_reverse[handle_ret];")
-          .ife()
-            .ai(ret == CsMarshalSet.MARSHAL_VOID ? "" : "return ")
-            .a('${nameNative}(')
-            .mapi(args, (idx, arg) -> needsHandle(arg)
-              ? 'handle_arg${idx}'
-              : 'arg${idx}', ", ")
-            .al(");")
-            .lmap(handleArgs, idx -> '_ammer_decref(arg${idx});')
-          .ifd()
-        .d()
-        .ail("}");
-    }
-    tdef.fields.push({
-      pos: pos,
-      name: name,
-      kind: TypeUtils.ffun(
-        args.map(arg -> needsHandle(arg) ? (macro : Dynamic) : arg.haxeType),
-        needsHandle(ret) ? (macro : Dynamic) : ret.haxeType
-      ),
-      access: [APublic, AStatic, AExtern],
-    });
-    return fieldExpr(name);
-  }
-
-  var delegateCtr = 0;
-  var delegates:Map<String, Int> = [];
-
-  public function closureCall(
-    fn:String,
-    clType:MarshalClosure<CsTypeMarshal>,
-    outputExpr:String,
-    args:Array<String>
-  ):String {
-    // TODO: use mangled as identifier instead of counter
-    var delegateId = delegates[clType.type.mangled];
-    if (delegateId == null) {
-      delegates[clType.type.mangled] = (delegateId = delegateCtr++);
-      lbImport
-        .ai('private delegate ${clType.ret.csType} ClosureDelegate$delegateId(int handle_cl')
-        .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
-        .al(");");
-      lbImport
-        .ai('private static ${clType.ret.csType} ImplClosureDelegate$delegateId(int handle_cl')
-        .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
-        .al(") {")
-        .i()
-          .ail("object _cs_undef = global::haxe.lang.Runtime.undefined;")
-          // TODO: handle refs for args (and ret) here as well?
-          .ail("global::haxe.lang.Function cl = (global::haxe.lang.Function)_ammer_refs_reverse[handle_cl];")
-          .ifi(clType.ret.mangled != "v")
-            .ai('return (${clType.ret.csType})')
-          .ife()
-            .ai("")
-          .ifd()
-          .a('cl.__hx_invoke${clType.args.length}_${clType.ret.primitive ? "f" : "o"}(')
-          .mapi(clType.args, (idx, arg) -> clType.args[idx].primitive
-            ? '(double)arg${idx}, _cs_undef'
-            : '0.0, arg${idx}', ", ")
-          .al(");")
-        .d()
-        .ail("}");
-    }
-    // TODO: ref/unref args?
-    return new LineBuf()
-      .ail("do {")
-      .i()
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai('_l1_output = ')
-        .ife()
-          .ai("")
-        .ifd()
-        .a('((${clType.ret.l1Type} (*)(int32_t')
-        .map(clType.args, arg -> ', ${arg.l1Type}')
-        .a('))(_ammer_delegates[$delegateId]))((int32_t)$fn')
-        .mapi(args, (idx, arg) ->
-          clType.args[idx].l1Type == "int32_t" && clType.args[idx].l2Type == "void*"
-          ? ', (int32_t)${arg}'
-          : ', ${arg}')
-        .al(');')
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
-      .d()
-      .ail("} while (0);")
-      .done();
-  }
-
-  public function addCallback(
-    ret:CsTypeMarshal,
-    args:Array<CsTypeMarshal>,
-    code:String
-  ):String {
-    var name = mangleFunction(ret, args, code, "cb");
-    lb
-      .ai('static ${ret.l3Type} ${name}(')
-      .mapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx}', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(") {")
-      .i()
-        .ifi(ret.mangled != "v")
-          .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
-          .ail('return ${config.returnIdent};')
-        .ife()
-          .ail(code)
-        .ifd()
-      .d()
-      .al("}");
-    return name;
-  }
-}
-
-typedef CsLibraryConfig = LibraryConfig;
-typedef CsTypeMarshalExt = {
-  primitive:Bool,
-  csType:String,
-};
-typedef CsTypeMarshal = {
-  >BaseTypeMarshal,
-  >CsTypeMarshalExt,
-};
 
 #end
