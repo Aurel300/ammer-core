@@ -17,7 +17,10 @@ class TestIntegers extends TestBase {
     ]) {
       // value
       var f1 = lib.addFunction(kind.m, [kind.m], '_return = _arg0 + 2;');
-      assertEq(macro $f1(7), macro 9);
+      assertEq(macro {
+        var v = 7;
+        $f1(v);
+      }, macro 9);
       if (kind.s) assertEq(macro $f1(-7), macro -5);
 
       // overflow

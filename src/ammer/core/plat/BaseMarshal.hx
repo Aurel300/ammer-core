@@ -7,8 +7,9 @@ import ammer.core.utils.*;
 
 using Lambda;
 
-abstract class BaseMarshalSet<
-  TSelf:BaseMarshalSet<TSelf, TConfig, TLibraryConfig, TLibrary, TTypeMarshal>,
+// TODO: add std.* prefix to `haxeType`s
+abstract class BaseMarshal<
+  TSelf:BaseMarshal<TSelf, TConfig, TLibraryConfig, TLibrary, TTypeMarshal>,
   TConfig:BaseConfig,
   TLibraryConfig:LibraryConfig,
   TLibrary:BaseLibrary<TLibrary, TConfig, TLibraryConfig, TTypeMarshal, TSelf>,
@@ -18,6 +19,7 @@ abstract class BaseMarshalSet<
   static final MARSHAL_NOOP2 = (_:String, _:String) -> "";
   static final MARSHAL_CONVERT_DIRECT = (src:String, dst:String) -> '$dst = $src;';
   static final MARSHAL_CONVERT_CAST = (type:String) -> (src:String, dst:String) -> '$dst = ($type)$src;';
+  static final MARSHAL_CONVERT_INT_TO_PTR = (src:String, dst:String) -> '$dst = (void*)(intptr_t)$src;';
 
   public var library:TLibrary;
 
@@ -25,7 +27,7 @@ abstract class BaseMarshalSet<
   var cacheBox:Map<String, MarshalBox<TTypeMarshal>> = [];
   var cacheStruct:Map<String, MarshalStruct<TTypeMarshal>> = [];
   var cacheArray:Map<String, MarshalArray<TTypeMarshal>> = [];
-  var cacheHaxe:Map<String, TTypeMarshal> = [];
+  var cacheHaxe:Map<String, MarshalHaxe<TTypeMarshal>> = [];
   var cacheClosure:Map<String, MarshalClosure<TTypeMarshal>> = [];
   var cacheBytes:MarshalBytes<TTypeMarshal>;
 
@@ -218,7 +220,7 @@ abstract class BaseMarshalSet<
   abstract public function float64():TTypeMarshal;
 
   static function baseString():BaseTypeMarshal return {
-    haxeType: (macro : String),
+    haxeType: (macro : std.String),
     l1Type: "const char*",
     l2Type: "const char*",
     l3Type: "const char*",
@@ -264,7 +266,6 @@ abstract class BaseMarshalSet<
       [int32()],
       '_return = (uint8_t*)${library.config.callocFunction}(_arg0, 1);'
     );
-    // TODO: free should decref all owned fields
     var free = library.addFunction(
       void(),
       [type],
@@ -293,10 +294,10 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
       copy: (self, size) -> macro $copy($self, $size),
       blit: blit,
 
-      toBytesCopy: platform.toBytesCopy,
-      fromBytesCopy: platform.fromBytesCopy,
-      toBytesRef: platform.toBytesRef,
-      fromBytesRef: platform.fromBytesRef,
+      toHaxeCopy: platform.toHaxeCopy,
+      fromHaxeCopy: platform.fromHaxeCopy,
+      toHaxeRef: platform.toHaxeRef,
+      fromHaxeRef: platform.fromHaxeRef,
     };
   }
 
@@ -351,10 +352,10 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
-    toBytesCopy:(self:Expr, size:Expr)->Expr,
-    fromBytesCopy:(bytes:Expr)->Expr,
-    toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
-    fromBytesRef:Null<(bytes:Expr)->Expr>,
+    toHaxeCopy:(self:Expr, size:Expr)->Expr,
+    fromHaxeCopy:(bytes:Expr)->Expr,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(bytes:Expr)->Expr>,
   };
 
   public function opaque(name:String):MarshalOpaque<TTypeMarshal> {
@@ -444,7 +445,6 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
       (allocatable ? "a" : ""),
       name,
     ].concat(fields.map(field -> [
-      field.owned ? "o" : "",
       field.type.mangled,
       field.name,
     ]).flatten()));
@@ -480,6 +480,7 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     var nullPtr = macro $nullPtrF();
     var alloc = null;
     var free = null;
+    var clone = null;
     if (allocatable) {
       var allocF = library.addFunction(
         types.type,
@@ -489,16 +490,17 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
       var freeF = library.addFunction(
         void(),
         [types.type],
-        new LineBuf()
-          .lmapi(fields.filter(field -> field.owned), (idx, field)
-            -> '${field.type.l2Type} _l2_field_$idx;
-${field.type.l3l2('_arg0->${field.name}', '_l2_field_$idx')}
-${field.type.l2unref('_l2_field_$idx')}')
-          .ail('${library.config.freeFunction}(_arg0);')
-          .done()
+        '${library.config.freeFunction}(_arg0);'
+      );
+      var cloneF = library.addFunction(
+        types.type,
+        [types.type],
+        '_return = ($name*)${library.config.callocFunction}(1, sizeof($name));
+${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
       );
       alloc = macro $allocF();
       free = (self) -> macro $freeF($self);
+      clone = (self) -> macro $cloneF($self);
     }
     return cacheStruct[cacheKey] = {
       type: types.type,
@@ -508,6 +510,7 @@ ${field.type.l2unref('_l2_field_$idx')}')
       fieldRef: fieldRef,
       alloc: alloc,
       free: free,
+      clone: clone,
       nullPtr: nullPtr,
     };
   }
@@ -557,22 +560,13 @@ ${field.type.l2unref('_l2_field_$idx')}')
     var setterF = library.addFunction(
       void(),
       [type, field.type],
-      field.owned
-        ? '${field.type.l2Type} _l2_old;
-${field.type.l3l2('_arg0->${fname}', "_l2_old")}
-${field.type.l2ref("_l2_arg_1")}
-${field.type.l2unref("_l2_old")}
-_arg0->${fname} = _arg1;'
-        : '_arg0->${fname} = _arg1;'
+      '_arg0->${fname} = _arg1;'
     );
     return (self, val) -> macro $setterF($self, $val);
   }
 
-  public function arrayPtr(element:TTypeMarshal, owned:Bool = false):MarshalArray<TTypeMarshal> {
-    var cacheKey = Mangle.parts([
-      owned ? "o" : "",
-      element.mangled,
-    ]);
+  public function arrayPtr(element:TTypeMarshal):MarshalArray<TTypeMarshal> {
+    var cacheKey = element.mangled;
     if (cacheArray.exists(cacheKey))
       return cacheArray[cacheKey];
 
@@ -603,7 +597,7 @@ _arg0->${fname} = _arg1;'
 
     var libExpr = library.typeDefExpr();
     var get = arrayPtrInternalGetter(type, element);
-    var set = arrayPtrInternalSetter(type, element, owned);
+    var set = arrayPtrInternalSetter(type, element);
     var ref = arrayPtrInternalReffer(type, boxPtr(element).type);
     var zalloc = library.addFunction(
       type,
@@ -615,7 +609,7 @@ _arg0->${fname} = _arg1;'
       [type],
       '${library.config.freeFunction}(_arg0);'
     );
-    return cacheArray[element.mangled] = {
+    return cacheArray[cacheKey] = {
       type: type,
       get: get,
       set: set,
@@ -676,19 +670,12 @@ _arg0->${fname} = _arg1;'
 
   function arrayPtrInternalSetter(
     type:TTypeMarshal,
-    element:TTypeMarshal,
-    owned:Bool
+    element:TTypeMarshal
   ):(self:Expr, index:Expr, val:Expr)->Expr {
     var setterF = library.addFunction(
       void(),
       [type, int32(), element],
-      owned
-        ? '${element.l2Type} _l2_old;
-${element.l3l2("_arg0[_arg1]", "_l2_old")}
-${element.l2ref("_l2_arg_2")}
-${element.l2unref("_l2_old")}
-_arg0[_arg1] = _arg2;'
-        : "_arg0[_arg1] = _arg2;"
+      "_arg0[_arg1] = _arg2;"
     );
     return (self, index, val) -> macro $setterF($self, $index, $val);
   }
@@ -773,15 +760,104 @@ _arg0[_arg1] = _arg2;'
   abstract function haxePtrInternal(haxeType:haxe.macro.Type):TTypeMarshal;
   */
 
+  /*
   public function haxePtr(haxeType:ComplexType):TTypeMarshal {
     var cacheKey = Mangle.complexType(haxeType);
     if (cacheHaxe.exists(cacheKey))
       return cacheHaxe[cacheKey];
     return cacheHaxe[cacheKey] = haxePtrInternal(haxeType);
   }
+*/
 
-  static function baseHaxePtrInternal(haxeType:ComplexType):BaseTypeMarshal return {
-    haxeType: (macro : Dynamic),
+  public function haxePtr(haxeType:ComplexType):MarshalHaxe<TTypeMarshal> {
+    var cacheKey = Mangle.complexType(haxeType);
+    if (cacheHaxe.exists(cacheKey))
+      return cacheHaxe[cacheKey];
+    return cacheHaxe[cacheKey] = haxePtrInternal(haxeType);
+  }
+
+  function baseHaxePtrInternal(
+    // TODO: clean up interface
+    haxeType:ComplexType,
+    handleType:ComplexType,
+    nullHandle:Expr,
+    getValue:Expr,
+    getRefCount:Expr,
+    setRefCount:(rc:Expr)->Expr,
+    createRef:(value:Expr)->Expr,
+    delRef:Expr,
+    ?extraFields:Array<Field>,
+    ?isNullHandle:(handle:Expr)->Expr
+  ):{
+    tdef:TypeDefinition,
+    marshal:MarshalHaxe<TTypeMarshal>,
+    mangled:String,
+  } {
+    var mangled = 'h${Mangle.complexType(haxeType)}_';
+
+    var tdefRef = library.typeDefCreate();
+    tdefRef.name += '_HaxeRef_$mangled';
+    var tp = {
+      name: tdefRef.name,
+      pack: tdefRef.pack,
+    };
+    var ct = TPath(tp);
+    // TODO: could be an abstract?
+    var nullCheck = isNullHandle == null
+      ? macro handle == $nullHandle
+      : isNullHandle(macro handle);
+    tdefRef.fields = (macro class HaxeRef {
+      public var handle(default, null):$handleType;
+      public var value(get, never):$haxeType;
+      public var refCount(get, never):Int;
+
+      inline function get_value():$haxeType {
+        return $getValue;
+      }
+      inline function get_refCount():Int {
+        return $getRefCount;
+      }
+
+      public function incref():Void {
+        // TODO: do in a single call?
+        var rc = $getRefCount + 1;
+        $e{setRefCount(macro rc)};
+      }
+      public function decref():Void {
+        // TODO: do in a single call?
+        var rc = $getRefCount + 1;
+        if (rc <= 0) {
+          $delRef;
+          handle = $nullHandle;
+        }
+      }
+      private static function create(value:$haxeType):$ct {
+        var handle = $e{createRef(macro value)};
+        return new $tp(handle);
+      }
+      private static function restore(handle:$handleType):Null<$ct> {
+        if ($nullCheck) return null;
+        return new $tp(handle);
+      }
+      private function new(handle:$handleType) {
+        this.handle = handle;
+      }
+    }).fields.concat(extraFields != null ? extraFields : []);
+
+    return {
+      tdef: tdefRef,
+      marshal: {
+        type: haxePtrInternalType(haxeType),
+        create: (val) -> macro @:privateAccess $p{tp.pack.concat([tp.name])}.create($val),
+        restore: (handle) -> macro @:privateAccess $p{tp.pack.concat([tp.name])}.restore($handle),
+      },
+      mangled: mangled,
+    };
+  }
+  abstract function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<TTypeMarshal>;
+
+  static function baseHaxePtrInternalType(haxeType:ComplexType):BaseTypeMarshal return {
+    haxeType: haxeType,
     l1Type: "void*",
     l2Type: "void*",
     l3Type: "void*",
@@ -793,17 +869,20 @@ _arg0[_arg1] = _arg2;'
     l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
-  abstract function haxePtrInternal(haxeType:ComplexType):TTypeMarshal;
+  abstract function haxePtrInternalType(haxeType:ComplexType):TTypeMarshal;
 
   public function closure(ret:TTypeMarshal, args:Array<TTypeMarshal>):MarshalClosure<TTypeMarshal> {
     var cacheKey = Mangle.parts([ret.mangled].concat(args.map(arg -> arg.mangled)));
     if (cacheClosure.exists(cacheKey))
       return cacheClosure[cacheKey];
+    var type = haxePtr(TFunction(
+      args.map(arg -> arg.haxeType),
+      ret.haxeType
+    ));
     return cacheClosure[cacheKey] = {
-      type: haxePtr(TFunction(
-        args.map(arg -> arg.haxeType),
-        ret.haxeType
-      )),
+      type: type.type,
+      create: type.create,
+      restore: type.restore,
       ret: ret,
       args: args,
     };

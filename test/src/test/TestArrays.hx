@@ -107,16 +107,19 @@ class TestArrays extends TestBase {
   }
 
   function testOwned():Void {
-    var type = marshal.arrayPtr(marshal.haxePtr((macro : ExampleType)), true);
+    var typeHaxe = marshal.haxePtr((macro : ExampleType));
+    var type = marshal.arrayPtr(typeHaxe.type);
 
     scope(() -> {
       run(macro function nested(target):Void {
-        $e{type.set(macro target, macro 3, macro new ExampleType(42))};
+        var ref = $e{typeHaxe.create(macro new ExampleType(42))};
+        ref.incref();
+        $e{type.set(macro target, macro 3, macro ref.handle)};
       });
       run(macro var array = $e{type.zalloc(macro 8)});
       run(macro nested(array));
       run(gcMajor);
-      assertEq(macro $e{type.get(macro array, macro 3)}.val, macro 42);
+      assertEq(macro $e{typeHaxe.restore(type.get(macro array, macro 3))}.value.val, macro 42);
       run(type.free(macro array));
     });
   }

@@ -11,10 +11,10 @@ abstract class Base<
     TConfig,
     TLibraryConfig,
     TTypeMarshal,
-    TMarshalSet
+    TMarshal
   >,
-  TMarshalSet:BaseMarshalSet<
-    TMarshalSet,
+  TMarshal:BaseMarshal<
+    TMarshal,
     TConfig,
     TLibraryConfig,
     TLibrary,

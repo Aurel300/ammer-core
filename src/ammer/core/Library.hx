@@ -14,8 +14,8 @@ class Library {
     this.library = library;
   }
 
-  public function marshal():MarshalSet {
-    return @:privateAccess new MarshalSet(kind, (switch (kind) {
+  public function marshal():Marshal {
+    return @:privateAccess new Marshal(kind, (switch (kind) {
       case Cpp:      (cast library : ammer.core.plat.Cpp.CppLibrary).marshal;
       case Cs:       (cast library : ammer.core.plat.Cs.CsLibrary).marshal;
       case Hashlink: (cast library : ammer.core.plat.Hashlink.HashlinkLibrary).marshal;
@@ -60,21 +60,33 @@ class Library {
         args:Array<TTypeMarshal>,
         code:String,
         options:FunctionOptions
-      )
+      )*/
+
   public function closureCall(
-        fn:String,
-        clType:MarshalClosure<TTypeMarshal>,
-        outputExpr:String,
-        args:Array<String>
-      )
+    fn:String,
+    clType:MarshalClosure<TypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    return library.closureCall(
+      fn,
+      clType,
+      outputExpr,
+      args
+    );
+  }
+
   public function addCallback(
-        ret:TTypeMarshal,
-        args:Array<TTypeMarshal>,
-        code:String
-      )
-  public function typeDefExpr()
-  public function fieldExpr(field:String)
-  */
+    ret:TypeMarshal,
+    args:Array<TypeMarshal>,
+    code:String
+  ):String {
+    return library.addCallback(
+      ret,
+      args,
+      code
+    );
+  }
 }
 
 #end

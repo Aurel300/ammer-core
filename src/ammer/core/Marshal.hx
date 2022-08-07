@@ -2,7 +2,9 @@ package ammer.core;
 
 #if macro
 
-class MarshalSet {
+import haxe.macro.Expr;
+
+class Marshal {
   var kind:PlatformId;
   var marshal:Dynamic;
 
@@ -64,7 +66,15 @@ class MarshalSet {
   public function bytes():MarshalBytes<TypeMarshal> return marshal.bytes();
   public function string():TypeMarshal return marshal.string();
   public function opaque(name:String):MarshalOpaque<TypeMarshal> return marshal.opaque(name);
-  public function structPtr(name:String, fields:Array<FieldRef>):MarshalStruct<TypeMarshal> return marshal.structPtr(name, fields);
+  public function boxPtr(type:TypeMarshal):MarshalBox<TypeMarshal> return marshal.boxPtr(type);
+  public function structPtr(name:String, fields:Array<FieldRef>, allocatable:Bool = true):MarshalStruct<TypeMarshal>
+    return marshal.structPtr(name, fields, allocatable);
+  public function arrayPtr(element:TypeMarshal):MarshalArray<TypeMarshal>
+    return marshal.arrayPtr(element);
+  public function haxePtr(haxeType:ComplexType):MarshalHaxe<TypeMarshal>
+    return marshal.haxePtr(haxeType);
+  public function closure(ret:TypeMarshal, args:Array<TypeMarshal>):MarshalClosure<TypeMarshal>
+    return marshal.closure(ret, args);
 }
 
 #end

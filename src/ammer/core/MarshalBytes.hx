@@ -21,17 +21,15 @@ typedef MarshalBytes<TTypeMarshal> = {
   zalloc:(size:Expr)->Expr,
   free:(self:Expr)->Expr,
   copy:(self:Expr, size:Expr)->Expr,
-  blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr,
+  blit:(source:Expr, sourcepos:Expr, dest:Expr, destpos:Expr, size:Expr)->Expr,
 
   // TODO: offset ...?
 
-  // TODO: rename with Haxe instead of Bytes
+  toHaxeCopy:(self:Expr, size:Expr)->Expr,
+  fromHaxeCopy:(bytes:Expr)->Expr,
 
-  toBytesCopy:(self:Expr, size:Expr)->Expr,
-  fromBytesCopy:(bytes:Expr)->Expr,
-
-  toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
-  fromBytesRef:Null<(bytes:Expr)->Expr>,
+  toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+  fromHaxeRef:Null<(bytes:Expr)->Expr>,
 };
 
 #end

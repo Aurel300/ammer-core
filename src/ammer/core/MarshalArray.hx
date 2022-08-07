@@ -21,10 +21,10 @@ typedef MarshalArray<TTypeMarshal> = {
   vectorTypePath:Null<TypePath>,
 
   toHaxeCopy:Null<(self:Expr, size:Expr)->Expr>,
-  fromHaxeCopy:Null<(bytes:Expr)->Expr>,
+  fromHaxeCopy:Null<(vec:Expr)->Expr>,
 
   toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
-  fromHaxeRef:Null<(bytes:Expr)->Expr>,
+  fromHaxeRef:Null<(vec:Expr)->Expr>,
 };
 
 #end

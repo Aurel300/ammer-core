@@ -12,8 +12,8 @@ abstract class TestBase {
 
   public var testId:String;
   public var gcMajor:Expr;
-  public var lib:Library;
-  public var marshal:Marshal;
+  public var lib:ammer.core.Library;
+  public var marshal:ammer.core.Marshal;
 
   public function new(testId:String) {
     ctx = TestContext.I;

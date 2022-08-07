@@ -8,8 +8,8 @@ class TestContext {
 
   public var platformId:String;
   public var gcMajor:Expr;
-  public var library:Library;
-  public var marshal:Marshal;
+  public var library:ammer.core.Library;
+  public var marshal:ammer.core.Marshal;
   public var failed:Bool = false;
 }
 

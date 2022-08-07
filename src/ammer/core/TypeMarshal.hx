@@ -1,4 +1,4 @@
 package ammer.core;
 
-@:forward(haxeType, mangled)
+@:forward(arrayType, haxeType, mangled)
 abstract TypeMarshal(ammer.core.plat.BaseTypeMarshal) {}

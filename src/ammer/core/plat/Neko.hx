@@ -23,7 +23,7 @@ class Neko extends Base<
   NekoLibraryConfig,
   NekoTypeMarshal,
   NekoLibrary,
-  NekoMarshalSet
+  NekoMarshal
 > {
   public function new(config:NekoConfig) {
     super("neko", config);
@@ -45,48 +45,35 @@ class NekoLibrary extends BaseLibrary<
   NekoConfig,
   NekoLibraryConfig,
   NekoTypeMarshal,
-  NekoMarshalSet
+  NekoMarshal
 > {
   var abstractKinds = new Map();
 
+  function pushNative(name:String, argCount:Int, pos:Position):Void {
+    tdef.fields.push({
+      pos: pos,
+      name: name,
+      kind: FVar(
+        (macro : Dynamic),
+        macro neko.Lib.loadLazy($v{config.name}, $v{name}, $v{argCount})
+      ),
+      access: [APrivate, AStatic],
+    });
+  }
+
   public function new(config:NekoLibraryConfig) {
-    super(config, new NekoMarshalSet(this));
-    tdef.fields.push({
-      pos: Context.currentPos(),
-      name: "_ammer_neko_tobytescopy",
-      kind: FVar(
-        (macro : Dynamic),
-        macro neko.Lib.loadLazy($v{config.name}, "_ammer_neko_tobytescopy", 2)
-      ),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: Context.currentPos(),
-      name: "_ammer_neko_frombytescopy",
-      kind: FVar(
-        (macro : Dynamic),
-        macro neko.Lib.loadLazy($v{config.name}, "_ammer_neko_frombytescopy", 2)
-      ),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: Context.currentPos(),
-      name: "_ammer_neko_frombytesref",
-      kind: FVar(
-        (macro : Dynamic),
-        macro neko.Lib.loadLazy($v{config.name}, "_ammer_neko_frombytesref", 1)
-      ),
-      access: [APrivate, AStatic],
-    });
-    tdef.fields.push({
-      pos: Context.currentPos(),
-      name: "_ammer_init",
-      kind: FVar(
-        (macro : Dynamic),
-        macro neko.Lib.loadLazy($v{config.name}, "_ammer_init", 2)
-      ),
-      access: [APrivate, AStatic],
-    });
+    super(config, new NekoMarshal(this));
+    pushNative("_ammer_neko_tohaxecopy", 2, config.pos);
+    pushNative("_ammer_neko_fromhaxecopy", 2, config.pos);
+    pushNative("_ammer_neko_fromhaxeref", 1, config.pos);
+
+    pushNative("_ammer_ref_create",   1, config.pos);
+    pushNative("_ammer_ref_delete",   1, config.pos);
+    pushNative("_ammer_ref_getcount", 1, config.pos);
+    pushNative("_ammer_ref_setcount", 2, config.pos);
+    pushNative("_ammer_ref_getvalue", 1, config.pos);
+
+    pushNative("_ammer_init", 2, config.pos);
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_native",
@@ -100,43 +87,68 @@ class NekoLibrary extends BaseLibrary<
       access: [APrivate, AStatic],
     });
     lb.ail("#include <neko.h>");
-    boilerplate(
-      "void*",
-      "void*",
-      "value* root;",
-      // TODO: GC moving curr->key would break things (different hash bin)
-      "curr->root = alloc_root(1);
-*curr->root = curr->key;",
-      "free_root(curr->root);"
-    );
     lb.ail('static vobject *_ammer_haxe_proto_int64;');
     lb.ail('static field _ammer_haxe_field_high;');
     lb.ail('static field _ammer_haxe_field_low;');
     lb.ail('static vobject *_ammer_haxe_proto_string;');
     lb.ail('static field _ammer_haxe_field_string;');
     lb.ail('DEFINE_KIND(_neko_abstract_bytes);');
-  }
-
-  override function finalise(platConfig:NekoConfig):Void {
-    // TODO: name symbols with internalPrefix
-    lb
-      .ail('
-static value _ammer_neko_tobytescopy(value data, value size) {
+    lb.ail('DEFINE_KIND(_neko_abstract_haxe_ref);');
+    lb.ail('static value _ammer_neko_tohaxecopy(value data, value size) {
   return copy_string((const char*)(int_val)val_data(data), val_any_int(size));
 }
-DEFINE_PRIM(_ammer_neko_tobytescopy, 2);
-static value _ammer_neko_frombytescopy(value data, value w_size) {
+DEFINE_PRIM(_ammer_neko_tohaxecopy, 2);
+static value _ammer_neko_fromhaxecopy(value data, value w_size) {
   uint32_t size = val_any_int(w_size);
   uint8_t* ret = (uint8_t*)${config.mallocFunction}(size);
   ${config.memcpyFunction}(ret, val_string(data), size);
   return alloc_abstract(_neko_abstract_bytes, (value)(int_val)(ret));
 }
-DEFINE_PRIM(_ammer_neko_frombytescopy, 2);
-static value _ammer_neko_frombytesref(value data) {
+DEFINE_PRIM(_ammer_neko_fromhaxecopy, 2);
+static value _ammer_neko_fromhaxeref(value data) {
   return alloc_abstract(_neko_abstract_bytes, (value)(int_val)(val_string(data)));
 }
-DEFINE_PRIM(_ammer_neko_frombytesref, 1);
-static value _ammer_init(value ex_int64, value ex_string) {
+DEFINE_PRIM(_ammer_neko_fromhaxeref, 1);
+
+typedef struct { value* data; int32_t refcount; } _ammer_haxe_ref;
+static value _ammer_ref_create(value obj) {
+  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  // TODO: remove double allocation?
+  ref->data = alloc_root(1);
+  *ref->data = obj;
+  ref->refcount = 0;
+  return alloc_abstract(_neko_abstract_haxe_ref, (value)(int_val)ref);
+}
+DEFINE_PRIM(_ammer_ref_create, 1);
+static void _ammer_ref_delete(value vref) {
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)(int_val)val_data(vref);
+  free_root(ref->data);
+  ref->data = NULL;
+  ${config.freeFunction}(ref);
+}
+DEFINE_PRIM(_ammer_ref_delete, 1);
+static value _ammer_ref_getcount(value vref) {
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)(int_val)val_data(vref);
+  return alloc_int32(ref->refcount);
+}
+DEFINE_PRIM(_ammer_ref_getcount, 1);
+static void _ammer_ref_setcount(value vref, value wrc) {
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)(int_val)val_data(vref);
+  ref->refcount = val_any_int(wrc);
+}
+DEFINE_PRIM(_ammer_ref_setcount, 2);
+static value _ammer_ref_getvalue(value vref) {
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)(int_val)val_data(vref);
+  return *ref->data;
+}
+DEFINE_PRIM(_ammer_ref_getvalue, 1);
+');
+  }
+
+  override function finalise(platConfig:NekoConfig):Void {
+    // TODO: name symbols with internalPrefix
+    lb
+      .ail('static value _ammer_init(value ex_int64, value ex_string) {
   _ammer_haxe_proto_int64 = ((vobject *)ex_int64)->proto;
   _ammer_haxe_field_high = val_id("high");
   _ammer_haxe_field_low = val_id("low");
@@ -155,39 +167,91 @@ DEFINE_PRIM(_ammer_init, 2);');
     code:String,
     options:FunctionOptions
   ):Expr {
-    lb
-      .ai('static value ${name}(')
-      .mapi(args, (idx, arg) -> 'value _l1_arg_$idx', ", ")
-      .a(args.length == 0 ? "void" : "")
-      .al(') {')
-      .i();
-    baseAddNamedFunction(
-      args,
-      args.mapi((idx, arg) -> '_l1_arg_$idx'),
-      ret,
-      "_l1_return",
-      code,
-      lb,
-      options
-    );
-    lb
-        .ifi(ret.mangled != "v")
-          .ail('return _l1_return;')
-        .ife()
-          .ail("return val_null;")
-        .ifd()
-      .d()
-      .ail("}")
-      .ail('DEFINE_PRIM(${name}, ${args.length});');
-    tdef.fields.push({
-      pos: options.pos,
-      name: name,
-      kind: FVar(
-        TFunction(args.map(arg -> arg.haxeType), ret.haxeType),
-        macro neko.Lib.loadLazy($v{config.name}, $v{name}, $v{args.length})
-      ),
-      access: [APublic, AStatic],
-    });
+    // unfortunately Neko's `val_call` does not deal with more than 5 arguments,
+    // and it seems to be used when calling the result of `loadLazy`
+    if (args.length > 5) {
+      lb
+        .ail('static value ${name}(value _neko_args) {')
+        .i();
+      baseAddNamedFunction(
+        args,
+        args.mapi((idx, arg) -> 'val_array_ptr(_neko_args)[$idx]'),
+        ret,
+        "_l1_return",
+        code,
+        lb,
+        options
+      );
+      lb
+          .ifi(ret.mangled != "v")
+            .ail('return _l1_return;')
+          .ife()
+            .ail("return val_null;")
+          .ifd()
+        .d()
+        .ail("}")
+        .ail('DEFINE_PRIM(${name}, 1);');
+      tdef.fields.push({
+        pos: options.pos,
+        name: '_ammer_args_$name', // TODO: better name?
+        kind: FVar(
+          TFunction([(macro : neko.NativeArray<Any>)], ret.haxeType),
+          macro neko.Lib.loadLazy($v{config.name}, $v{name}, 1)
+        ),
+        access: [APublic, AStatic],
+      });
+      var nekoArgs:Expr = {
+        expr: EArrayDecl([ for (idx in 0...args.length) macro $i{'_arg$idx'} ]),
+        pos: options.pos,
+      };
+      tdef.fields.push({
+        pos: options.pos,
+        name: name,
+        kind: FFun({
+          ret: ret.haxeType,
+          expr: macro {
+            var args = neko.NativeArray.ofArrayRef(($nekoArgs:Array<Dynamic>));
+            return $e{fieldExpr('_ammer_args_$name')}(args);
+          },
+          args: args.mapi((idx, arg) -> ({ name: '_arg$idx', type: arg.haxeType } : FunctionArg)),
+        }),
+        access: [APublic, AStatic],
+      });
+    } else {
+      lb
+        .ai('static value ${name}(')
+        .mapi(args, (idx, arg) -> 'value _l1_arg_$idx', ", ")
+        .a(args.length == 0 ? "void" : "")
+        .al(') {')
+        .i();
+      baseAddNamedFunction(
+        args,
+        args.mapi((idx, arg) -> '_l1_arg_$idx'),
+        ret,
+        "_l1_return",
+        code,
+        lb,
+        options
+      );
+      lb
+          .ifi(ret.mangled != "v")
+            .ail('return _l1_return;')
+          .ife()
+            .ail("return val_null;")
+          .ifd()
+        .d()
+        .ail("}")
+        .ail('DEFINE_PRIM(${name}, ${args.length});');
+      tdef.fields.push({
+        pos: options.pos,
+        name: name,
+        kind: FVar(
+          TFunction(args.map(arg -> arg.haxeType), ret.haxeType),
+          macro neko.Lib.loadLazy($v{config.name}, $v{name}, $v{args.length})
+        ),
+        access: [APublic, AStatic],
+      });
+    }
     return fieldExpr(name);
   }
 
@@ -205,8 +269,10 @@ DEFINE_PRIM(_ammer_init, 2);');
         .ail(clType.type.l3l2(fn, "_l2_fn"))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
+        .ail("value _l1_fn_ref;")
+        .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail('${clType.type.l1Type} _l1_fn;')
-        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
+        .ail("_l1_fn = *(((_ammer_haxe_ref*)(int_val)val_data(_l1_fn_ref))->data);")
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
         .ail('value _neko_args[${args.length}] = {')
@@ -252,23 +318,13 @@ DEFINE_PRIM(_ammer_init, 2);');
 }
 
 @:allow(ammer.core.plat.Neko)
-class NekoMarshalSet extends BaseMarshalSet<
-  NekoMarshalSet,
+class NekoMarshal extends BaseMarshal<
+  NekoMarshal,
   NekoConfig,
   NekoLibraryConfig,
   NekoLibrary,
   NekoTypeMarshal
 > {
-  // TODO: ${config.internalPrefix}
-  static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
-    -> '$l2 = _ammer_core_registry_get((void*)$l1);';
-  static final MARSHAL_REGISTRY_REF = (l2:String)
-    -> '_ammer_core_registry_incref($l2);';
-  static final MARSHAL_REGISTRY_UNREF = (l2:String)
-    -> '_ammer_core_registry_decref($l2);';
-  static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
-    -> '$l1 = $l2->key;';
-
   static function baseExtend(
     base:BaseTypeMarshal,
     ?over:BaseTypeMarshal.BaseTypeMarshalOpt
@@ -291,36 +347,36 @@ class NekoMarshalSet extends BaseMarshalSet<
     };
   }
 
-  static final MARSHAL_VOID = BaseMarshalSet.baseVoid();
+  static final MARSHAL_VOID = BaseMarshal.baseVoid();
   public function void():NekoTypeMarshal return MARSHAL_VOID;
 
-  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {
+  static final MARSHAL_BOOL = baseExtend(BaseMarshal.baseBool(), {
     l1l2: (l1, l2) -> '$l2 = val_bool($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_bool($l2);',
   });
   public function bool():NekoTypeMarshal return MARSHAL_BOOL;
 
-  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshal.baseUint8(), {
     l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
   });
-  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {
+  static final MARSHAL_INT8 = baseExtend(BaseMarshal.baseInt8(), {
     l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
   });
-  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {
     l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
   });
-  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {
+  static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {
     l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
   });
-  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {
     l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
   });
-  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {
+  static final MARSHAL_INT32 = baseExtend(BaseMarshal.baseInt32(), {
     l1l2: (l1, l2) -> '$l2 = val_any_int($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_int32($l2);',
   });
@@ -331,14 +387,14 @@ class NekoMarshalSet extends BaseMarshalSet<
   public function uint32():NekoTypeMarshal return MARSHAL_UINT32;
   public function int32():NekoTypeMarshal return MARSHAL_INT32;
 
-  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {
     l1l2: (l1, l2) -> '$l2 = ((uint64_t)val_any_int(val_field($l1, _ammer_haxe_field_high)) << 32) | (uint32_t)val_any_int(val_field($l1, _ammer_haxe_field_low));',
     l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
 ((vobject*)$l1)->proto = _ammer_haxe_proto_int64;
 alloc_field($l1, _ammer_haxe_field_high, alloc_int32(((uint64_t)$l2 >> 32) & 0xFFFFFFFF));
 alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
   });
-  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(), {
+  static final MARSHAL_INT64  = baseExtend(BaseMarshal.baseInt64(), {
     l1l2: (l1, l2) -> '$l2 = ((int64_t)val_any_int(val_field($l1, _ammer_haxe_field_high)) << 32) | (uint32_t)val_any_int(val_field($l1, _ammer_haxe_field_low));',
     l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
 ((vobject*)$l1)->proto = _ammer_haxe_proto_int64;
@@ -348,11 +404,11 @@ alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
   public function uint64():NekoTypeMarshal return MARSHAL_UINT64;
   public function int64():NekoTypeMarshal return MARSHAL_INT64;
 
-  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {
+  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
   //   l1l2: (l1, l2) -> '$l2 = val_float($l1);',
   //   l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
   // });
-  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
     //l1l2: (l1, l2) -> '$l2 = val_float($l1);',
     l1l2: (l1, l2) -> '$l2 = val_number($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
@@ -360,7 +416,7 @@ alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
   public function float32():NekoTypeMarshal return throw "!";
   public function float64():NekoTypeMarshal return MARSHAL_FLOAT64;
 
-  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {
+  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
     l1l2: (l1, l2) -> '$l2 = val_string(val_field($l1, _ammer_haxe_field_string));',
     l2l1: (l2, l1) -> '$l1 = alloc_object(NULL);
 ((vobject*)$l1)->proto = _ammer_haxe_proto_string;
@@ -368,7 +424,7 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
   });
   public function string():NekoTypeMarshal return MARSHAL_STRING;
 
-  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+  static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
     haxeType: (macro : Dynamic),
     l1l2: (l1, l2) -> '$l2 = (uint8_t*)(int_val)val_data($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_bytes, (value)(int_val)($l2));',
@@ -378,10 +434,10 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
-    toBytesCopy:(self:Expr, size:Expr)->Expr,
-    fromBytesCopy:(bytes:Expr)->Expr,
-    toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
-    fromBytesRef:Null<(bytes:Expr)->Expr>,
+    toHaxeCopy:(self:Expr, size:Expr)->Expr,
+    fromHaxeCopy:(bytes:Expr)->Expr,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(bytes:Expr)->Expr>,
   } {
     var pathBytesRef = baseBytesRef(
       (macro : Int), macro 0,
@@ -389,28 +445,28 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
       macro {}
     );
     return {
-      toBytesCopy: (self, size) -> macro {
+      toHaxeCopy: (self, size) -> macro {
         var _self = ($self : Dynamic);
         var _size = ($size : Int);
-        var _data = ((untyped $e{library.fieldExpr("_ammer_neko_tobytescopy")}) : (Dynamic, Int) -> neko.NativeString)(
+        var _data = ((untyped $e{library.fieldExpr("_ammer_neko_tohaxecopy")}) : (Dynamic, Int) -> neko.NativeString)(
           _self,
           _size
         );
         haxe.io.Bytes.ofData(_data);
       },
-      fromBytesCopy: (bytes) -> macro {
+      fromHaxeCopy: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
-        var _ret = ((untyped $e{library.fieldExpr("_ammer_neko_frombytescopy")}) : (neko.NativeString, Int) -> Dynamic)(
+        var _ret = ((untyped $e{library.fieldExpr("_ammer_neko_fromhaxecopy")}) : (neko.NativeString, Int) -> Dynamic)(
           _bytes.getData(),
           _bytes.length
         );
         (_ret : Dynamic);
       },
 
-      toBytesRef: null,
-      fromBytesRef: (bytes) -> macro {
+      toHaxeRef: null,
+      fromHaxeRef: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
-        var _ret = ((untyped $e{library.fieldExpr("_ammer_neko_frombytesref")}) : (neko.NativeString) -> Dynamic)(
+        var _ret = ((untyped $e{library.fieldExpr("_ammer_neko_fromhaxeref")}) : (neko.NativeString) -> Dynamic)(
           _bytes.getData()
         );
         (@:privateAccess new $pathBytesRef(_bytes, _ret, 0));
@@ -425,12 +481,12 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
       library.abstractKinds[name] = true;
     }
     return {
-      type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+      type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
         haxeType: (macro : Dynamic),
         l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
         l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
       }),
-      typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+      typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
         haxeType: (macro : Dynamic),
         l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
         l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
@@ -444,19 +500,33 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
       library.lb.ail('DEFINE_KIND(_neko_abstract_kind_$name);');
       library.abstractKinds[name] = true;
     }
-    return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
       haxeType: (macro : Dynamic),
       l1l2: (l1, l2) -> '$l2 = (${element.l2Type}*)(int_val)val_data($l1);',
       l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$name, (value)(int_val)($l2));',
     });
   }
 
-  function haxePtrInternal(haxeType:ComplexType):NekoTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<NekoTypeMarshal> return baseHaxePtrInternal(
+    haxeType,
+    (macro : Dynamic),
+    macro null,
+    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
+    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
+    rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+    value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
+    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+  ).marshal;
+
+  function haxePtrInternalType(haxeType:ComplexType):NekoTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
+    haxeType: (macro : Dynamic),
+    l1Type: "_ammer_haxe_ref*",
+    l1l2: (l1, l2) -> '$l2 = (_ammer_haxe_ref*)(int_val)val_data($l1);',
+    l2l1: (l2, l1) -> 'if ($l2 == NULL) {
+  $l1 = val_null;
+} else {
+  $l1 = alloc_abstract(_neko_abstract_haxe_ref, (value)(int_val)($l2));
+}',
   });
 
   public function new(library:NekoLibrary) {

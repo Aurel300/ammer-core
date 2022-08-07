@@ -22,7 +22,7 @@ class Cpp extends Base<
   CppLibraryConfig,
   CppTypeMarshal,
   CppLibrary,
-  CppMarshalSet
+  CppMarshal
 > {
   public function new(config:CppConfig) {
     super("cpp-static", config);
@@ -55,24 +55,89 @@ class CppLibrary extends BaseLibrary<
   CppConfig,
   CppLibraryConfig,
   CppTypeMarshal,
-  CppMarshalSet
+  CppMarshal
 > {
   var lbHeader = new LineBuf();
   var nativeTypes:Map<String, {
     tdef:TypeDefinition,
     fields:Map<String, Bool>,
   }> = new Map();
+  var nativeTypesOther:Array<TypeDefinition> = [];
+  var haxeRefCt:ComplexType = null;
+
+  function pushNative(name:String, signature:ComplexType, pos:Position):Void {
+    tdef.fields.push({
+      pos: pos,
+      name: name,
+      meta: [{
+        pos: pos,
+        params: [macro $v{name}],
+        name: ":native",
+      }],
+      kind: TypeUtils.ffunCt(signature, macro throw 0),
+      access: [APrivate, AStatic],
+    });
+  }
 
   public function new(config:CppLibraryConfig) {
-    super(config, new CppMarshalSet(this));
-    boilerplate(
-      "void*",
-      "hx::Object*",
-      "",
-      // TODO: GC moving curr->key would break things (different hash bin)
-      "hx::GCAddRoot(&curr->key);",
-      "hx::GCRemoveRoot(&curr->key);"
-    );
+    super(config, new CppMarshal(this));
+
+    var native = typeDefCreate();
+    native.name = '${config.typeDefName}_NativeHaxeRef';
+    native.isExtern = true;
+    native.meta = [{
+      pos: config.pos,
+      params: [macro "_ammer_haxe_ref"],
+      name: ":native",
+    }];
+    nativeTypesOther.push(native);
+    haxeRefCt = TPath({
+      params: [TPType(TPath({
+        pack: config.typeDefPack,
+        name: native.name,
+      }))],
+      pack: ["cpp"],
+      name: "Pointer", // Star?
+    });
+
+    pushNative("_ammer_ref_create",   (macro : (Dynamic) -> $haxeRefCt), config.pos);
+    pushNative("_ammer_ref_delete",   (macro : ($haxeRefCt) -> Void), config.pos);
+    pushNative("_ammer_ref_getcount", (macro : ($haxeRefCt) -> Int), config.pos);
+    pushNative("_ammer_ref_setcount", (macro : ($haxeRefCt, Int) -> Void), config.pos);
+    pushNative("_ammer_ref_getvalue", (macro : ($haxeRefCt) -> Dynamic), config.pos);
+
+    lbHeader.ail('
+#pragma once
+typedef struct { ::Dynamic value; int32_t refcount; } _ammer_haxe_ref;
+_ammer_haxe_ref* _ammer_ref_create(::Dynamic value);
+void _ammer_ref_delete(_ammer_haxe_ref* ref);
+int32_t _ammer_ref_getcount(_ammer_haxe_ref* ref);
+void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc);
+::Dynamic _ammer_ref_getvalue(_ammer_haxe_ref* ref);
+');
+    lb.ail('
+_ammer_haxe_ref* _ammer_ref_create(::Dynamic value) {
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  ref->value = value;
+  ref->refcount = 0;
+  ::hx::GCAddRoot((hx::Object**)&ref->value);
+  return ref;
+}
+void _ammer_ref_delete(_ammer_haxe_ref* ref) {
+  ::hx::GCRemoveRoot((hx::Object**)&ref->value);
+  ref->value = nullptr;
+  ${config.freeFunction}(ref);
+}
+int32_t _ammer_ref_getcount(_ammer_haxe_ref* ref) {
+  return ref->refcount;
+}
+void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc) {
+  ref->refcount = rc;
+}
+::Dynamic _ammer_ref_getvalue(_ammer_haxe_ref* ref) {
+  return ref->value;
+} // TODO: get/set unnecessary, just read/write field directly on native?
+');
   }
 
   override function finalise(platConfig:CppConfig):Void {
@@ -93,6 +158,13 @@ class CppLibrary extends BaseLibrary<
     });
     for (nativeType in nativeTypes) {
       nativeType.tdef.meta.push({
+        pos: config.pos,
+        params: [macro $v{"#include \"" + headerPath + "\""}],
+        name: ":headerCode",
+      });
+    }
+    for (nativeType in nativeTypesOther) {
+      nativeType.meta.push({
         pos: config.pos,
         params: [macro $v{"#include \"" + headerPath + "\""}],
         name: ":headerCode",
@@ -197,8 +269,10 @@ class CppLibrary extends BaseLibrary<
         .ail(clType.type.l3l2(fn, "_l2_fn"))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .ail('${clType.type.l1Type} _l1_fn;')
-        .ail(clType.type.l2l1("_l2_fn", "_l1_fn"))
+        .ail("_ammer_haxe_ref* _l1_fn_ref;")
+        .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
+        .ail("::Dynamic _l1_fn;")
+        .ail("_l1_fn = _l1_fn_ref->value;")
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
         .ifi(clType.ret.mangled != "v")
@@ -246,23 +320,13 @@ class CppLibrary extends BaseLibrary<
 }
 
 @:allow(ammer.core.plat.Cpp)
-class CppMarshalSet extends BaseMarshalSet<
-  CppMarshalSet,
+class CppMarshal extends BaseMarshal<
+  CppMarshal,
   CppConfig,
   CppLibraryConfig,
   CppLibrary,
   CppTypeMarshal
 > {
-  // TODO: ${config.internalPrefix}
-  static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
-    -> '$l2 = _ammer_core_registry_get($l1.mPtr);';
-  static final MARSHAL_REGISTRY_REF = (l2:String)
-    -> '_ammer_core_registry_incref($l2);';
-  static final MARSHAL_REGISTRY_UNREF = (l2:String)
-    -> '_ammer_core_registry_decref($l2);';
-  static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
-    -> '$l1 = $l2->key;';
-
   static function baseExtend(
     base:BaseTypeMarshal,
     ?over:BaseTypeMarshal.BaseTypeMarshalOpt
@@ -284,18 +348,18 @@ class CppMarshalSet extends BaseMarshalSet<
     };
   }
 
-  static final MARSHAL_VOID = BaseMarshalSet.baseVoid();
+  static final MARSHAL_VOID = BaseMarshal.baseVoid();
   public function void():CppTypeMarshal return MARSHAL_VOID;
 
-  static final MARSHAL_BOOL = BaseMarshalSet.baseBool();
+  static final MARSHAL_BOOL = BaseMarshal.baseBool();
   public function bool():CppTypeMarshal return MARSHAL_BOOL;
 
-  static final MARSHAL_UINT8  = baseExtend(BaseMarshalSet.baseUint8(),  {arrayType: (macro : cpp.UInt8) });
-  static final MARSHAL_INT8   = baseExtend(BaseMarshalSet.baseInt8(),   {arrayType: (macro : cpp.Int8)  });
-  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {arrayType: (macro : cpp.UInt16)});
-  static final MARSHAL_INT16  = baseExtend(BaseMarshalSet.baseInt16(),  {arrayType: (macro : cpp.Int16) });
-  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {arrayType: (macro : cpp.UInt32)});
-  static final MARSHAL_INT32  = baseExtend(BaseMarshalSet.baseInt32(),  {arrayType: (macro : cpp.Int32) });
+  static final MARSHAL_UINT8  = baseExtend(BaseMarshal.baseUint8(),  {arrayType: (macro : cpp.UInt8) });
+  static final MARSHAL_INT8   = baseExtend(BaseMarshal.baseInt8(),   {arrayType: (macro : cpp.Int8)  });
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {arrayType: (macro : cpp.UInt16)});
+  static final MARSHAL_INT16  = baseExtend(BaseMarshal.baseInt16(),  {arrayType: (macro : cpp.Int16) });
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {arrayType: (macro : cpp.UInt32)});
+  static final MARSHAL_INT32  = baseExtend(BaseMarshal.baseInt32(),  {arrayType: (macro : cpp.Int32) });
   public function uint8():CppTypeMarshal return MARSHAL_UINT8;
   public function int8():CppTypeMarshal return MARSHAL_INT8;
   public function uint16():CppTypeMarshal return MARSHAL_UINT16;
@@ -303,20 +367,20 @@ class CppMarshalSet extends BaseMarshalSet<
   public function uint32():CppTypeMarshal return MARSHAL_UINT32;
   public function int32():CppTypeMarshal return MARSHAL_INT32;
 
-  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {arrayType: (macro : cpp.UInt64)});
-  static final MARSHAL_INT64  = baseExtend(BaseMarshalSet.baseInt64(),  {arrayType: (macro : cpp.Int64) });
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {arrayType: (macro : cpp.UInt64)});
+  static final MARSHAL_INT64  = baseExtend(BaseMarshal.baseInt64(),  {arrayType: (macro : cpp.Int64) });
   public function uint64():CppTypeMarshal return MARSHAL_UINT64;
   public function int64():CppTypeMarshal return MARSHAL_INT64;
 
-  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {arrayType: (macro : cpp.Float32)});
-  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {arrayType: (macro : cpp.Float64)});
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {arrayType: (macro : cpp.Float32)});
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {arrayType: (macro : cpp.Float64)});
   public function float32():CppTypeMarshal return MARSHAL_FLOAT32;
   public function float64():CppTypeMarshal return MARSHAL_FLOAT64;
 
-  static final MARSHAL_STRING = BaseMarshalSet.baseString();
+  static final MARSHAL_STRING = BaseMarshal.baseString();
   public function string():CppTypeMarshal return MARSHAL_STRING;
 
-  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {
+  static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
     haxeType: (macro : cpp.Pointer<cpp.UInt8>),
   });
   function bytesInternalType():CppTypeMarshal return MARSHAL_BYTES;
@@ -324,10 +388,10 @@ class CppMarshalSet extends BaseMarshalSet<
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
-    toBytesCopy:(self:Expr, size:Expr)->Expr,
-    fromBytesCopy:(bytes:Expr)->Expr,
-    toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
-    fromBytesRef:Null<(bytes:Expr)->Expr>,
+    toHaxeCopy:(self:Expr, size:Expr)->Expr,
+    fromHaxeCopy:(bytes:Expr)->Expr,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(bytes:Expr)->Expr>,
   } {
     var pathBytesRef = baseBytesRef(
       (macro : cpp.Pointer<cpp.UInt8>), macro null,
@@ -335,7 +399,7 @@ class CppMarshalSet extends BaseMarshalSet<
       macro {}
     );
     return {
-      toBytesCopy: (self, size) -> macro {
+      toHaxeCopy: (self, size) -> macro {
         var _self = ($self : cpp.Pointer<cpp.UInt8>);
         var _size = ($size : Int);
         var _ret = haxe.io.Bytes.alloc(_size); // TODO: does this zero unnecessarily?
@@ -346,7 +410,7 @@ class CppMarshalSet extends BaseMarshalSet<
         )};
         _ret;
       },
-      fromBytesCopy: (bytes) -> macro {
+      fromHaxeCopy: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
         var _ret = $e{alloc(macro _bytes.length)};
         $e{blit(
@@ -357,12 +421,12 @@ class CppMarshalSet extends BaseMarshalSet<
         _ret;
       },
 
-      toBytesRef: (self, size) -> macro {
+      toHaxeRef: (self, size) -> macro {
         var _self = ($self : cpp.Pointer<cpp.UInt8>);
         var _size = ($size : Int);
         haxe.io.Bytes.ofData(_self.toUnmanagedArray(_size));
       },
-      fromBytesRef: (bytes) -> macro {
+      fromHaxeRef: (bytes) -> macro {
         var _bytes = ($bytes : haxe.io.Bytes);
         var _ptr = cpp.Pointer.ofArray(_bytes.getData());
         (@:privateAccess new $pathBytesRef(_bytes, _ptr, 0));
@@ -392,10 +456,10 @@ class CppMarshalSet extends BaseMarshalSet<
       name: "Pointer", // Star?
     });
     return {
-      type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+      type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
         haxeType: haxeType,
       }),
-      typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+      typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
         haxeType: haxeType,
       }),
     };
@@ -403,7 +467,7 @@ class CppMarshalSet extends BaseMarshalSet<
 
   function arrayPtrInternalType(element:CppTypeMarshal):CppTypeMarshal {
     var elType = element.arrayType != null ? element.arrayType : element.haxeType;
-    return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
       haxeType: (macro : cpp.Pointer<$elType>),
     });
   }
@@ -535,15 +599,26 @@ class CppMarshalSet extends BaseMarshalSet<
   }
   */
 
-  function haxePtrInternal(haxeType:ComplexType):CppTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
-    l1Type: "::Dynamic",
-    l2Type: '${library.config.internalPrefix}registry_node*',
-    l1l2: MARSHAL_REGISTRY_GET_NODE,
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2l3: BaseMarshalSet.MARSHAL_CONVERT_DIRECT, // TODO: cast ...
-    l3l2: (l3, l2) -> '$l2 = (${library.config.internalPrefix}registry_node*)$l3;',
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: MARSHAL_REGISTRY_GET_KEY,
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<CppTypeMarshal> {
+    var res = baseHaxePtrInternal(
+      haxeType,
+      library.haxeRefCt,
+      macro null,
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
+      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+      value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+    );
+    library.nativeTypesOther.push(res.tdef);
+    return res.marshal;
+  }
+
+  function haxePtrInternalType(haxeType:ComplexType):CppTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
+    haxeType: library.haxeRefCt,
+    arrayType: (macro : cpp.Star<cpp.Void>),
+    l1l2: BaseMarshal.MARSHAL_CONVERT_CAST("void*"),
+    l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("_ammer_haxe_ref*"),
   });
 
   public function new(library:CppLibrary) {

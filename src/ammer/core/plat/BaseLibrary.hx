@@ -13,20 +13,20 @@ abstract class BaseLibrary<
     TConfig,
     TLibraryConfig,
     TTypeMarshal,
-    TMarshalSet
+    TMarshal
   >,
   TConfig:BaseConfig,
   TLibraryConfig:LibraryConfig,
   TTypeMarshal:BaseTypeMarshal,
-  TMarshalSet:BaseMarshalSet<
-    TMarshalSet,
+  TMarshal:BaseMarshal<
+    TMarshal,
     TConfig,
     TLibraryConfig,
     TSelf,
     TTypeMarshal
   >
 > {
-  public var marshal:TMarshalSet;
+  public var marshal:TMarshal;
 
   var config:TLibraryConfig;
   var tdef:TypeDefinition;
@@ -35,7 +35,7 @@ abstract class BaseLibrary<
   var functionNames:Map<String, Int> = new Map();
   var finalised = false;
 
-  function new(config:TLibraryConfig, marshal:TMarshalSet) {
+  function new(config:TLibraryConfig, marshal:TMarshal) {
     this.marshal = marshal;
     this.config = config;
     if (config.pos == null) config.pos = Context.currentPos();
@@ -54,98 +54,6 @@ abstract class BaseLibrary<
     for (tdef in tdefs) {
       Context.defineType(tdef); // TODO: moduleDependency arg
     }
-  }
-
-  function boilerplate(
-    ctxType:String,
-    keyType:String,
-    registryNode:String,
-    root:String,
-    unroot:String
-  ):String {
-    // TODO: ctx might need to be per node (multi-threading ...)
-    final BINS = 128;
-    final P = '${config.internalPrefix}registry';
-    addCode('
-// ammer core boilerplate
-static size_t ${P}_hash(size_t key) {
-  // taken from https://gist.github.com/badboy/6267743#64-bit-mix-functions
-  // (by Thomas Wang)
-  key = (~key) + (key << 21); // key = (key << 21) - key - 1;
-  key = key ^ (key >> 24);
-  key = (key + (key << 3)) + (key << 8); // key * 265
-  key = key ^ (key >> 14);
-  key = (key + (key << 2)) + (key << 4); // key * 21
-  key = key ^ (key >> 28);
-  key = key + (key << 31);
-  return key % $BINS;
-}
-typedef struct ${P}_node_s {
-  $keyType key;
-  struct ${P}_node_s* next;
-  int ref_count;
-  $registryNode
-} ${P}_node;
-static struct {
-  $ctxType ctx;
-  ${P}_node null_node;
-  ${P}_node* bins[$BINS];
-} ${P};
-static ${P}_node* ${P}_get($keyType key) {
-  if (key == NULL) return &${P}.null_node;
-  size_t bin = ${P}_hash((size_t)key);
-  ${P}_node** next_ptr = &${P}.bins[bin];
-  ${P}_node* curr = *next_ptr;
-  while (curr != NULL) {
-    if (curr->key == key) {
-      return curr;
-    }
-    next_ptr = &curr->next;
-    curr = *next_ptr;
-  }
-  curr = (${P}_node*)${config.callocFunction}(1, sizeof(${P}_node));
-  curr->key = key;
-  curr->ref_count = 0;
-  *next_ptr = curr;
-  return curr;
-}
-static void ${P}_incref(${P}_node* curr) {
-  if (curr == NULL || curr == &${P}.null_node) return;
-  if (curr->ref_count < 0) {
-    abort();
-    //puts("warning: ref_count < 0");
-  }
-  if (curr->ref_count == 0) {
-    $root
-  }
-  curr->ref_count++;
-  return;
-}
-static void ${P}_decref(${P}_node* curr) {
-  if (curr == NULL || curr == &${P}.null_node) return;
-  curr->ref_count--;
-  if (curr->ref_count < 0) {
-    abort();
-    //printf("warning: decref ref_count < 0 for %p (%p)\\n", curr, curr->key);
-  }
-  if (curr->ref_count == 0) {
-    size_t bin = ${P}_hash((size_t)curr->key);
-    ${P}_node** next_ptr = &${P}.bins[bin];
-    ${P}_node* curr_cmp = *next_ptr;
-    while (curr_cmp != NULL) {
-      if (curr == curr_cmp) {
-        *next_ptr = curr->next;
-        $unroot
-        ${config.freeFunction}(curr);
-      }
-      next_ptr = &curr_cmp->next;
-      curr_cmp = *next_ptr;
-    }
-  }
-}
-// ammer core boilerplate end
-');
-    return P;
   }
 
   function mangleFunction(

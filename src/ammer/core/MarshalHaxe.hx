@@ -4,13 +4,10 @@ package ammer.core;
 
 import haxe.macro.Expr;
 
-typedef MarshalClosure<TTypeMarshal> = {
+typedef MarshalHaxe<TTypeMarshal> = {
   type:TTypeMarshal,
   create:(val:Expr)->Expr,
   restore:(handle:Expr)->Expr,
-  ret:TTypeMarshal,
-  args:Array<TTypeMarshal>,
-  // TODO: move call generator here?
 };
 
 #end

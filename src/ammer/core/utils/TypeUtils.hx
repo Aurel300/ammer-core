@@ -3,6 +3,10 @@ package ammer.core.utils;
 import haxe.macro.Expr;
 
 class TypeUtils {
+  public static function accessTdef(t:TypeDefinition):Expr {
+    return macro $p{t.pack.concat([t.name])};
+  }
+
   public static function complexTypeToPath(t:ComplexType):TypePath {
     return (switch (t) {
       case TPath(tp): tp;

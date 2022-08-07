@@ -14,10 +14,9 @@ class TestStructs extends TestBase {
   function testPrimitives():Void {
     // TODO: test all primitive types? see arrays
     var typeNative = cType("int field_int;");
-    var type = marshal.structPtr(typeNative, [{
-      name: "field_int",
-      type: marshal.int32(),
-    }]);
+    var type = marshal.structPtr(typeNative, [
+      marshal.fieldRef("field_int", marshal.int32()),
+    ]);
     scope(() -> {
       run(macro var struct = $e{type.alloc});
       run(type.fieldSet["field_int"](macro struct, macro 42));
@@ -53,21 +52,22 @@ class TestStructs extends TestBase {
   }
 
   function testOwned():Void {
+    var typeHaxe = marshal.haxePtr((macro : ExampleType));
     var typeNative = cType("void* field_haxe;");
-    var type = marshal.structPtr(typeNative, [{
-      name: "field_haxe",
-      type: marshal.haxePtr((macro : ExampleType)),
-      owned: true,
-    }]);
+    var type = marshal.structPtr(typeNative, [
+      marshal.fieldRef("field_haxe", typeHaxe.type),
+    ]);
 
     scope(() -> {
       run(macro function nested(target):Void {
-        $e{type.fieldSet["field_haxe"](macro target, macro new ExampleType(42))};
+        var ref = $e{typeHaxe.create(macro new ExampleType(42))};
+        ref.incref();
+        $e{type.fieldSet["field_haxe"](macro target, macro ref.handle)};
       });
       run(macro var struct = $e{type.alloc});
       run(macro nested(struct));
       run(gcMajor);
-      assertEq(macro $e{type.fieldGet["field_haxe"](macro struct)}.val, macro 42);
+      assertEq(macro $e{typeHaxe.restore(type.fieldGet["field_haxe"](macro struct))}.value.val, macro 42);
       run(type.free(macro struct));
     });
   }
@@ -75,17 +75,13 @@ class TestStructs extends TestBase {
   function testNested():Void {
     var typeInnerNative = cType("int val;");
     var typeOuterNative = cType('${typeInnerNative} embedded; ${typeInnerNative}* ptr;');
-    var typeInner = marshal.structPtr(typeInnerNative, [{
-      name: "val",
-      type: marshal.int32(),
-    }]);
-    var typeOuter = marshal.structPtr(typeOuterNative, [{
-      name: "embedded",
-      type: typeInner.typeDeref,
-    }, {
-      name: "ptr",
-      type: typeInner.type,
-    }]);
+    var typeInner = marshal.structPtr(typeInnerNative, [
+      marshal.fieldRef("val", marshal.int32()),
+    ]);
+    var typeOuter = marshal.structPtr(typeOuterNative, [
+      marshal.fieldRef("embedded", typeInner.typeDeref),
+      marshal.fieldRef("ptr", typeInner.type),
+    ]);
     var typeBoxInt = marshal.boxPtr(marshal.int32());
 
     scope(() -> {

@@ -12,6 +12,7 @@ typedef MarshalStruct<TTypeMarshal> = {
   fieldRef:Map<String, (self:Expr)->Expr>,
   alloc:Null<Expr>,
   free:Null<(self:Expr)->Expr>,
+  clone:Null<(self:Expr)->Expr>,
   nullPtr:Null<Expr>,
 };
 

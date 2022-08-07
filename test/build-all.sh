@@ -2,7 +2,8 @@
 
 rm -rf bin/cpp-static/src/ammer/externs
 
-haxe build-cpp-static.hxml \
+true \
+    && haxe build-cpp-static.hxml \
     && haxe build-cs.hxml \
     && haxe build-hl.hxml \
     && haxe build-hlc.hxml \

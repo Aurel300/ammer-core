@@ -1,6 +1,7 @@
 #!/bin/bash
 
-echo "cpp-static ... " && ./test-cpp-static.sh \
+true \
+    && echo "cpp-static ... " && ./test-cpp-static.sh \
     && echo "cs ... " && ./test-cs.sh \
     && echo "hl ... " && ./test-hl.sh \
     && echo "hlc ... " && ./test-hlc.sh \

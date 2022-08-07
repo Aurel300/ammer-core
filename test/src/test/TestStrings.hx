@@ -8,6 +8,7 @@ class TestStrings extends TestBase {
     var f = lib.addFunction(
       marshal.string(),
       [marshal.string()],
+      // TODO: non-BMP Unicode on Java fails (modified UTF-8 encoding...)
       //'_return = strdup(strcmp(_arg0, "hello\\U0001F404") == 0 ? "good" : "bad");'
       '_return = strdup(strcmp(_arg0, "hello") == 0 ? "good" : "bad");'
     );

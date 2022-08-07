@@ -27,7 +27,7 @@ class Cs extends Base<
   CsLibraryConfig,
   CsTypeMarshal,
   CsLibrary,
-  CsMarshalSet
+  CsMarshal
 > {
   public function new(config:CsConfig) {
     super("cs", config);
@@ -44,50 +44,25 @@ class CsLibrary extends BaseLibrary<
   CsConfig,
   CsLibraryConfig,
   CsTypeMarshal,
-  CsMarshalSet
+  CsMarshal
 > {
+  // TODO: move to base?
+  var haxeRefTdefs:Map<String, TypeDefinition> = [];
+
   var lbImport = new LineBuf();
 
   public function new(config:CsLibraryConfig) {
-    super(config, new CsMarshalSet(this));
+    super(config, new CsMarshal(this));
     tdef.meta.push({
       pos: config.pos,
       name: ":nativeGen",
     });
     lb
       .ail("void** _ammer_delegates;");
-    // C# version of boilerplate
-    lbImport
-      .ail("static int _ammer_refctr = 1;")
-      .ail("static System.Collections.Generic.Dictionary<object, int> _ammer_refs_handle "
-        + "= new System.Collections.Generic.Dictionary<object, int>();")
-      .ail("static System.Collections.Generic.Dictionary<object, int> _ammer_refs_counter "
-        + "= new System.Collections.Generic.Dictionary<object, int>();")
-      .ail("static System.Collections.Generic.Dictionary<int, object> _ammer_refs_reverse "
-        + "= new System.Collections.Generic.Dictionary<int, object>();")
-      .ail("private static int _ammer_incref(object val) {
-  if (!_ammer_refs_handle.ContainsKey(val)) {
-    _ammer_refs_handle[val] = _ammer_refctr;
-    _ammer_refs_counter[val] = 1;
-    _ammer_refs_reverse[_ammer_refctr] = val;
-    return _ammer_refctr++;
-  }
-  _ammer_refs_counter[val]++;
-  return _ammer_refs_handle[val];
-}
-private static void _ammer_decref(object val) {
-  if (_ammer_refs_handle.ContainsKey(val)) {
-    if (--_ammer_refs_counter[val] <= 0) {
-      _ammer_refs_reverse.Remove(_ammer_refs_handle[val]);
-      _ammer_refs_handle.Remove(val);
-      _ammer_refs_counter.Remove(val);
-    }
-  }
-}");
-    lb.ail('void _ammer_cs_tobytescopy(uint8_t* data, int size, uint8_t* res, int res_size) {
+    lb.ail('void _ammer_cs_tohaxecopy(uint8_t* data, int size, uint8_t* res, int res_size) {
   ${config.memcpyFunction}(res, data, size);
 }
-uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
+uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
   uint8_t* res = (uint8_t*)${config.mallocFunction}(size);
   ${config.memcpyFunction}(res, data, size);
   return res;
@@ -96,10 +71,10 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
       .ai("[System.Runtime.InteropServices.DllImport(")
         // TODO: OS dependent
         .al('"${config.name}.dylib")]')
-      .ail("public static extern void _ammer_cs_tobytescopy(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] byte[] res, int res_size);");
+      .ail("public static extern void _ammer_cs_tohaxecopy(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] byte[] res, int res_size);");
     tdef.fields.push({
       pos: config.pos,
-      name: "_ammer_cs_tobytescopy",
+      name: "_ammer_cs_tohaxecopy",
       kind: TypeUtils.ffunCt((macro : (cs.system.IntPtr, Int, haxe.io.BytesData, Int) -> Void)),
       access: [APrivate, AStatic, AExtern],
     });
@@ -107,10 +82,10 @@ uint8_t* _ammer_cs_frombytescopy(uint8_t* data, int size) {
       .ai("[System.Runtime.InteropServices.DllImport(")
         // TODO: OS dependent
         .al('"${config.name}.dylib")]')
-      .ail("public static extern System.IntPtr _ammer_cs_frombytescopy(byte[] data, int size);");
+      .ail("public static extern System.IntPtr _ammer_cs_fromhaxecopy(byte[] data, int size);");
     tdef.fields.push({
       pos: config.pos,
-      name: "_ammer_cs_frombytescopy",
+      name: "_ammer_cs_fromhaxecopy",
       kind: TypeUtils.ffunCt((macro : (haxe.io.BytesData, Int) -> cs.system.IntPtr)),
       access: [APrivate, AStatic, AExtern],
     });
@@ -146,10 +121,6 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
     super.finalise(platConfig);
   }
 
-  static function needsHandle(t:CsTypeMarshal):Bool {
-    return t.l2ref == CsMarshalSet.MARSHAL_REGISTRY_REF;
-  }
-
   public function addNamedFunction(
     name:String,
     ret:CsTypeMarshal,
@@ -157,10 +128,8 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
     code:String,
     options:FunctionOptions
   ):Expr {
-    var needsHandles = args.exists(needsHandle) || needsHandle(ret);
-    var nameNative = needsHandles ? '${name}_internal' : name;
     lb
-      .ai('${ret.l1Type} ${nameNative}(')
+      .ai('${ret.l1Type} $name(')
       .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx}', ", ")
       .a(args.length == 0 ? "void" : "")
       .al(") {")
@@ -187,43 +156,15 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
         // TODO: send strings as byte arrays to avoid this...
         .a("CharSet = System.Runtime.InteropServices.CharSet.Ansi")
       .al(")]")
-      .ai('public static extern ${ret.csType} ${nameNative}(')
+      .ai('public static extern ${ret.csType} $name(')
       .mapi(args, (idx, arg) -> '${arg.csType} arg${idx}', ", ")
       .al(");");
-    if (needsHandles) {
-      var handleArgs = [ for (i in 0...args.length) if (needsHandle(args[i])) i ];
-      lbImport
-        .ai('public static ${needsHandle(ret) ? "object" : ret.csType} ${name}(')
-        .mapi(args, (idx, arg) -> '${needsHandle(arg) ? "object" : arg.csType} arg${idx}', ", ")
-        .al(") {")
-        .i()
-          .lmap(handleArgs, idx -> 'int handle_arg${idx} = _ammer_incref(arg${idx});')
-          .ifi(needsHandle(ret))
-            .ai('int handle_ret = ${nameNative}(')
-            .mapi(args, (idx, arg) -> needsHandle(arg)
-              ? 'handle_arg${idx}'
-              : 'arg${idx}', ", ")
-            .al(");")
-            .lmap(handleArgs, idx -> '_ammer_decref(arg${idx});')
-            .ail("return _ammer_refs_reverse[handle_ret];")
-          .ife()
-            .ai(ret == CsMarshalSet.MARSHAL_VOID ? "" : "return ")
-            .a('${nameNative}(')
-            .mapi(args, (idx, arg) -> needsHandle(arg)
-              ? 'handle_arg${idx}'
-              : 'arg${idx}', ", ")
-            .al(");")
-            .lmap(handleArgs, idx -> '_ammer_decref(arg${idx});')
-          .ifd()
-        .d()
-        .ail("}");
-    }
     tdef.fields.push({
       pos: options.pos,
       name: name,
       kind: TypeUtils.ffun(
-        args.map(arg -> needsHandle(arg) ? (macro : Dynamic) : arg.haxeType),
-        needsHandle(ret) ? (macro : Dynamic) : ret.haxeType
+        args.map(arg -> arg.haxeType),
+        ret.haxeType
       ),
       access: [APublic, AStatic, AExtern],
     });
@@ -247,26 +188,22 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
         .ai('private delegate ${clType.ret.csType} ClosureDelegate$delegateId(int handle_cl')
         .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
         .al(");");
-      lbImport
-        .ai('private static ${clType.ret.csType} ImplClosureDelegate$delegateId(int handle_cl')
-        .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
-        .al(") {")
-        .i()
-          .ail("object _cs_undef = global::haxe.lang.Runtime.undefined;")
-          // TODO: handle refs for args (and ret) here as well?
-          .ail("global::haxe.lang.Function cl = (global::haxe.lang.Function)_ammer_refs_reverse[handle_cl];")
-          .ifi(clType.ret.mangled != "v")
-            .ai('return (${clType.ret.csType})')
-          .ife()
-            .ai("")
-          .ifd()
-          .a('cl.__hx_invoke${clType.args.length}_${clType.ret.primitive ? "f" : "o"}(')
-          .mapi(clType.args, (idx, arg) -> clType.args[idx].primitive
-            ? '(double)arg${idx}, _cs_undef'
-            : '0.0, arg${idx}', ", ")
-          .al(");")
-        .d()
-        .ail("}");
+      var callArgs = [ for (i in 0...clType.args.length) macro $i{'arg${i + 1}'} ];
+      var clAccess = TypeUtils.accessTdef(haxeRefTdefs[clType.type.mangled]);
+      tdef.fields.push({
+        pos: config.pos,
+        name: 'ImplClosureDelegate$delegateId',
+        kind: TypeUtils.ffun(
+          [(macro : Int)].concat(clType.args.map(arg -> arg.haxeType)),
+          clType.ret.haxeType,
+          macro {
+            // TODO: handle refs for args (and ret)
+            var arg0 = (@:privateAccess $clAccess.handles)[arg0].value;
+            return arg0($a{callArgs});
+          }
+        ),
+        access: [APrivate, AStatic],
+      });
     }
     // TODO: ref/unref args?
     return new LineBuf()
@@ -326,18 +263,13 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
 }
 
 @:allow(ammer.core.plat.Cs)
-class CsMarshalSet extends BaseMarshalSet<
-  CsMarshalSet,
+class CsMarshal extends BaseMarshal<
+  CsMarshal,
   CsConfig,
   CsLibraryConfig,
   CsLibrary,
   CsTypeMarshal
 > {
-  // The implementation is a noop but the identity of the function is used to
-  // identify when ref/unref should happen in a C# wrapper.
-  static final MARSHAL_REGISTRY_REF = (_:String) -> "";
-  static final MARSHAL_REGISTRY_UNREF = (_:String) -> "";
-
   static function baseExtend(
     base:BaseTypeMarshal,
     ext:CsTypeMarshalExt,
@@ -362,35 +294,37 @@ class CsMarshalSet extends BaseMarshalSet<
     };
   }
 
-  static final MARSHAL_VOID = baseExtend(BaseMarshalSet.baseVoid(), {primitive: true, csType: "void"});
+  static final MARSHAL_VOID = baseExtend(BaseMarshal.baseVoid(), {primitive: true, csType: "void"});
   public function void():CsTypeMarshal return MARSHAL_VOID;
 
-  static final MARSHAL_BOOL = baseExtend(BaseMarshalSet.baseBool(), {primitive: true, csType: "bool"});
+  static final MARSHAL_BOOL = baseExtend(BaseMarshal.baseBool(), {primitive: true, csType: "bool"});
   public function bool():CsTypeMarshal return MARSHAL_BOOL;
 
-  static final MARSHAL_UINT8 = baseExtend(BaseMarshalSet.baseUint8(), {primitive: true, csType: "byte"}, {
+  // TODO: using the correct `csType`s causes issues because the generated
+  //       functions cannot be called with `Int` variables
+  static final MARSHAL_UINT8 = baseExtend(BaseMarshal.baseUint8(), {primitive: true, csType: "int" /*csType: "byte"*/}, {
     arrayType: (macro : cs.types.UInt8),
   });
-  static final MARSHAL_INT8 = baseExtend(BaseMarshalSet.baseInt8(), {primitive: true, csType: "sbyte"}, {
+  static final MARSHAL_INT8 = baseExtend(BaseMarshal.baseInt8(), {primitive: true, csType: "int" /*csType: "sbyte"*/}, {
     arrayType: (macro : cs.types.Int8),
   });
-  static final MARSHAL_UINT16 = baseExtend(BaseMarshalSet.baseUint16(), {primitive: true, csType: "ushort"}, {
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {primitive: true, csType: "int" /*csType: "ushort"*/}, {
     arrayType: (macro : cs.types.UInt16),
   });
-  static final MARSHAL_INT16 = baseExtend(BaseMarshalSet.baseInt16(), {primitive: true, csType: "short"}, {
+  static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {primitive: true, csType: "int" /*csType: "short"*/}, {
     arrayType: (macro : cs.types.Int16),
   });
-  static final MARSHAL_UINT32 = baseExtend(BaseMarshalSet.baseUint32(), {
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {
     // csType: "uint",
     primitive: true,
     csType: "int", // see Haxe#5258
   }, {
     arrayType: (macro : Int),
   });
-  static final MARSHAL_INT32 = baseExtend(BaseMarshalSet.baseInt32(), {primitive: true, csType: "int"}, {
+  static final MARSHAL_INT32 = baseExtend(BaseMarshal.baseInt32(), {primitive: true, csType: "int"}, {
     arrayType: (macro : Int),
   });
-  static final MARSHAL_UINT64 = baseExtend(BaseMarshalSet.baseUint64(), {
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {
     // csType: "ulong",
     primitive: true,
     csType: "long", // same as Haxe#5258?
@@ -398,7 +332,7 @@ class CsMarshalSet extends BaseMarshalSet<
     // arrayType: (macro: cs.types.UInt64)
     arrayType: (macro: cs.types.Int64)
   });
-  static final MARSHAL_INT64 = baseExtend(BaseMarshalSet.baseInt64(), {primitive: true, csType: "long"}, {
+  static final MARSHAL_INT64 = baseExtend(BaseMarshal.baseInt64(), {primitive: true, csType: "long"}, {
     arrayType: (macro : cs.types.Int64),
   });
   public function uint8():CsTypeMarshal return MARSHAL_UINT8;
@@ -410,20 +344,20 @@ class CsMarshalSet extends BaseMarshalSet<
   public function uint64():CsTypeMarshal return MARSHAL_UINT64;
   public function int64():CsTypeMarshal return MARSHAL_INT64;
 
-  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshalSet.baseFloat32(), {primitive: true, csType: "float"}, {
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {primitive: true, csType: "float"}, {
     arrayType: (macro : Single),
   });
-  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshalSet.baseFloat64(), {primitive: true, csType: "double"}, {
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {primitive: true, csType: "double"}, {
     arrayType: (macro : Float),
   });
   public function float32():CsTypeMarshal return MARSHAL_FLOAT32;
   public function float64():CsTypeMarshal return MARSHAL_FLOAT64;
 
   // TODO: MarshalAs for strings? https://docs.microsoft.com/en-us/dotnet/standard/native-interop/type-marshaling
-  static final MARSHAL_STRING = baseExtend(BaseMarshalSet.baseString(), {primitive: false, csType: "string"});
+  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {primitive: false, csType: "string"});
   public function string():CsTypeMarshal return MARSHAL_STRING;
 
-  static final MARSHAL_BYTES = baseExtend(BaseMarshalSet.baseBytesInternal(), {primitive: false, csType: "System.IntPtr"}, {
+  static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {primitive: false, csType: "System.IntPtr"}, {
     haxeType: (macro : cs.system.IntPtr),
     // l1l2: (l1, l2) -> '$l2 = (uint8_t*)$l1;',
     // l2l1: (l2, l1) -> '$l1 = (uint8_t*)$l2;',
@@ -433,10 +367,10 @@ class CsMarshalSet extends BaseMarshalSet<
     alloc:(size:Expr)->Expr,
     blit:(source:Expr, srcpos:Expr, dest:Expr, dstpost:Expr, size:Expr)->Expr
   ):{
-    toBytesCopy:(self:Expr, size:Expr)->Expr,
-    fromBytesCopy:(bytes:Expr)->Expr,
-    toBytesRef:Null<(self:Expr, size:Expr)->Expr>,
-    fromBytesRef:Null<(bytes:Expr)->Expr>,
+    toHaxeCopy:(self:Expr, size:Expr)->Expr,
+    fromHaxeCopy:(bytes:Expr)->Expr,
+    toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
+    fromHaxeRef:Null<(bytes:Expr)->Expr>,
   } {
     var pathBytesRef = baseBytesRef(
       (macro : cs.system.IntPtr), macro null,
@@ -444,20 +378,20 @@ class CsMarshalSet extends BaseMarshalSet<
       macro handle.Free()
     );
     return {
-      toBytesCopy: (self, size) -> macro {
+      toHaxeCopy: (self, size) -> macro {
         var _self:cs.system.IntPtr = $self;
         var _size:Int = $size;
         var _res:haxe.io.BytesData = new cs.NativeArray(_size);
-        (@:privateAccess $e{library.fieldExpr("_ammer_cs_tobytescopy")})(_self, _size, _res, _size);
+        (@:privateAccess $e{library.fieldExpr("_ammer_cs_tohaxecopy")})(_self, _size, _res, _size);
         haxe.io.Bytes.ofData(_res);
       },
-      fromBytesCopy: (bytes) -> macro {
+      fromHaxeCopy: (bytes) -> macro {
         var _bytes:haxe.io.Bytes = $bytes;
-        (@:privateAccess $e{library.fieldExpr("_ammer_cs_frombytescopy")})(_bytes.getData(), _bytes.length);
+        (@:privateAccess $e{library.fieldExpr("_ammer_cs_fromhaxecopy")})(_bytes.getData(), _bytes.length);
       },
 
-      toBytesRef: null,
-      fromBytesRef: (bytes) -> macro {
+      toHaxeRef: null,
+      fromHaxeRef: (bytes) -> macro {
         var _bytes:haxe.io.Bytes = $bytes;
         var handle = cs.system.runtime.interopservices.GCHandle.Alloc(
           _bytes.getData(),
@@ -470,13 +404,13 @@ class CsMarshalSet extends BaseMarshalSet<
   }
 
   function opaqueInternal(name:String):MarshalOpaque<CsTypeMarshal> return {
-    type: baseExtend(BaseMarshalSet.baseOpaquePtrInternal(name), {
+    type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
       primitive: false,
       csType: "System.IntPtr",
     }, {
       haxeType: (macro : cs.system.IntPtr),
     }),
-    typeDeref: baseExtend(BaseMarshalSet.baseOpaqueDirectInternal(name), {
+    typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
       primitive: false,
       csType: "System.IntPtr",
     }, {
@@ -486,7 +420,7 @@ class CsMarshalSet extends BaseMarshalSet<
 
   function arrayPtrInternalType(element:CsTypeMarshal):CsTypeMarshal {
     var elType = element.arrayType != null ? element.arrayType : element.haxeType;
-    return baseExtend(BaseMarshalSet.baseArrayPtrInternal(element), {
+    return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
       primitive: false,
       csType: "System.IntPtr",
     }, {
@@ -583,6 +517,7 @@ uint8_t* $copyFrom(uint8_t* data, int size) {
     };
   }
 
+  /*
   override function structPtrInternalFieldSetter(
     structName:String,
     type:CsTypeMarshal,
@@ -631,11 +566,11 @@ return old_val;';
     }
     return super.structPtrInternalFieldSetter(structName, type, field);
   }
-
+  */
+  /*
   override function arrayPtrInternalSetter(
     type:CsTypeMarshal,
-    element:CsTypeMarshal,
-    owned:Bool
+    element:CsTypeMarshal
   ):(self:Expr, index:Expr, val:Expr)->Expr {
     if (owned) {
       var code = 'int old_val = (int)_arg0[_arg1];
@@ -679,18 +614,39 @@ return old_val;';
     }
     return super.arrayPtrInternalSetter(type, element, owned);
   }
+*/
 
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<CsTypeMarshal> {
+    var ret = baseHaxePtrInternal(
+      haxeType,
+      (macro : Int),
+      macro 0,
+      macro handles[handle].value,
+      macro handles[handle].count,
+      rc -> macro handles[handle].count = $rc,
+      value -> macro {
+        var h = handleCtr++; // TODO: atomic?
+        handles[h] = {value: $value, count: 0};
+        h;
+      },
+      macro handles.remove(handle),
+      (macro class {
+        static var handles:Map<Int, {value:$haxeType, count:Int}> = [];
+        static var handleCtr = 1; // TODO: overflow
+      }).fields
+    );
+    library.haxeRefTdefs[ret.mangled] = ret.tdef;
+    return ret.marshal;
+  }
 
-  function haxePtrInternal(haxeType:ComplexType):CsTypeMarshal return baseExtend(BaseMarshalSet.baseHaxePtrInternal(haxeType), {
-    primitive: false,
+  function haxePtrInternalType(haxeType:ComplexType):CsTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
+    primitive: false, // ?
     csType: "int",
   }, {
     haxeType: (macro : Int),
     l1Type: "int32_t",
-    l1l2: BaseMarshalSet.MARSHAL_CONVERT_CAST("void*"),
-    l2ref: MARSHAL_REGISTRY_REF,
-    l2unref: MARSHAL_REGISTRY_UNREF,
-    l2l1: BaseMarshalSet.MARSHAL_CONVERT_CAST("int32_t"),
+    l1l2: BaseMarshal.MARSHAL_CONVERT_INT_TO_PTR,
+    l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("int32_t"),
   });
 
   public function new(library:CsLibrary) {
