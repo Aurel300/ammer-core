@@ -38,7 +38,7 @@ class Lua extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Lua)
+@:allow(ammer.core.plat)
 class LuaLibrary extends BaseLibrary<
   LuaLibrary,
   LuaConfig,
@@ -278,7 +278,7 @@ lua_gettable(_lua_state, -2);')
   }
 }
 
-@:allow(ammer.core.plat.Lua)
+@:allow(ammer.core.plat)
 class LuaMarshal extends BaseMarshal<
   LuaMarshal,
   LuaConfig,

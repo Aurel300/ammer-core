@@ -43,7 +43,7 @@ class Python extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Python)
+@:allow(ammer.core.plat)
 class PythonLibrary extends BaseLibrary<
   PythonLibrary,
   PythonConfig,
@@ -326,7 +326,7 @@ PyMODINIT_FUNC PyInit_${config.name}(void) {
   }
 }
 
-@:allow(ammer.core.plat.Python)
+@:allow(ammer.core.plat)
 class PythonMarshal extends BaseMarshal<
   PythonMarshal,
   PythonConfig,

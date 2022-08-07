@@ -49,7 +49,7 @@ class Hashlink extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Hashlink)
+@:allow(ammer.core.plat)
 class HashlinkLibrary extends BaseLibrary<
   HashlinkLibrary,
   HashlinkConfig,
@@ -272,7 +272,7 @@ DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));');
   }
 }
 
-@:allow(ammer.core.plat.Hashlink)
+@:allow(ammer.core.plat)
 class HashlinkMarshal extends BaseMarshal<
   HashlinkMarshal,
   HashlinkConfig,

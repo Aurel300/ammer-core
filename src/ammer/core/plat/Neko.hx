@@ -39,7 +39,7 @@ class Neko extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Neko)
+@:allow(ammer.core.plat)
 class NekoLibrary extends BaseLibrary<
   NekoLibrary,
   NekoConfig,
@@ -317,7 +317,7 @@ DEFINE_PRIM(_ammer_init, 2);');
   }
 }
 
-@:allow(ammer.core.plat.Neko)
+@:allow(ammer.core.plat)
 class NekoMarshal extends BaseMarshal<
   NekoMarshal,
   NekoConfig,

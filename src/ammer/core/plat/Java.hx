@@ -48,7 +48,7 @@ class Java extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Java)
+@:allow(ammer.core.plat)
 class JavaLibrary extends BaseLibrary<
   JavaLibrary,
   JavaConfig,
@@ -337,7 +337,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   }
 }
 
-@:allow(ammer.core.plat.Java)
+@:allow(ammer.core.plat)
 class JavaMarshal extends BaseMarshal<
   JavaMarshal,
   JavaConfig,

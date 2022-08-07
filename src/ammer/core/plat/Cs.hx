@@ -38,7 +38,7 @@ class Cs extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Cs)
+@:allow(ammer.core.plat)
 class CsLibrary extends BaseLibrary<
   CsLibrary,
   CsConfig,
@@ -262,7 +262,7 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
   }
 }
 
-@:allow(ammer.core.plat.Cs)
+@:allow(ammer.core.plat)
 class CsMarshal extends BaseMarshal<
   CsMarshal,
   CsConfig,

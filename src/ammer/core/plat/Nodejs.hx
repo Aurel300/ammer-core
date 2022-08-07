@@ -415,7 +415,7 @@ NAPI_MODULE_INIT() {
   }
 }
 
-@:allow(ammer.core.plat.Nodejs)
+@:allow(ammer.core.plat)
 class NodejsMarshal extends BaseMarshal<
   NodejsMarshal,
   NodejsConfig,
