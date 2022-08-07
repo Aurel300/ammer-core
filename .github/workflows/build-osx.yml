@@ -1,0 +1,55 @@
+name: Build OS X
+
+on: [push, pull_request]
+
+jobs:
+  test-hashlink:
+    runs-on: macos-latest
+    steps:
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      run: |
+        haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
+        haxelib dev ammer-core ammer-core
+        haxelib install utest
+
+    - name: Checkout HashLink
+      uses: actions/checkout@v2
+      with:
+        repository: "HaxeFoundation/hashlink"
+        path: "hashlink"
+
+    - name: Build and install HashLink
+      run: |
+        cd hashlink
+
+        # https://github.com/HaxeFoundation/hashlink/pull/468
+        sed -i '' 's/brew "mbedtls"/brew "mbedtls@2"/g' Brewfile
+        brew bundle
+        brew link mbedtls@2
+
+        make
+        sudo make install
+
+    - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe build-hl.hxml
+        haxe build-hlc.hxml
+        cd bin/hlc
+        cc -o main -std=c11 -I. main.c -lhl -L. -lexample
+
+    - name: Run tests
+      run: |
+        cd ammer-core/test
+        ./test-hl-mac.sh
+        ./test-hlc-mac.sh
