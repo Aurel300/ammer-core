@@ -1,5 +1,3 @@
 -D AMMER_TEST_HLC
 build-common.hxml
 --hl bin/hlc/main.c
-
---cmd "cd bin/hlc; cc -o main -std=c11 -I. main.c -lhl -L. -lexample"

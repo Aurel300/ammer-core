@@ -62,6 +62,8 @@ jobs:
         haxe build-hlc.hxml
         cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hl/.
         cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hlc/.
+        cd bin/hlc
+        cc -o main -std=c11 -I. main.c -lhl -L. -lexample
 
     - name: Run tests
       run: |
