@@ -68,5 +68,5 @@ jobs:
     - name: Run tests
       run: |
         cd ammer-core/test
-        ./test-hl.sh
-        ./test-hlc.sh
+        ./test-hl-linux.sh
+        ./test-hlc-linux.sh
