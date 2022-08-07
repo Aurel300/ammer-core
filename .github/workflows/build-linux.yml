@@ -1,0 +1,69 @@
+name: Build Linux
+
+on: [push, pull_request]
+
+jobs:
+  test-hashlink:
+    runs-on: ubuntu-latest
+    steps:
+    - name : Adjust path
+      run : |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages
+      run : |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.3)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.3
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      run: |
+        haxelib dev ammer-core ammer-core
+        haxelib install utest
+
+    - name: Checkout HashLink
+      uses: actions/checkout@v2
+      with:
+        repository: "HaxeFoundation/hashlink"
+        path: "hashlink"
+
+    - name: Build and install HashLink
+      run: |
+        cd hashlink
+        sudo apt-get install libpng-dev
+        sudo apt-get install libturbojpeg-dev
+        sudo apt-get install libvorbis-dev
+        sudo apt-get install libopenal-dev
+        sudo apt-get install libsdl2-dev
+        sudo apt-get install libmbedtls-dev
+        sudo apt-get install libuv1-dev
+        make
+        sudo make install
+
+    - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe build-hl.hxml
+        haxe build-hlc.hxml
+        cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hl/.
+        cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hlc/.
+
+    - name: Run tests
+      run: |
+        cd ammer-core/test
+        ./test-hl.sh
+        ./test-hlc.sh
