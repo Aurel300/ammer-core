@@ -354,6 +354,7 @@ class HashlinkMarshal extends BaseMarshal<
   public function int64():HashlinkTypeMarshal return MARSHAL_INT64;
 
   // TODO: hl_legacy32 / <1.12 int64s are objects
+  // TODO: non-object I64 since Haxe 4.2.5 (Haxe commit fa7e09351e737660d9c56bf933a56d950d65bf63)
   /*
   static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {hlType: "_OBJ(_I32 _I32)"}, {
     l1Type: "_ammer_haxe_int64*",

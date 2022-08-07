@@ -20,10 +20,10 @@ jobs:
         sudo apt update
         sudo apt-get install -y software-properties-common
 
-    - name: Install Haxe (4.2.3)
+    - name: Install Haxe (4.2.5)
       uses: krdlab/setup-haxe@v1
       with:
-        haxe-version: 4.2.3
+        haxe-version: 4.2.5
 
     - name: Checkout ammer-core
       uses: actions/checkout@v2
