@@ -32,6 +32,7 @@ jobs:
 
     - name: Set up haxelibs
       run: |
+        haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
         haxelib dev ammer-core ammer-core
         haxelib install utest
 
