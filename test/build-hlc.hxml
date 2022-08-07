@@ -2,4 +2,4 @@
 build-common.hxml
 --hl bin/hlc/main.c
 
---cmd "pushd bin/hlc; cc -o main -std=c11 -I. main.c -lhl -L. -lexample; popd"
+--cmd "cd bin/hlc; cc -o main -std=c11 -I. main.c -lhl -L. -lexample"
