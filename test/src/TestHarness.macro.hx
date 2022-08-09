@@ -1,3 +1,4 @@
+import haxe.macro.Context;
 import haxe.macro.Expr;
 
 class TestHarness {
@@ -34,22 +35,19 @@ class TestHarness {
       #end
       // TODO: define paths in local config
       #if (AMMER_TEST_JAVA || AMMER_TEST_JVM)
-        javaIncludePaths: [
-          "/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/include",
-          "/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/include/darwin",
-        ],
+        javaIncludePaths: Context.definedValue("ammercoretest.java.includepaths").split(":"),
       #end
       #if AMMER_TEST_LUA
-        luaIncludePaths: ["/DevProjects/Repos/ammer-lua/lua-5.3.5/src"],
-        luaLibraryPaths: ["/DevProjects/Repos/ammer-lua/lua-5.3.5/src"],
+        luaIncludePaths: Context.definedValue("ammercoretest.lua.includepaths").split(":"),
+        luaLibraryPaths: Context.definedValue("ammercoretest.lua.librarypaths").split(":"),
       #end
       #if AMMER_TEST_NEKO
-        nekoIncludePaths: ["/DevProjects/Repos/neko/build"],
-        nekoLibraryPaths: ["/DevProjects/Repos/neko/build/bin"],
+        nekoIncludePaths: Context.definedValue("ammercoretest.neko.includepaths").split(":"),
+        nekoLibraryPaths: Context.definedValue("ammercoretest.neko.librarypaths").split(":"),
       #end
       #if AMMER_TEST_PYTHON
-        pythonIncludePaths: ["/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m"],
-        pythonLibraryPaths: ["/Library/Frameworks/Python.framework/Versions/3.6/lib"],
+        pythonIncludePaths: Context.definedValue("ammercoretest.python.includepaths").split(":"),
+        pythonLibraryPaths: Context.definedValue("ammercoretest.python.librarypaths").split(":"),
       #end
     } : PlatformConfig));
 
