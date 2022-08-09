@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test-hxcpp:
+  test-cpp:
     runs-on: macos-latest
     steps:
     - name: Install Haxe (4.2.5)
@@ -35,7 +35,7 @@ jobs:
 
     - name: Run tests
       run: |
-        cd ammer-core/tests
+        cd ammer-core/test
         ./test-cpp-static-macos.sh
 
   test-hashlink:
@@ -88,6 +88,38 @@ jobs:
         ./test-hl-macos.sh
         ./test-hlc-macos.sh
 
+  test-java:
+    runs-on: macos-latest
+    steps:
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      run: |
+        haxelib install hxjava
+        haxelib dev ammer-core ammer-core
+        echo "$JAVA_HOME"
+        ls "$JAVA_HOME"
+
+    - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVAHOME:$JAVAHOME/darwin" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVAHOME:$JAVAHOME/darwin" build-jvm.hxml
+
+    - name: Run tests
+      run: |
+        cd ammer-core/test
+        ./test-java.sh
+        ./test-jvm.sh
+
   test-lua:
     runs-on: macos-latest
     steps:
@@ -114,10 +146,6 @@ jobs:
         luarocks install luautf8 0.1.3-1
         luarocks install bit32 5.3.5.1-1
         luarocks install hx-lua-simdjson 0.0.1-1
-        echo `luarocks config --lua-incdir`
-        echo `luarocks config --lua-libdir`
-        ls `luarocks config --lua-incdir`
-        ls `luarocks config --lua-libdir`
 
     - name: Compile tests
       run: |
