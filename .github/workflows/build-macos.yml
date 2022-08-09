@@ -136,6 +136,10 @@ jobs:
         haxelib --quiet install hxnodejs
         haxelib dev ammer-core ammer-core
 
+    - name: Install node-gyp
+      run: |
+        npm install -g node-gyp
+
     - name: Compile tests
       run: |
         cd ammer-core/test
