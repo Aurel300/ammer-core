@@ -411,6 +411,8 @@ class JavaMarshal extends BaseMarshal<
   #else
   static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseUint16(), {primitive: true, javaMangle: "C"}, {
     l1Type: "jchar",
+    l2Type: "int16_t",
+    l3Type: "int16_t",
     arrayType: (macro : java.types.Char16),
   });
   #end

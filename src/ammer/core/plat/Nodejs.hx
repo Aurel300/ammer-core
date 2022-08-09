@@ -423,20 +423,6 @@ class NodejsMarshal extends BaseMarshal<
   NodejsLibrary,
   NodejsTypeMarshal
 > {
-  /*
-  // TODO: ${config.internalPrefix}
-  // TODO: this already roots
-  static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
-    -> '$l2 = _ammer_core_registry_get((void*)_ammer_ctr++);
-NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
-  static final MARSHAL_REGISTRY_REF = (l2:String)
-    -> '_ammer_core_registry_incref($l2);';
-  static final MARSHAL_REGISTRY_UNREF = (l2:String)
-    -> '_ammer_core_registry_decref($l2);';
-  static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
-    -> 'NAPI_CALL_I(napi_get_reference_value(_nodejs_env, $l2->ref, &$l1));';
-  */
-
   static function baseExtend(
     base:BaseTypeMarshal,
     ?over:BaseTypeMarshal.BaseTypeMarshalOpt
