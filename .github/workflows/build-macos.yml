@@ -111,8 +111,8 @@ jobs:
     - name: Compile tests
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.java.includepaths="$JAVAHOME/include:$JAVAHOME/include/darwin" build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVAHOME/include:$JAVAHOME/include/darwin" build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include:$JAVA_HOME/include/darwin" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include:$JAVA_HOME/include/darwin" build-jvm.hxml
 
     - name: Run tests
       run: |
