@@ -157,8 +157,8 @@ jobs:
     - name: Compile tests
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include" build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include" build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include:$JAVA_HOME/include/linux" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include:$JAVA_HOME/include/linux" build-jvm.hxml
 
     - name: Run tests
       run: |
