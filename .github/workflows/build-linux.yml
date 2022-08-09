@@ -7,6 +7,51 @@ on:
   pull_request:
 
 jobs:
+  test-cpp:
+    runs-on: ubuntu-latest
+    steps:
+    - name : Adjust path
+      run : |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages
+      run : |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      run: |
+        haxelib dev ammer-core ammer-core
+        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
+        cd `haxelib path hxcpp | head -n 1`
+        cd tools/hxcpp
+        haxe compile.hxml
+
+    - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe build-cpp-static.hxml
+
+    - name: Run tests
+      run: |
+        cd ammer-core/test
+        ./test-cpp-static-linux.sh
+
   test-hashlink:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +83,6 @@ jobs:
       run: |
         haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
         haxelib dev ammer-core ammer-core
-        haxelib install utest
 
     - name: Checkout HashLink
       uses: actions/checkout@v2
@@ -105,7 +149,6 @@ jobs:
     - name: Set up haxelibs
       run: |
         haxelib dev ammer-core ammer-core
-        haxelib install utest
 
     - name: Install Lua and dependencies
       run: |

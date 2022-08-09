@@ -1,4 +1,4 @@
-name: Build OS X
+name: Build macOS
 
 on:
   push:
@@ -7,6 +7,37 @@ on:
   pull_request:
 
 jobs:
+  test-hxcpp:
+    runs-on: macos-latest
+    steps:
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      run: |
+        haxelib dev ammer-core ammer-core
+        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
+        cd `haxelib path hxcpp | head -n 1`
+        cd tools/hxcpp
+        haxe compile.hxml
+
+    - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe build-cpp-static.hxml
+
+    - name: Run tests
+      run: |
+        cd ammer-core/tests
+        ./test-cpp-static-macos.sh
+
   test-hashlink:
     runs-on: macos-latest
     steps:
@@ -24,7 +55,6 @@ jobs:
       run: |
         haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
         haxelib dev ammer-core ammer-core
-        haxelib install utest
 
     - name: Checkout HashLink
       uses: actions/checkout@v2
@@ -55,8 +85,8 @@ jobs:
     - name: Run tests
       run: |
         cd ammer-core/test
-        ./test-hl-mac.sh
-        ./test-hlc-mac.sh
+        ./test-hl-macos.sh
+        ./test-hlc-macos.sh
 
   test-lua:
     runs-on: macos-latest
@@ -74,7 +104,6 @@ jobs:
     - name: Set up haxelibs
       run: |
         haxelib dev ammer-core ammer-core
-        haxelib install utest
 
     - name: Install Lua and dependencies
       run: |
@@ -98,4 +127,4 @@ jobs:
     - name: Run tests
       run: |
         cd ammer-core/test
-        ./test-lua-mac.sh
+        ./test-lua-macos.sh
