@@ -119,6 +119,52 @@ jobs:
         ./test-hl-linux.sh
         ./test-hlc-linux.sh
 
+  test-java:
+    runs-on: ubuntu-latest
+    steps:
+    - name : Adjust path
+      run : |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages
+      run : |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      run: |
+        haxelib --quiet install hxjava
+        haxelib dev ammer-core ammer-core
+        echo "$JAVA_HOME"
+        ls "$JAVA_HOME"
+
+    - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVAHOME/include" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVAHOME/include" build-jvm.hxml
+
+    - name: Run tests
+      run: |
+        cd ammer-core/test
+        ./test-java.sh
+        ./test-jvm.sh
+
   test-lua:
     runs-on: ubuntu-latest
     steps:

@@ -103,7 +103,7 @@ jobs:
 
     - name: Set up haxelibs
       run: |
-        haxelib install hxjava
+        haxelib --quiet install hxjava
         haxelib dev ammer-core ammer-core
         echo "$JAVA_HOME"
         ls "$JAVA_HOME"
@@ -111,8 +111,8 @@ jobs:
     - name: Compile tests
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.java.includepaths="$JAVAHOME:$JAVAHOME/darwin" build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVAHOME:$JAVAHOME/darwin" build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVAHOME/include:$JAVAHOME/include/darwin" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVAHOME/include:$JAVAHOME/include/darwin" build-jvm.hxml
 
     - name: Run tests
       run: |
