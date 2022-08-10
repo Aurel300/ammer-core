@@ -67,19 +67,17 @@ jobs:
         path: "hashlink"
 
     - name: Set up MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        sdk: 8.1
+      uses: microsoft/setup-msbuild
 
     - name: Install Visual C++ build tools workload for Visual Studio 2019 Build Tools
       run: choco install visualstudio2019buildtools visualstudio2019-workload-vctools
 
-    #- name: Install Windows 8.1 SDK
-    #  shell: powershell
-    #  # https://github.com/actions/virtual-environments/issues/842#issuecomment-643382166
-    #  run: |
-    #    Invoke-WebRequest -Method Get -Uri https://go.microsoft.com/fwlink/p/?LinkId=323507 -OutFile sdksetup.exe -UseBasicParsing
-    #    Start-Process -Wait sdksetup.exe -ArgumentList "/q", "/norestart", "/features", "OptionId.WindowsDesktopSoftwareDevelopmentKit", "OptionId.NetFxSoftwareDevelopmentKit"
+    - name: Install Windows 8.1 SDK
+      shell: powershell
+      # https://github.com/actions/virtual-environments/issues/842#issuecomment-643382166
+      run: |
+        Invoke-WebRequest -Method Get -Uri https://go.microsoft.com/fwlink/p/?LinkId=323507 -OutFile sdksetup.exe -UseBasicParsing
+        Start-Process -Wait sdksetup.exe -ArgumentList "/q", "/norestart", "/features", "OptionId.WindowsDesktopSoftwareDevelopmentKit", "OptionId.NetFxSoftwareDevelopmentKit"
 
     - name: Build and install HashLink
       run: |
