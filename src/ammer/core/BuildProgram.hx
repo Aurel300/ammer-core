@@ -85,10 +85,11 @@ class BuildProgram {
       case [File(dst), File(src), CompileObject(abi, opt)]:
         if (useMSVC) {
           var args = [];
-          for (path in opt.includePaths) {
-            args.push("/I");
-            args.push('"$path"');
-          }
+          //for (path in opt.includePaths) {
+          //  args.push("/I");
+          //  args.push('"$path"');
+          //}
+          args.push('/I"D:\\a\\ammer-core\\ammer-core\\hl-1.12.0-win\\include"');
           args = args.concat(['/Fe:${extensions(dst)}', "/c", extensions(src)]);
           run("cl.exe", args);
         } else {
