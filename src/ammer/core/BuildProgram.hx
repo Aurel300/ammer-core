@@ -84,11 +84,12 @@ class BuildProgram {
         sys.io.File.saveBytes(extensions(dst), data);
       case [File(dst), File(src), CompileObject(abi, opt)]:
         if (useMSVC) {
-          var args = ['/Fe:${extensions(dst)}', "/c", extensions(src)];
+          var args = [];
           for (path in opt.includePaths) {
             args.push("/I");
             args.push('"$path"');
           }
+          args = args.concat(['/Fe:${extensions(dst)}', "/c", extensions(src)]);
           run("cl.exe", args);
         } else {
           var args = ["-fPIC", "-o", extensions(dst), "-c", extensions(src)];
