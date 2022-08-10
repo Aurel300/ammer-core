@@ -33,6 +33,8 @@ class TestHarness {
       return val.split(";");
     }
 
+    trace("hl include paths are", paths("hl.includepaths"));
+
     var platform = ammer.core.Platform.createCurrentPlatform(({
       buildPath: 'bin/$platformId/ammer_build',
       outputPath: 'bin/$platformId',
