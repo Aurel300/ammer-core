@@ -67,7 +67,7 @@ jobs:
         path: "hashlink"
 
     - name: Set up MSVC
-      uses: microsoft/setup-msbuild
+      uses: microsoft/setup-msbuild@v1.1
 
     - name: Install Visual C++ build tools workload for Visual Studio 2019 Build Tools
       run: choco install visualstudio2019buildtools visualstudio2019-workload-vctools
