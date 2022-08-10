@@ -60,38 +60,23 @@ jobs:
         haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
         haxelib dev ammer-core ammer-core
 
-    - name: Checkout HashLink
-      uses: actions/checkout@v2
-      with:
-        repository: "HaxeFoundation/hashlink"
-        path: "hashlink"
-
-    - name: Set up MSVC
-      uses: microsoft/setup-msbuild@v1.1
-
-    - name: Install Visual C++ build tools workload for Visual Studio 2019 Build Tools
-      run: choco install visualstudio2019buildtools visualstudio2019-workload-vctools
-
-    - name: Install Windows 8.1 SDK
-      shell: powershell
-      # https://github.com/actions/virtual-environments/issues/842#issuecomment-643382166
+    - name: Install HashLink (1.12)
+      shell: bash
       run: |
-        Invoke-WebRequest -Method Get -Uri https://go.microsoft.com/fwlink/p/?LinkId=323507 -OutFile sdksetup.exe -UseBasicParsing
-        Start-Process -Wait sdksetup.exe -ArgumentList "/q", "/norestart", "/features", "OptionId.WindowsDesktopSoftwareDevelopmentKit", "OptionId.NetFxSoftwareDevelopmentKit"
-
-    - name: Build and install HashLink
-      run: |
-        cd hashlink
-        MSBuild.exe hl.sln /nologo /m
+        curl -L https://github.com/HaxeFoundation/hashlink/releases/download/1.12/hl-1.12.0-win.zip -o hashlink.zip
+        unzip hashlink.zip
+        cd hl-1.12.0-win
+        echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
+        pwd >> $GITHUB_PATH
 
     - name: Compile tests
       shell: bash
       run: |
         cd ammer-core/test
-        haxe build-hl.hxml
-        haxe build-hlc.hxml
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
         cd bin/hlc
-        cl.exe -o main -std=c11 -I. main.c -lhl -L. -lexample
+        cl.exe -o main -std=c11 -I$HASHLINK_PATH/include -L$HASHLINK_PATH -I. main.c -lhl -L. -lexample
 
     - name: Run tests
       shell: bash

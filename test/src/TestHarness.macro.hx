@@ -27,27 +27,36 @@ class TestHarness {
       #end
       ;
 
+    function paths(key:String):Array<String> {
+      var val = Context.definedValue('ammercoretest.$key');
+      if (val == null || val == "") return null;
+      return val.split(":");
+    }
+
     var platform = ammer.core.Platform.createCurrentPlatform(({
       buildPath: 'bin/$platformId/ammer_build',
       outputPath: 'bin/$platformId',
       #if AMMER_TEST_HLC
         hlc: true,
       #end
-      // TODO: define paths in local config
+      #if (AMMER_TEST_HL || AMMER_TEST_HLC)
+        hlIncludePaths: paths("hl.includepaths"),
+        hlLibraryPaths: paths("hl.librarypaths"),
+      #end
       #if (AMMER_TEST_JAVA || AMMER_TEST_JVM)
-        javaIncludePaths: Context.definedValue("ammercoretest.java.includepaths").split(":"),
+        javaIncludePaths: paths("java.includepaths"),
       #end
       #if AMMER_TEST_LUA
-        luaIncludePaths: Context.definedValue("ammercoretest.lua.includepaths").split(":"),
-        luaLibraryPaths: Context.definedValue("ammercoretest.lua.librarypaths").split(":"),
+        luaIncludePaths: paths("lua.includepaths"),
+        luaLibraryPaths: paths("lua.librarypaths"),
       #end
       #if AMMER_TEST_NEKO
-        nekoIncludePaths: Context.definedValue("ammercoretest.neko.includepaths").split(":"),
-        nekoLibraryPaths: Context.definedValue("ammercoretest.neko.librarypaths").split(":"),
+        nekoIncludePaths: paths("neko.includepaths"),
+        nekoLibraryPaths: paths("neko.librarypaths"),
       #end
       #if AMMER_TEST_PYTHON
-        pythonIncludePaths: Context.definedValue("ammercoretest.python.includepaths").split(":"),
-        pythonLibraryPaths: Context.definedValue("ammercoretest.python.librarypaths").split(":"),
+        pythonIncludePaths: paths("python.includepaths"),
+        pythonLibraryPaths: paths("python.librarypaths"),
       #end
     } : PlatformConfig));
 
