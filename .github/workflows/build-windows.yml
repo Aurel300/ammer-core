@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-cpp:
-    runs-on: macos-latest
+    runs-on: windows-latest
     steps:
     - name: Install Haxe (4.2.5)
       uses: krdlab/setup-haxe@v1
