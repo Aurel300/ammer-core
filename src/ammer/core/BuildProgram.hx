@@ -16,8 +16,7 @@ class BuildProgram {
 
   static function extensions(path:String):String {
     return path
-      //.replace("%OBJ%", Ammer.config.useMSVC ? "obj" : "o")
-      .replace("%OBJ%", "o")
+      .replace("%OBJ%", useMSVC ? "obj" : "o")
       .replace("%DLL%", switch (Sys.systemName()) {
         case "Windows": "dll";
         case "Mac": "dylib";
@@ -85,11 +84,11 @@ class BuildProgram {
         sys.io.File.saveBytes(extensions(dst), data);
       case [File(dst), File(src), CompileObject(abi, opt)]:
         if (useMSVC) {
-          var args = ['/Fe:${extensions(dst)}', "/c", extensions(src)];
           for (path in opt.includePaths) {
             args.push("/I");
             args.push('"$path"');
           }
+          var args = ['/Fe:${extensions(dst)}', "/c", extensions(src)];
           run("cl.exe", args);
         } else {
           var args = ["-fPIC", "-o", extensions(dst), "-c", extensions(src)];
