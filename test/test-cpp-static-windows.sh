@@ -1,2 +1,2 @@
 #!/bin/bash
-bin/cpp-static/Main
+bin/cpp-static/Main.exe

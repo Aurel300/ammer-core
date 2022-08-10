@@ -30,11 +30,13 @@ jobs:
         haxe compile.hxml
 
     - name: Compile tests
+      shell: bash
       run: |
         cd ammer-core/test
         haxe build-cpp-static.hxml
 
     - name: Run tests
+      shell: bash
       run: |
         cd ammer-core/test
         ./test-cpp-static-windows.sh
