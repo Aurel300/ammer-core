@@ -402,16 +402,15 @@ class JavaMarshal extends BaseMarshal<
     arrayType: (macro : java.types.Char16),
   });
 
-  #if (haxe >= version("4.2.6"))
-  // "can't compare S and S" until PR#10722
+  #if (haxe >= version("4.2.6")) // "can't compare S and S" until PR#10722
   static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {primitive: true, javaMangle: "S"}, {
     l1Type: "jshort",
     arrayType: (macro : java.types.Int16),
   });
   #else
   static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {primitive: true, javaMangle: "C"}, {
-    l1Type: "jchar",
-    arrayType: (macro : java.types.Int16),
+    l1Type: "jshort",
+    arrayType: (macro : java.types.Char16),
   });
   #end
 
@@ -603,7 +602,11 @@ class JavaMarshal extends BaseMarshal<
       case "u8":          "byte"; // "boolean";
       case "i8":          "byte";
       case "u16":         "char";
+      #if (haxe >= version("4.2.6")) // "can't compare S and S" until PR#10722
       case "i16":         "short";
+      #else
+      case "i16":         "char";
+      #end
       case "u32" | "i32": "int";
       case "u64" | "i64": "long";
       case "f32":         "float";
