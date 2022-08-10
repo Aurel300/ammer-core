@@ -40,3 +40,51 @@ jobs:
       run: |
         cd ammer-core/test
         ./test-cpp-static-windows.sh
+
+  test-hashlink:
+    runs-on: windows-latest
+    steps:
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
+        haxelib dev ammer-core ammer-core
+
+    - name: Checkout HashLink
+      uses: actions/checkout@v2
+      with:
+        repository: "HaxeFoundation/hashlink"
+        path: "hashlink"
+
+    - name: Build and install HashLink
+      shell: bash
+      run: |
+        cd hashlink
+        make
+        sudo make install
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe build-hl.hxml
+        haxe build-hlc.hxml
+        cd bin/hlc
+        cl.exe -o main -std=c11 -I. main.c -lhl -L. -lexample
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        ./test-hl-windows.sh
+        ./test-hlc-windows.sh
