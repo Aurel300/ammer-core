@@ -21,6 +21,7 @@ jobs:
         path: "ammer-core"
 
     - name: Set up haxelibs
+      shell: bash
       run: |
         haxelib dev ammer-core ammer-core
         haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
