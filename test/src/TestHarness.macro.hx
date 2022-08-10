@@ -30,7 +30,7 @@ class TestHarness {
     function paths(key:String):Array<String> {
       var val = Context.definedValue('ammercoretest.$key');
       if (val == null || val == "") return null;
-      return val.split(":");
+      return val.split(";");
     }
 
     var platform = ammer.core.Platform.createCurrentPlatform(({

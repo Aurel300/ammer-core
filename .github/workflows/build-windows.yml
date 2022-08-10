@@ -79,7 +79,7 @@ jobs:
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
         cd bin/hlc
-        cl.exe -o main -std=c11 -I$HASHLINK_PATH/include -L$HASHLINK_PATH -I. main.c -lhl -L. -lexample
+        cl.exe /Fe:main.exe /I "$HASHLINK_PATH/include" /I . main.c /link /LIBPATH:"$HASHLINK_PATH" hl.lib /LIBPATH:"." example.lib
 
     - name: Run tests
       shell: bash
