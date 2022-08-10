@@ -7,39 +7,39 @@ on:
   pull_request:
 
 jobs:
-  test-cpp:
-    runs-on: windows-latest
-    steps:
-    - name: Install Haxe (4.2.5)
-      uses: krdlab/setup-haxe@v1
-      with:
-        haxe-version: 4.2.5
-
-    - name: Checkout ammer-core
-      uses: actions/checkout@v2
-      with:
-        path: "ammer-core"
-
-    - name: Set up haxelibs
-      shell: bash
-      run: |
-        haxelib dev ammer-core ammer-core
-        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
-        cd `haxelib path hxcpp | head -n 1`
-        cd tools/hxcpp
-        haxe compile.hxml
-
-    - name: Compile tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        haxe build-cpp-static.hxml
-
-    - name: Run tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        ./test-cpp-static-windows.sh
+#  test-cpp:
+#    runs-on: windows-latest
+#    steps:
+#    - name: Install Haxe (4.2.5)
+#      uses: krdlab/setup-haxe@v1
+#      with:
+#        haxe-version: 4.2.5
+#
+#    - name: Checkout ammer-core
+#      uses: actions/checkout@v2
+#      with:
+#        path: "ammer-core"
+#
+#    - name: Set up haxelibs
+#      shell: bash
+#      run: |
+#        haxelib dev ammer-core ammer-core
+#        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
+#        cd `haxelib path hxcpp | head -n 1`
+#        cd tools/hxcpp
+#        haxe compile.hxml
+#
+#    - name: Compile tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        haxe build-cpp-static.hxml
+#
+#    - name: Run tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        ./test-cpp-static-windows.sh
 
   test-hashlink:
     runs-on: windows-latest
@@ -66,12 +66,13 @@ jobs:
         repository: "HaxeFoundation/hashlink"
         path: "hashlink"
 
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Build and install HashLink
-      shell: bash
       run: |
         cd hashlink
-        make
-        sudo make install
+        MSBuild.exe hl.sln /nologo
 
     - name: Compile tests
       shell: bash
