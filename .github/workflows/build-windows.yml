@@ -76,6 +76,8 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
+        ls "$HASHLINK_PATH"
+        ls "$HASHLINK_PATH/include"
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
         cd bin/hlc
