@@ -84,7 +84,10 @@ jobs:
         cp "$HASHLINK_PATH/include/"* bin/hlc/ammer_build/example
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
-        cd bin/hlc
+
+    - name: Compile tests (MSVC)
+      run: |
+        cd ammer-core/test/bin/hlc
         cl.exe /Femain.exe /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" libhl.lib /LIBPATH:"." lib.hl.lib
 
     - name: Run tests
