@@ -82,7 +82,7 @@ jobs:
         ls -al "/d/a/ammer-core/ammer-core/hl-1.12.0-win/include/hl.h"
         echo '#include <hl.h>' > test.c
         echo 'int main() { return 0; }' >> test.c
-        cl.exe /I"/d/a/ammer-core/ammer-core/hl-1.12.0-win/include" /Fo"test.obj" /c test.c
+        cl.exe /I"D:\a\ammer-core\ammer-core\hl-1.12.0-win\include" /Fo"test.obj" /c test.c
         #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
         #cd bin/hlc
