@@ -67,6 +67,7 @@ jobs:
         unzip hashlink.zip
         cd hl-1.12.0-win
         echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
+        echo "HASHLINK_PATH_WIN=$(cygpath -w `pwd`)" >> $GITHUB_ENV
         pwd >> $GITHUB_PATH
 
     - name: Set up MSVC
@@ -88,7 +89,7 @@ jobs:
     - name: Compile tests (MSVC)
       run: |
         cd ammer-core/test/bin/hlc
-        cl.exe /Femain.exe /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" libhl.lib /LIBPATH:"." lib.hl.lib
+        cl.exe /Femain.exe /I"$HASHLINK_PATH_WIN\include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH_WIN" libhl.lib /LIBPATH:"." lib.hl.lib
 
     - name: Run tests
       shell: bash
