@@ -105,7 +105,7 @@ class BuildProgram {
       case [_, _, CompileObject(_)]: throw "invalid CompileObject command";
       case [File(dst), File(src), LinkLibrary(abi, opt)]:
         if (useMSVC) {
-          var args = ['/Fe"${extensions(dst)}"', "/LD", extensions(src)];
+          var args = ['/Fe${extensions(dst)}', "/LD", extensions(src)];
           for (d in opt.defines) {
             args.push('/D$d');
           }
