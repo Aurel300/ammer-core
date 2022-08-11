@@ -89,8 +89,8 @@ class BuildProgram {
           //  args.push("/I");
           //  args.push('"$path"');
           //}
-          args.push('/I"D:\\a\\ammer-core\\ammer-core\\hl-1.12.0-win\\include"');
-          args = args.concat(['/Fe:${extensions(dst)}', "/c", extensions(src)]);
+          args.push('/I"/d/a/ammer-core/ammer-core/hl-1.12.0-win/include"');
+          args = args.concat(['/Fo"${extensions(dst)}"', "/c", extensions(src)]);
           run("cl.exe", args);
         } else {
           var args = ["-fPIC", "-o", extensions(dst), "-c", extensions(src)];
@@ -106,7 +106,7 @@ class BuildProgram {
       case [_, _, CompileObject(_)]: throw "invalid CompileObject command";
       case [File(dst), File(src), LinkLibrary(abi, opt)]:
         if (useMSVC) {
-          var args = ['/Fe:${extensions(dst)}', "/LD", extensions(src)];
+          var args = ['/Fe"${extensions(dst)}"', "/LD", extensions(src)];
           for (d in opt.defines) {
             args.push('/D$d');
           }
