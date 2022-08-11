@@ -78,6 +78,8 @@ jobs:
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
         cd ammer-core/test
+        mkdir -p bin/hl/ammer_build/example
+        cp "$HASHLINK_PATH/include/*" .
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
         cd bin/hlc
