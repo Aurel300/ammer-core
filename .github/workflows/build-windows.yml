@@ -94,7 +94,7 @@ jobs:
     - name: Compile tests (MSVC)
       run: |
         cd ammer-core/test/bin/hlc
-        cl.exe /SUBSYSTEM:WINDOWS /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /LIBPATH:"." /LIBPATH:"ammer_build\example"
+        cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /SUBSYSTEM:WINDOWS /LIBPATH:"." /LIBPATH:"ammer_build\example"
 
     - name: Run tests
       shell: bash
