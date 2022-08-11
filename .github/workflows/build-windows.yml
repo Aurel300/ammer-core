@@ -73,28 +73,16 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile tests
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
+        cd bin/hlc
+        cl.exe /Fe"main.exe" /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" hl.lib /LIBPATH:"." example.lib
+
+    - name: Run tests
       shell: bash
       run: |
         cd ammer-core/test
-        echo "... why?"
-        ls "/d/a/ammer-core/ammer-core/hl-1.12.0-win/include"
-        echo "... hl.h is here?"
-        ls -al "/d/a/ammer-core/ammer-core/hl-1.12.0-win/include/hl.h"
-        echo '#include <hl.h>' > test.c
-        echo 'int main() { return 0; }' >> test.c
-
-    - name: Compile tests MSVC
-      run: |
-        cd ammer-core/test
-        cl.exe /I"D:\a\ammer-core\ammer-core\hl-1.12.0-win\include" /Fo"test.obj" /c test.c
-        #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
-        #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
-        #cd bin/hlc
-        #cl.exe /Fe:main.exe /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" hl.lib /LIBPATH:"." example.lib
-
-    #- name: Run tests
-    #  shell: bash
-    #  run: |
-    #    cd ammer-core/test
-    #    ./test-hl-windows.sh
-    #    ./test-hlc-windows.sh
+        ./test-hl-windows.sh
+        ./test-hlc-windows.sh
