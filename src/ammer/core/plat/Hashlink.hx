@@ -106,7 +106,7 @@ class HashlinkLibrary extends BaseLibrary<
     // TODO: prefix
     lb.ail('
 #define HL_NAME(n) ${config.name}_ ## n
-#include <hl.h>
+#include "hl.h"
 
 typedef struct { void* value; int32_t refcount; } _ammer_haxe_ref;
 _ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
