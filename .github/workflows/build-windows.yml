@@ -73,6 +73,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile tests
+      shell: bash
       run: |
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
