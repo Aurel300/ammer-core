@@ -89,7 +89,7 @@ class BuildProgram {
           //  args.push("/I");
           //  args.push('"$path"');
           //}
-          args.push('/I"/d/a/ammer-core/ammer-core/hl-1.12.0-win/include"');
+          args.push('/I"D:\\a\\ammer-core\\ammer-core\\hl-1.12.0-win\\include"');
           args = args.concat(['/Fo"${extensions(dst)}"', "/c", extensions(src)]);
           run("cl.exe", args);
         } else {
