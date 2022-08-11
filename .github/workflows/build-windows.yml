@@ -79,13 +79,13 @@ jobs:
         rm /usr/bin/link
         cd ammer-core/test
         mkdir -p bin/hl/ammer_build/example
+        mkdir -p bin/hlc/ammer_build/example
         cp "$HASHLINK_PATH/include/"* bin/hl/ammer_build/example
+        cp "$HASHLINK_PATH/include/"* bin/hlc/ammer_build/example
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
-        ls bin/hl/ammer_build/example
-        exit 1
-        #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
-        #cd bin/hlc
-        #cl.exe /Fe"main.exe" /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" hl.lib /LIBPATH:"." example.lib
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
+        cd bin/hlc
+        cl.exe /Femain.exe /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" libhl.lib /LIBPATH:"." lib.hl.lib
 
     - name: Run tests
       shell: bash
