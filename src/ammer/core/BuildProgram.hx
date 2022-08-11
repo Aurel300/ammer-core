@@ -89,7 +89,7 @@ class BuildProgram {
             args.push("/I");
             args.push('"$path"');
           }
-          args = args.concat(['/Fo"${extensions(dst)}"', "/c", extensions(src)]);
+          args = args.concat(['/Fo${extensions(dst)}', "/c", extensions(src)]);
           run("cl.exe", args);
         } else {
           var args = ["-fPIC", "-o", extensions(dst), "-c", extensions(src)];
