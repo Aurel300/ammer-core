@@ -10,7 +10,7 @@ using StringTools;
 
 class BuildProgram {
   // TODO: configurable MSVC and system
-  static var useMSVC = Sys.systemName() == "Windows";
+  public static var useMSVC = Sys.systemName() == "Windows";
 
   public var ops:Array<BuildOp>;
 

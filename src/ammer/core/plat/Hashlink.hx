@@ -40,7 +40,7 @@ class Hashlink extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.hlIncludePaths,
       libraryPaths: config.hlLibraryPaths,
-      linkNames: ["hl"],
+      linkNames: [BuildProgram.useMSVC ? "libhl" : "hl"],
       defines: ["LIBHL_EXPORTS"],
       outputPath: lib -> config.hlc
         ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
