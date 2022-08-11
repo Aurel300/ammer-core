@@ -74,6 +74,8 @@ jobs:
 
     - name: Compile tests
       run: |
+        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
+        rm /usr/bin/link
         cd ammer-core/test
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
