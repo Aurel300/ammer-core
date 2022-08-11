@@ -109,7 +109,7 @@ class HashlinkLibrary extends BaseLibrary<
 #include "hl.h"
 
 typedef struct { void* value; int32_t refcount; } _ammer_haxe_ref;
-_ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
+HL_PRIM _ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
   _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = value;
   ref->refcount = 0;
@@ -117,21 +117,21 @@ _ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
   return ref;
 }
 DEFINE_PRIM(_ABSTRACT(abstract_haxe_ref), _ammer_ref_create, _DYN);
-void HL_NAME(_ammer_ref_delete)(_ammer_haxe_ref* ref) {
+HL_PRIM void HL_NAME(_ammer_ref_delete)(_ammer_haxe_ref* ref) {
   hl_remove_root(&ref->value);
   ref->value = NULL;
   ${config.freeFunction}(ref);
 }
 DEFINE_PRIM(_VOID, _ammer_ref_delete, _ABSTRACT(abstract_haxe_ref));
-int32_t HL_NAME(_ammer_ref_getcount)(_ammer_haxe_ref* ref) {
+HL_PRIM int32_t HL_NAME(_ammer_ref_getcount)(_ammer_haxe_ref* ref) {
   return ref->refcount;
 }
 DEFINE_PRIM(_I32, _ammer_ref_getcount, _ABSTRACT(abstract_haxe_ref));
-void HL_NAME(_ammer_ref_setcount)(_ammer_haxe_ref* ref, int32_t rc) {
+HL_PRIM void HL_NAME(_ammer_ref_setcount)(_ammer_haxe_ref* ref, int32_t rc) {
   ref->refcount = rc;
 }
 DEFINE_PRIM(_VOID, _ammer_ref_setcount, _ABSTRACT(abstract_haxe_ref) _I32);
-vdynamic* HL_NAME(_ammer_ref_getvalue)(_ammer_haxe_ref* ref) {
+HL_PRIM vdynamic* HL_NAME(_ammer_ref_getvalue)(_ammer_haxe_ref* ref) {
   return (vdynamic*)ref->value;
 }
 DEFINE_PRIM(_DYN, _ammer_ref_getvalue, _ABSTRACT(abstract_haxe_ref));
@@ -141,7 +141,7 @@ static hl_type *_ammer_haxe_int64_type;
 typedef struct { hl_type *t; vbyte *data; int32_t len; } _ammer_haxe_string;
 static hl_type *_ammer_haxe_string_type;
 // TODO: hl_legacy32
-void HL_NAME(_ammer_init)(_ammer_haxe_int64 *ex_int64, _ammer_haxe_string *ex_string) {
+HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_int64 *ex_int64, _ammer_haxe_string *ex_string) {
   _ammer_haxe_int64_type = ex_int64->t;
   _ammer_haxe_string_type = ex_string->t;
 }
