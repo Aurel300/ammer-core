@@ -81,8 +81,12 @@ jobs:
         cd ammer-core/test
         mkdir -p bin/hl/ammer_build/example
         mkdir -p bin/hlc/ammer_build/example
+
+        # adding include paths just doesn't seem to work...
         cp "$HASHLINK_PATH/include/"* bin/hl/ammer_build/example
         cp "$HASHLINK_PATH/include/"* bin/hlc/ammer_build/example
+        cp "$HASHLINK_PATH/include/"* bin/hlc
+
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
 
