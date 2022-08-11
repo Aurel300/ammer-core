@@ -69,23 +69,26 @@ jobs:
         echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
         pwd >> $GITHUB_PATH
 
-    - name: Set up MSVC
-      uses: ilammy/msvc-dev-cmd@v1
+    #- name: Set up MSVC
+    #  uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile tests
       shell: bash
       run: |
         cd ammer-core/test
-        ls "$HASHLINK_PATH"
-        ls "$HASHLINK_PATH/include"
-        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
-        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
-        cd bin/hlc
-        cl.exe /Fe:main.exe /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" hl.lib /LIBPATH:"." example.lib
+        echo "... why?"
+        ls "/d/a/ammer-core/ammer-core/hl-1.12.0-win/include"
+        echo "... hl.h is here?"
+        ls -al "/d/a/ammer-core/ammer-core/hl-1.12.0-win/include/hl.h"
+        exit 1
+        #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
+        #haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
+        #cd bin/hlc
+        #cl.exe /Fe:main.exe /I"$HASHLINK_PATH/include" /I. main.c /link /LIBPATH:"$HASHLINK_PATH" hl.lib /LIBPATH:"." example.lib
 
-    - name: Run tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        ./test-hl-windows.sh
-        ./test-hlc-windows.sh
+    #- name: Run tests
+    #  shell: bash
+    #  run: |
+    #    cd ammer-core/test
+    #    ./test-hl-windows.sh
+    #    ./test-hlc-windows.sh
