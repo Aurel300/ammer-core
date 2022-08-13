@@ -100,8 +100,8 @@ class JavaLibrary extends BaseLibrary<
       ),
       access: [APrivate, AStatic],
     });
-    lb.ail("#include <jni.h>");
     lb.ail('
+#include "jni.h"
 JNIEXPORT jbyteArray ${javaMangle("_ammer_java_tohaxecopy")}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
   jbyteArray res = (*_java_env)->NewByteArray(_java_env, size);
   (*_java_env)->SetByteArrayRegion(_java_env, res, 0, size, (const jbyte*)data);

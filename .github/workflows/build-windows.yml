@@ -131,11 +131,8 @@ jobs:
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
         cd ammer-core/test
-        echo ""
-        ls "$JAVA_HOME\include"
-        echo ""
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\windows" build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\windows" build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build-jvm.hxml
 
     - name: Run tests
       run: |
