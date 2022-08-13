@@ -87,7 +87,7 @@ class BuildProgram {
           var args = [];
           for (path in opt.includePaths) {
             args.push("/I");
-            args.push('"$path"');
+            args.push(path);
           }
           args = args.concat(['/Fo${extensions(dst)}', "/c", extensions(src)]);
           run("cl.exe", args);
