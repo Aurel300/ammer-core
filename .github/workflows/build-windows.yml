@@ -214,9 +214,6 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        echo "--- lua libdir:"
-        ls `luarocks config --lua-libdir`
-        echo "---"
         haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
 
     - name: Run tests

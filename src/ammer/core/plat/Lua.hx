@@ -33,7 +33,8 @@ class Lua extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.luaIncludePaths,
       libraryPaths: config.luaLibraryPaths,
-      linkNames: ["lua"],
+      // TODO: version, configure, etc
+      linkNames: [BuildProgram.useMSVC ? "lua54" : "lua"],
     });
   }
 }
