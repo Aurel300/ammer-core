@@ -137,5 +137,5 @@ jobs:
     - name: Run tests
       run: |
         cd ammer-core/test
-        ./test-java.sh
-        ./test-jvm.sh
+        java -Djava.library.path=bin\java -jar bin\java\Main.jar
+        java -Djava.library.path=bin\jvm -jar bin\jvm\test.jar
