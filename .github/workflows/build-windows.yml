@@ -193,7 +193,8 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Install Lua
-      uses: leafo/gh-actions-lua@v9
+      # commit with Windows fix
+      uses: leafo/gh-actions-lua@d72f3188c2aa48cb3815b68b9c4c81307cb45ee2
 
     - name: Install Luarocks
       uses: leafo/gh-actions-luarocks@v4
