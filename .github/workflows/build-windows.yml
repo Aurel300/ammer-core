@@ -91,16 +91,14 @@ jobs:
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
 
-    - name: Compile tests (MSVC)
-      run: |
-        cd ammer-core/test/bin/hlc
-        DUMPBIN /EXPORTS libhl.lib
-        DUMPBIN /SYMBOLS libhl.lib
-        cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
+    #- name: Compile tests (MSVC)
+    #  run: |
+    #    cd ammer-core/test/bin/hlc
+    #    cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
 
     - name: Run tests
       shell: bash
       run: |
         cd ammer-core/test
         ./test-hl-windows.sh
-        ./test-hlc-windows.sh
+      #./test-hlc-windows.sh
