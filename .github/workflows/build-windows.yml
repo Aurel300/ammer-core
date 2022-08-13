@@ -41,7 +41,69 @@ jobs:
 #        cd ammer-core/test
 #        ./test-cpp-static-windows.sh
 
-  test-hashlink:
+#  test-hashlink:
+#    runs-on: windows-latest
+#    steps:
+#    - name: Install Haxe (4.2.5)
+#      uses: krdlab/setup-haxe@v1
+#      with:
+#        haxe-version: 4.2.5
+#
+#    - name: Checkout ammer-core
+#      uses: actions/checkout@v2
+#      with:
+#        path: "ammer-core"
+#
+#    - name: Set up haxelibs
+#      shell: bash
+#      run: |
+#        haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
+#        haxelib dev ammer-core ammer-core
+#
+#    - name: Install HashLink (1.12)
+#      shell: bash
+#      run: |
+#        curl -L https://github.com/HaxeFoundation/hashlink/releases/download/1.12/hl-1.12.0-win.zip -o hashlink.zip
+#        unzip hashlink.zip
+#        cd hl-1.12.0-win
+#        echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
+#        echo "HASHLINK_PATH_WIN=$(cygpath -w `pwd`)" >> $GITHUB_ENV
+#        pwd >> $GITHUB_PATH
+#
+#    - name: Set up MSVC
+#      uses: ilammy/msvc-dev-cmd@v1
+#
+#    - name: Compile tests
+#      shell: bash
+#      run: |
+#        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
+#        rm /usr/bin/link
+#        cd ammer-core/test
+#        mkdir -p bin/hl/ammer_build/example
+#        mkdir -p bin/hlc/ammer_build/example
+#
+#        # adding include paths just doesn't seem to work...
+#        cp "$HASHLINK_PATH/include/"* bin/hl/ammer_build/example
+#        cp "$HASHLINK_PATH/include/"* bin/hlc/ammer_build/example
+#        cp "$HASHLINK_PATH/include/"* bin/hlc
+#        cp "$HASHLINK_PATH/libhl.lib" bin/hlc
+#
+#        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
+#        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
+#
+#    #- name: Compile tests (MSVC)
+#    #  run: |
+#    #    cd ammer-core/test/bin/hlc
+#    #    cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
+#
+#    - name: Run tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        ./test-hl-windows.sh
+#      #./test-hlc-windows.sh
+
+  test-java:
     runs-on: windows-latest
     steps:
     - name: Install Haxe (4.2.5)
@@ -57,18 +119,8 @@ jobs:
     - name: Set up haxelibs
       shell: bash
       run: |
-        haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
+        haxelib --quiet install hxjava
         haxelib dev ammer-core ammer-core
-
-    - name: Install HashLink (1.12)
-      shell: bash
-      run: |
-        curl -L https://github.com/HaxeFoundation/hashlink/releases/download/1.12/hl-1.12.0-win.zip -o hashlink.zip
-        unzip hashlink.zip
-        cd hl-1.12.0-win
-        echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
-        echo "HASHLINK_PATH_WIN=$(cygpath -w `pwd`)" >> $GITHUB_ENV
-        pwd >> $GITHUB_PATH
 
     - name: Set up MSVC
       uses: ilammy/msvc-dev-cmd@v1
@@ -79,26 +131,11 @@ jobs:
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
         cd ammer-core/test
-        mkdir -p bin/hl/ammer_build/example
-        mkdir -p bin/hlc/ammer_build/example
-
-        # adding include paths just doesn't seem to work...
-        cp "$HASHLINK_PATH/include/"* bin/hl/ammer_build/example
-        cp "$HASHLINK_PATH/include/"* bin/hlc/ammer_build/example
-        cp "$HASHLINK_PATH/include/"* bin/hlc
-        cp "$HASHLINK_PATH/libhl.lib" bin/hlc
-
-        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
-        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
-
-    #- name: Compile tests (MSVC)
-    #  run: |
-    #    cd ammer-core/test/bin/hlc
-    #    cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include:$JAVA_HOME/include/darwin" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include:$JAVA_HOME/include/darwin" build-jvm.hxml
 
     - name: Run tests
-      shell: bash
       run: |
         cd ammer-core/test
-        ./test-hl-windows.sh
-      #./test-hlc-windows.sh
+        ./test-java.sh
+        ./test-jvm.sh
