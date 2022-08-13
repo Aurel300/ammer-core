@@ -218,7 +218,6 @@ jobs:
         haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
 
     - name: Run tests
-      shell: bash
       run: |
         cd ammer-core/test
         lua bin/lua/test.lua
