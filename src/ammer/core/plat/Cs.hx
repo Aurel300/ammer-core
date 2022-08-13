@@ -1,4 +1,4 @@
-dpackage ammer.core.plat;
+package ammer.core.plat;
 
 #if macro
 
