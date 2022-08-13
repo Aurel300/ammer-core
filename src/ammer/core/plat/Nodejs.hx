@@ -313,9 +313,11 @@ NAPI_MODULE_INIT() {
       .ail('static ${ret.l1Type} ${name}(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {')
       .i()
         .ail('#define NAPI_CALL_I NAPI_CALL')
-        .ail('size_t _nodejs_argc = ${args.length};')
-        .ail('napi_value _nodejs_argv[${args.length}];')
-        .ail('NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));');
+        .ifi(args.length > 0)
+          .ail('size_t _nodejs_argc = ${args.length};')
+          .ail('napi_value _nodejs_argv[${args.length}];')
+          .ail('NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));');
+        .ifd()
     baseAddNamedFunction(
       args,
       args.mapi((idx, arg) -> '_nodejs_argv[$idx]'),
