@@ -189,6 +189,9 @@ jobs:
       run: |
         haxelib dev ammer-core ammer-core
 
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Install Lua
       uses: leafo/gh-actions-lua@v9
 
