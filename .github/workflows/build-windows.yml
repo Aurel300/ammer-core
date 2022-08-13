@@ -196,15 +196,15 @@ jobs:
       # commit with Windows fix
       uses: leafo/gh-actions-lua@d72f3188c2aa48cb3815b68b9c4c81307cb45ee2
       with:
-        luaVersion: luajit
+        luaVersion: 5.3
 
     - name: Install Luarocks
       # unmerged PR with Windows fix
       uses: hishamhm/gh-actions-luarocks@5013277f6f115c27478f18c1f647f8de98390628
 
-#    - name: Install Lua dependencies
-#      run: |
-#        luarocks install bit32 5.3.5.1-1
+    - name: Install Lua dependencies
+      run: |
+        luarocks install bit32 5.3.5.1-1
 #  luarocks install lrexlib-pcre 2.9.1-1
 #  luarocks install luv 1.41.1-0
 #  luarocks install luasocket 3.0rc1-2
@@ -214,9 +214,6 @@ jobs:
     - name: Compile tests
       shell: bash
       run: |
-        echo "--- luajit libdir"
-        ls C:/Users/runneradmin/AppData/Roaming/luarocks/lib/lua/5.1/
-        echo "---"
         cd ammer-core/test
         haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
 
