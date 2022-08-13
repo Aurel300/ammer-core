@@ -1,2 +1,4 @@
 #!/bin/bash
-bin/cs/bin/Main.exe
+cd bin/cs
+ls -al
+bin/Main.exe
