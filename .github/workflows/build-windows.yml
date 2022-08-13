@@ -220,4 +220,5 @@ jobs:
     - name: Run tests
       run: |
         cd ammer-core/test
+        ls C:\Users\runneradmin\AppData\Roaming/luarocks/lib/lua/5.3/
         lua bin/lua/test.lua
