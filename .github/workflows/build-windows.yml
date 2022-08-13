@@ -221,4 +221,6 @@ jobs:
       run: |
         cd ammer-core/test
         ls C:\Users\runneradmin\AppData\Roaming/luarocks/lib/lua/5.3/
+        dumpbin /headers C:\Users\runneradmin\AppData\Roaming/luarocks/lib/lua/5.3/bit32.dll
+        dumpbin /headers D:/a/ammer-core/ammer-core/.lua/bin\lua.exe
         lua bin/lua/test.lua
