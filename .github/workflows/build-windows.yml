@@ -189,13 +189,15 @@ jobs:
       run: |
         haxelib dev ammer-core ammer-core
 
-    - name: Install Lua and dependencies
+    - name: Install Lua
+      uses: leafo/gh-actions-lua@v9
+
+    - name: Install Luarocks
+      uses: leafo/gh-actions-luarocks@v4
+
+    - name: Install Lua dependencies
       shell: bash
       run: |
-        curl https://luarocks.github.io/luarocks/releases/luarocks-3.9.1-windows-64.zip -o luarocks.zip
-        unzip luarocks.zip
-        cd luarocks-3.9.1-windows-64
-        pwd >> $GITHUB_PATH
         luarocks install lrexlib-pcre 2.9.1-1
         luarocks install luv 1.41.1-0
         luarocks install luasocket 3.0rc1-2
