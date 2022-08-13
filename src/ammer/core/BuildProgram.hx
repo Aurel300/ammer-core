@@ -17,6 +17,7 @@ class BuildProgram {
   static function extensions(path:String):String {
     return path
       .replace("%OBJ%", useMSVC ? "obj" : "o")
+      .replace("%LIB%", useMSVC ? "" : "lib")
       .replace("%DLL%", switch (Sys.systemName()) {
         case "Windows": "dll";
         case "Mac": "dylib";

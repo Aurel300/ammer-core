@@ -76,7 +76,7 @@ abstract class Base<
       ops.push(BODependent(
         File(options.outputPath != null
           ? options.outputPath(lib)
-          : '${config.outputPath}/lib${lib.config.name}.%DLL%'),
+          : '${config.outputPath}/%LIB%${lib.config.name}.%DLL%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%DLL%'),
         Copy
       ));
