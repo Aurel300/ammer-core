@@ -135,7 +135,8 @@ jobs:
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build-jvm.hxml
 
     - name: Run tests
+      shell: bash
       run: |
         cd ammer-core/test
-        java -Djava.library.path=bin\java -jar bin\java\Main.jar
-        java -Djava.library.path=bin\jvm -jar bin\jvm\test.jar
+        ./test-java.sh
+        ./test-jvm.sh
