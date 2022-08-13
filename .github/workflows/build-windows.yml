@@ -200,15 +200,15 @@ jobs:
       # unmerged PR with Windows fix
       uses: hishamhm/gh-actions-luarocks@5013277f6f115c27478f18c1f647f8de98390628
 
-    - name: Install Lua dependencies
-      shell: bash
-      run: |
-        luarocks install lrexlib-pcre 2.9.1-1
-        luarocks install luv 1.41.1-0
-        luarocks install luasocket 3.0rc1-2
-        luarocks install luautf8 0.1.3-1
-        luarocks install bit32 5.3.5.1-1
-        luarocks install hx-lua-simdjson 0.0.1-1
+    #- name: Install Lua dependencies
+    #  shell: bash
+    #  run: |
+    #    luarocks install lrexlib-pcre 2.9.1-1
+    #    luarocks install luv 1.41.1-0
+    #    luarocks install luasocket 3.0rc1-2
+    #    luarocks install luautf8 0.1.3-1
+    #    luarocks install bit32 5.3.5.1-1
+    #    luarocks install hx-lua-simdjson 0.0.1-1
 
     - name: Compile tests
       shell: bash
