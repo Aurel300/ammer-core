@@ -11,6 +11,11 @@ using StringTools;
 class BuildProgram {
   // TODO: configurable MSVC and system
   public static var useMSVC = Sys.systemName() == "Windows";
+  public static var extensionDll = (switch (Sys.systemName()) {
+    case "Windows": "dll";
+    case "Mac": "dylib";
+    case _: "so";
+  });
 
   public var ops:Array<BuildOp>;
 
@@ -18,11 +23,7 @@ class BuildProgram {
     return path
       .replace("%OBJ%", useMSVC ? "obj" : "o")
       .replace("%LIB%", useMSVC ? "" : "lib")
-      .replace("%DLL%", switch (Sys.systemName()) {
-        case "Windows": "dll";
-        case "Mac": "dylib";
-        case _: "so";
-      });
+      .replace("%DLL%", extensionDll);
   }
 
   static function run(cmd:String, args:Array<String>):Bool {

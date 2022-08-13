@@ -1,4 +1,4 @@
-package ammer.core.plat;
+dpackage ammer.core.plat;
 
 #if macro
 
@@ -69,8 +69,7 @@ uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
 }');
     lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${config.name}.dylib")]')
+        .al('"${config.name}.${BuildProgram.extensionDll}")]')
       .ail("public static extern void _ammer_cs_tohaxecopy(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] byte[] res, int res_size);");
     tdef.fields.push({
       pos: config.pos,
@@ -80,8 +79,7 @@ uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
     });
     lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${config.name}.dylib")]')
+        .al('"${config.name}.${BuildProgram.extensionDll}")]')
       .ail("public static extern System.IntPtr _ammer_cs_fromhaxecopy(byte[] data, int size);");
     tdef.fields.push({
       pos: config.pos,
@@ -101,8 +99,7 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
 }');
     lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${config.name}.dylib")]')
+        .al('"${config.name}.${BuildProgram.extensionDll}")]')
       .ail("public static extern int _ammer_init([System.Runtime.InteropServices.MarshalAs(")
         .a("System.Runtime.InteropServices.UnmanagedType.LPArray,")
         .a('SizeConst = ${delegateCtr}')
@@ -151,8 +148,7 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
       .ail("}");
     lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .a('"${config.name}.dylib", ')
+        .a('"${config.name}.${BuildProgram.extensionDll}", ')
         // TODO: send strings as byte arrays to avoid this...
         .a("CharSet = System.Runtime.InteropServices.CharSet.Ansi")
       .al(")]")
@@ -455,8 +451,7 @@ uint8_t* $copyFrom(uint8_t* data, int size) {
 }');
     library.lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${library.config.name}.dylib")]')
+        .al('"${library.config.name}.${BuildProgram.extensionDll}")]')
       .ail('public static extern void $copyTo(System.IntPtr data, int size, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPArray, SizeParamIndex = 3)] ${element.csType}[] res, int res_size);');
     library.tdef.fields.push({
       pos: library.config.pos,
@@ -466,8 +461,7 @@ uint8_t* $copyFrom(uint8_t* data, int size) {
     });
     library.lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
-        // TODO: OS dependent
-        .al('"${library.config.name}.dylib")]')
+        .al('"${library.config.name}.${BuildProgram.extensionDll}")]')
       .ail('public static extern System.IntPtr $copyFrom(${element.csType}[] data, int size);');
     library.tdef.fields.push({
       pos: library.config.pos,
@@ -540,8 +534,7 @@ return old_val;';
         .al("}");
       library.lbImport
         .ai("[System.Runtime.InteropServices.DllImport(")
-          // TODO: OS dependent
-          .al('"${library.config.name}.dylib")]')
+          .al('"${library.config.name}.${BuildProgram.extensionDll}")]')
         .ai('public static extern int ${nameNative}(')
         .a("System.IntPtr arg0, int arg1")
         .al(");");
@@ -588,8 +581,7 @@ return old_val;';
         .al("}");
       library.lbImport
         .ai("[System.Runtime.InteropServices.DllImport(")
-          // TODO: OS dependent
-          .al('"${library.config.name}.dylib")]')
+          .al('"${library.config.name}.${BuildProgram.extensionDll}")]')
         .ai('public static extern int ${nameNative}(')
         .a("System.IntPtr arg0, int arg1, int arg2")
         .al(");");
