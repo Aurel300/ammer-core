@@ -59,10 +59,10 @@ class CsLibrary extends BaseLibrary<
     });
     lb
       .ail("void** _ammer_delegates;");
-    lb.ail('void _ammer_cs_tohaxecopy(uint8_t* data, int size, uint8_t* res, int res_size) {
+    lb.ail('LIB_EXPORT void _ammer_cs_tohaxecopy(uint8_t* data, int size, uint8_t* res, int res_size) {
   ${config.memcpyFunction}(res, data, size);
 }
-uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
+LIB_EXPORT uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
   uint8_t* res = (uint8_t*)${config.mallocFunction}(size);
   ${config.memcpyFunction}(res, data, size);
   return res;
@@ -92,7 +92,7 @@ uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
   override function finalise(platConfig:CsConfig):Void {
     lb
       .ail('
-int _ammer_init(void* delegates[${delegateCtr}]) {
+LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
   _ammer_delegates = (void**)${config.mallocFunction}(sizeof(void*) * ${delegateCtr});
   ${config.memcpyFunction}(_ammer_delegates, delegates, sizeof(void*) * ${delegateCtr});
   return 0;
@@ -126,7 +126,7 @@ int _ammer_init(void* delegates[${delegateCtr}]) {
     options:FunctionOptions
   ):Expr {
     lb
-      .ai('${ret.l1Type} $name(')
+      .ai('LIB_EXPORT ${ret.l1Type} $name(')
       .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx}', ", ")
       .a(args.length == 0 ? "void" : "")
       .al(") {")
