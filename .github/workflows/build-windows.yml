@@ -316,10 +316,8 @@ jobs:
     - name: Compile tests
       shell: bash
       run: |
-        echo "$NEKOPATH"
-        ls "$NEKOPATH"
         cd ammer-core/test
-        haxe build-neko.hxml
+        haxe -D ammercoretest.neko.includepaths="$NEKOPATH\include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build-neko.hxml
 
     - name: Run tests
       shell: bash
