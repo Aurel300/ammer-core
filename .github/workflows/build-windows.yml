@@ -281,13 +281,9 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile tests
-      #shell: bash
       run: |
-        ls C:\hostedtoolcache\windows\Python\3.9.13\x64\include
-        ls C:\hostedtoolcache\windows\Python\3.9.13\x64\libs
-        ls C:\hostedtoolcache\windows\Python\3.9.13\x64\Lib
         cd ammer-core/test
-        haxe -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\include -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\libs -D ammercoretest.python.version=9 build-python.hxml
+        haxe -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\include -D ammercoretest.python.librarypaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\libs -D ammercoretest.python.version=9 build-python.hxml
 
     - name: Run tests
       shell: bash
