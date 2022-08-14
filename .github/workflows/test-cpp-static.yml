@@ -1,0 +1,76 @@
+name: Test cpp-static
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-cpp-static:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Adjust path
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
+        cd `haxelib path hxcpp | head -n 1`
+        cd tools/hxcpp
+        haxe compile.hxml
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe build-cpp-static.hxml
+
+    - name: Run tests
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        ./test-cpp-static-linux.sh
+
+    - name: Run tests
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        ./test-cpp-static-macos.sh
+
+    - name: Run tests
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        ./test-cpp-static-windows.sh
