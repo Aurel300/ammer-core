@@ -52,18 +52,21 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" build-java.hxml
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" build-jvm.hxml
 
     - name: Compile tests (macOS)
+      if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" build-java.hxml
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" build-jvm.hxml
  
     - name: Compile tests (Windows)
+      if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
