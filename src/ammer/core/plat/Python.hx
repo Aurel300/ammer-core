@@ -37,8 +37,8 @@ class Python extends Base<
       libraryPaths: config.pythonLibraryPaths,
       defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
       linkNames: config.pythonNoLibLink ? [] : ['python3${BuildProgram.useMSVC ? "" : "."}${config.pythonVersionMinor}'],
-      // .so is intentional, even on OS X
-      outputPath: lib -> '${config.outputPath}/${lib.config.name}.so',
+      // .so is intentional on macOS
+      outputPath: lib -> '${config.outputPath}/${lib.config.name}.${BuildProgram.useMSVC ? "pyd" : "so"}',
     });
   }
 }
