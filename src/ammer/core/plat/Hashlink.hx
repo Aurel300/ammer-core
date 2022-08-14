@@ -40,7 +40,7 @@ class Hashlink extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.hlIncludePaths,
       libraryPaths: config.hlLibraryPaths,
-      linkNames: ["hl"],
+      linkNames: [BuildProgram.useMSVC ? "libhl" : "hl"],
       defines: ["LIBHL_EXPORTS"],
       outputPath: lib -> config.hlc
         ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
@@ -49,7 +49,7 @@ class Hashlink extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Hashlink)
+@:allow(ammer.core.plat)
 class HashlinkLibrary extends BaseLibrary<
   HashlinkLibrary,
   HashlinkConfig,
@@ -77,7 +77,11 @@ class HashlinkLibrary extends BaseLibrary<
   public function new(config:HashlinkLibraryConfig) {
     super(config, new HashlinkMarshal(this));
 
-    pushNative("_ammer_init",         (macro : (/*haxe.Int64,*/ String) -> Void), config.pos);
+    #if (haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
+    pushNative("_ammer_init",         (macro : (String) -> Void), config.pos);
+    #else
+    pushNative("_ammer_init",         (macro : (haxe.Int64, String) -> Void), config.pos);
+    #end
     pushNative("_ammer_ref_create",   (macro : (Dynamic) -> hl.Abstract<"abstract_haxe_ref">), config.pos);
     pushNative("_ammer_ref_delete",   (macro : (hl.Abstract<"abstract_haxe_ref">) -> Void), config.pos);
     pushNative("_ammer_ref_getcount", (macro : (hl.Abstract<"abstract_haxe_ref">) -> Int), config.pos);
@@ -91,7 +95,9 @@ class HashlinkLibrary extends BaseLibrary<
         (macro : Int),
         macro {
           _ammer_init(
-            //haxe.Int64.make(0, 0),
+            #if !(haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
+            haxe.Int64.make(0, 0),
+            #end
             ""
           );
           0;
@@ -100,8 +106,6 @@ class HashlinkLibrary extends BaseLibrary<
       access: [APrivate, AStatic],
     });
     // TODO: could be nicer with a union?
-    //lb.ail("typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;");
-    //lb.ail("static hl_type *_ammer_haxe_int64_type;");
 
     // TODO: prefix
     lb.ail('
@@ -109,7 +113,7 @@ class HashlinkLibrary extends BaseLibrary<
 #include "hl.h"
 
 typedef struct { void* value; int32_t refcount; } _ammer_haxe_ref;
-_ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
+HL_PRIM _ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
   _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = value;
   ref->refcount = 0;
@@ -117,34 +121,43 @@ _ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
   return ref;
 }
 DEFINE_PRIM(_ABSTRACT(abstract_haxe_ref), _ammer_ref_create, _DYN);
-void HL_NAME(_ammer_ref_delete)(_ammer_haxe_ref* ref) {
+HL_PRIM void HL_NAME(_ammer_ref_delete)(_ammer_haxe_ref* ref) {
   hl_remove_root(&ref->value);
   ref->value = NULL;
   ${config.freeFunction}(ref);
 }
 DEFINE_PRIM(_VOID, _ammer_ref_delete, _ABSTRACT(abstract_haxe_ref));
-int32_t HL_NAME(_ammer_ref_getcount)(_ammer_haxe_ref* ref) {
+HL_PRIM int32_t HL_NAME(_ammer_ref_getcount)(_ammer_haxe_ref* ref) {
   return ref->refcount;
 }
 DEFINE_PRIM(_I32, _ammer_ref_getcount, _ABSTRACT(abstract_haxe_ref));
-void HL_NAME(_ammer_ref_setcount)(_ammer_haxe_ref* ref, int32_t rc) {
+HL_PRIM void HL_NAME(_ammer_ref_setcount)(_ammer_haxe_ref* ref, int32_t rc) {
   ref->refcount = rc;
 }
 DEFINE_PRIM(_VOID, _ammer_ref_setcount, _ABSTRACT(abstract_haxe_ref) _I32);
-vdynamic* HL_NAME(_ammer_ref_getvalue)(_ammer_haxe_ref* ref) {
+HL_PRIM vdynamic* HL_NAME(_ammer_ref_getvalue)(_ammer_haxe_ref* ref) {
   return (vdynamic*)ref->value;
 }
 DEFINE_PRIM(_DYN, _ammer_ref_getvalue, _ABSTRACT(abstract_haxe_ref));
 
 typedef struct { hl_type *t; vbyte *data; int32_t len; } _ammer_haxe_string;
 static hl_type *_ammer_haxe_string_type;
-void HL_NAME(_ammer_init)(_ammer_haxe_string *ex_string) {
-// _ammer_haxe_int64 *ex_int64 // TODO: hl_legacy32
-// _ammer_haxe_int64_type = ex_int64->t;
+');
+    #if (haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
+    lb.ail('HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_string *ex_string) {
   _ammer_haxe_string_type = ex_string->t;
 }
-// _OBJ(_I32 _I32)
 DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));');
+    #else
+    lb.ail('
+typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;
+static hl_type *_ammer_haxe_int64_type;
+HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_int64 *ex_int64, _ammer_haxe_string *ex_string) {
+  _ammer_haxe_int64_type = ex_int64->t;
+  _ammer_haxe_string_type = ex_string->t;
+}
+DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32));');
+    #end
   }
 
   public function addNamedFunction(
@@ -272,7 +285,7 @@ DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));');
   }
 }
 
-@:allow(ammer.core.plat.Hashlink)
+@:allow(ammer.core.plat)
 class HashlinkMarshal extends BaseMarshal<
   HashlinkMarshal,
   HashlinkConfig,
@@ -341,6 +354,7 @@ class HashlinkMarshal extends BaseMarshal<
   public function uint32():HashlinkTypeMarshal return MARSHAL_UINT32;
   public function int32():HashlinkTypeMarshal return MARSHAL_INT32;
 
+  #if (haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
   static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {hlType: "_I64"}, {
     l1Type: "uint64_t",
     // TODO: JIT errors and no ArrayBytes<I64> (Haxe#10725)
@@ -350,11 +364,7 @@ class HashlinkMarshal extends BaseMarshal<
     l1Type: "int64_t",
     // arrayType: (macro : hl.I64), //haxe.Int64),
   });
-  public function uint64():HashlinkTypeMarshal return MARSHAL_UINT64;
-  public function int64():HashlinkTypeMarshal return MARSHAL_INT64;
-
-  // TODO: hl_legacy32 / <1.12 int64s are objects
-  /*
+  #else
   static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {hlType: "_OBJ(_I32 _I32)"}, {
     l1Type: "_ammer_haxe_int64*",
     l1l2: (l1, l2) -> '$l2 = (((uint64_t)$l1->high) << 32) | (uint32_t)$l1->low;',
@@ -369,9 +379,11 @@ $l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
 $l1->high = (int32_t)(((uint64_t)$l2 >> 32) & 0xFFFFFFFF);
 $l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
   });
+  #end
+
   public function uint64():HashlinkTypeMarshal return MARSHAL_UINT64;
   public function int64():HashlinkTypeMarshal return MARSHAL_INT64;
-*/
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {hlType: "_F32"}, {
     arrayType: (macro : hl.F32),
   });

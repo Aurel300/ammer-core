@@ -39,7 +39,7 @@ class Neko extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Neko)
+@:allow(ammer.core.plat)
 class NekoLibrary extends BaseLibrary<
   NekoLibrary,
   NekoConfig,
@@ -275,17 +275,23 @@ DEFINE_PRIM(_ammer_init, 2);');
         .ail("_l1_fn = *(((_ammer_haxe_ref*)(int_val)val_data(_l1_fn_ref))->data);")
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ail('value _neko_args[${args.length}] = {')
-        .lmapi(args, (idx, arg) -> '_l1_arg_$idx,')
-        .ail("};")
+        .ifi(args.length > 0)
+          .ail('value _neko_args[${args.length}] = {')
+          .lmapi(args, (idx, arg) -> '_l1_arg_$idx,')
+          .ail("};")
+        .ifd()
         .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
-          .ail('_l1_output = val_callN(_l1_fn, _neko_args, ${args.length});')
+          .ai('_l1_output = val_callN(_l1_fn, ')
+          .a(args.length > 0 ? "_neko_args" : "NULL")
+          .al(', ${args.length});')
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
           .ail(clType.ret.l2l3("_l2_output", outputExpr))
         .ife()
-          .ail('val_callN(_l1_fn, _neko_args, ${args.length});')
+          .ai('val_callN(_l1_fn, ')
+          .a(args.length > 0 ? "_neko_args" : "NULL")
+          .al(', ${args.length});')
         .ifd()
       .d()
       .ail("} while (0);")
@@ -317,7 +323,7 @@ DEFINE_PRIM(_ammer_init, 2);');
   }
 }
 
-@:allow(ammer.core.plat.Neko)
+@:allow(ammer.core.plat)
 class NekoMarshal extends BaseMarshal<
   NekoMarshal,
   NekoConfig,

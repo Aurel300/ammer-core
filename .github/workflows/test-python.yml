@@ -1,0 +1,83 @@
+name: Test python
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-python:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Adjust path (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+        sudo apt-get install -y python3.8-dev
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+
+    - name: Set up MSVC
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.python.includepaths="/usr/include/python3.8;/usr/include/x86_64-linux-gnu/python3.8" -D ammercoretest.python.version=8 build/build-python.hxml
+
+    - name: Compile tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.python.includepaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/include/python3.9 -D ammercoretest.python.librarypaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -D ammercoretest.python.version=9 build/build-python.hxml
+
+    - name: Compile tests (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\include -D ammercoretest.python.librarypaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\libs -D ammercoretest.python.version=9 build/build-python.hxml
+
+    - name: Run tests (non-Windows)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cd ammer-core/test
+        test/test-python.sh
+
+    - name: Run tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-python-windows.sh

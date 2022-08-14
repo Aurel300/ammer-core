@@ -49,7 +49,7 @@ class Cpp extends Base<
   }
 }
 
-@:allow(ammer.core.plat.Cpp)
+@:allow(ammer.core.plat)
 class CppLibrary extends BaseLibrary<
   CppLibrary,
   CppConfig,
@@ -319,7 +319,7 @@ void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc) {
   }
 }
 
-@:allow(ammer.core.plat.Cpp)
+@:allow(ammer.core.plat)
 class CppMarshal extends BaseMarshal<
   CppMarshal,
   CppConfig,

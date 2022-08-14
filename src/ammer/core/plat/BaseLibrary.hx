@@ -45,7 +45,13 @@ abstract class BaseLibrary<
     lb.ail("#include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <string.h>");
+#include <string.h>
+#ifdef _WIN32
+  #define LIB_EXPORT __declspec(dllexport)
+#else
+  #define LIB_EXPORT
+#endif
+");
   }
 
   function finalise(config:TConfig):Void {

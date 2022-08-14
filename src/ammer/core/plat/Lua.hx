@@ -33,12 +33,13 @@ class Lua extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.luaIncludePaths,
       libraryPaths: config.luaLibraryPaths,
-      linkNames: ["lua"],
+      // TODO: version, configure, etc
+      linkNames: [BuildProgram.useMSVC ? "lua53" : "lua"],
     });
   }
 }
 
-@:allow(ammer.core.plat.Lua)
+@:allow(ammer.core.plat)
 class LuaLibrary extends BaseLibrary<
   LuaLibrary,
   LuaConfig,
@@ -50,14 +51,19 @@ class LuaLibrary extends BaseLibrary<
 
   public function new(config:LuaLibraryConfig) {
     super(config, new LuaMarshal(this));
-    // TODO: per OS ...
-    var loadlib = 'assert(package.loadlib("lib${config.name}.dylib", "_ammer_init"))()';
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_native",
       kind: FVar(
         (macro : lua.Table<String, Dynamic>),
-        macro untyped __lua__($v{loadlib})
+        macro {
+          var loadlib = (switch (Sys.systemName()) {
+            case "Windows": $v{config.name} + ".dll";
+            case "Mac": "lib" + $v{config.name} + ".dylib";
+            case _: "lib" + $v{config.name} + ".so";
+          });
+          untyped __lua__('assert(package.loadlib({0}, "_ammer_init"))()', loadlib);
+        }
       ),
       access: [APrivate, AStatic],
     });
@@ -278,7 +284,7 @@ lua_gettable(_lua_state, -2);')
   }
 }
 
-@:allow(ammer.core.plat.Lua)
+@:allow(ammer.core.plat)
 class LuaMarshal extends BaseMarshal<
   LuaMarshal,
   LuaConfig,

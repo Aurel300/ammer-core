@@ -313,9 +313,11 @@ NAPI_MODULE_INIT() {
       .ail('static ${ret.l1Type} ${name}(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {')
       .i()
         .ail('#define NAPI_CALL_I NAPI_CALL')
-        .ail('size_t _nodejs_argc = ${args.length};')
-        .ail('napi_value _nodejs_argv[${args.length}];')
-        .ail('NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));');
+        .ifi(args.length > 0)
+          .ail('size_t _nodejs_argc = ${args.length};')
+          .ail('napi_value _nodejs_argv[${args.length}];')
+          .ail('NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));')
+        .ifd();
     baseAddNamedFunction(
       args,
       args.mapi((idx, arg) -> '_nodejs_argv[$idx]'),
@@ -369,9 +371,15 @@ NAPI_MODULE_INIT() {
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
         .ail('${clType.ret.l1Type} _l1_output;')
-        .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, (napi_value[]){')
-        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
-        .al("}, &_l1_output));")
+        .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, ')
+        .ifi(args.length > 0)
+          .a('(napi_value[]){')
+          .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
+          .a("}")
+        .ife()
+          .a("NULL")
+        .ifd()
+        .al(", &_l1_output));")
         .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l2Type} _l2_output;')
           .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
@@ -415,7 +423,7 @@ NAPI_MODULE_INIT() {
   }
 }
 
-@:allow(ammer.core.plat.Nodejs)
+@:allow(ammer.core.plat)
 class NodejsMarshal extends BaseMarshal<
   NodejsMarshal,
   NodejsConfig,
@@ -423,20 +431,6 @@ class NodejsMarshal extends BaseMarshal<
   NodejsLibrary,
   NodejsTypeMarshal
 > {
-  /*
-  // TODO: ${config.internalPrefix}
-  // TODO: this already roots
-  static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
-    -> '$l2 = _ammer_core_registry_get((void*)_ammer_ctr++);
-NAPI_CALL_I(napi_create_reference(_nodejs_env, $l1, 1, &$l2->ref));';
-  static final MARSHAL_REGISTRY_REF = (l2:String)
-    -> '_ammer_core_registry_incref($l2);';
-  static final MARSHAL_REGISTRY_UNREF = (l2:String)
-    -> '_ammer_core_registry_decref($l2);';
-  static final MARSHAL_REGISTRY_GET_KEY = (l2:String, l1:String) // TODO: target type cast
-    -> 'NAPI_CALL_I(napi_get_reference_value(_nodejs_env, $l2->ref, &$l1));';
-  */
-
   static function baseExtend(
     base:BaseTypeMarshal,
     ?over:BaseTypeMarshal.BaseTypeMarshalOpt

@@ -1,0 +1,65 @@
+name: Test nodejs
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-nodejs:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Adjust path (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib --quiet install hxnodejs
+        haxelib dev ammer-core ammer-core
+
+    - name: Install node-gyp
+      shell: bash
+      run: |
+        npm install -g node-gyp
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe build/build-nodejs.hxml
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-nodejs.sh

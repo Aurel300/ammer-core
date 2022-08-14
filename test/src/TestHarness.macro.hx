@@ -1,3 +1,4 @@
+import haxe.macro.Context;
 import haxe.macro.Expr;
 
 class TestHarness {
@@ -26,30 +27,45 @@ class TestHarness {
       #end
       ;
 
+    function bool(key:String):Bool {
+      return Context.defined('ammercoretest.$key');
+    }
+    function int(key:String):Null<Int> {
+      var val = Context.definedValue('ammercoretest.$key');
+      if (val == null || val == "") return null;
+      return Std.parseInt(val);
+    }
+    function paths(key:String):Array<String> {
+      var val = Context.definedValue('ammercoretest.$key');
+      if (val == null || val == "") return null;
+      return val.split(";");
+    }
+
     var platform = ammer.core.Platform.createCurrentPlatform(({
       buildPath: 'bin/$platformId/ammer_build',
       outputPath: 'bin/$platformId',
       #if AMMER_TEST_HLC
         hlc: true,
       #end
-      // TODO: define paths in local config
+      #if (AMMER_TEST_HL || AMMER_TEST_HLC)
+        hlIncludePaths: paths("hl.includepaths"),
+        hlLibraryPaths: paths("hl.librarypaths"),
+      #end
       #if (AMMER_TEST_JAVA || AMMER_TEST_JVM)
-        javaIncludePaths: [
-          "/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/include",
-          "/Library/Java/JavaVirtualMachines/jdk1.8.0_121.jdk/Contents/Home/include/darwin",
-        ],
+        javaIncludePaths: paths("java.includepaths"),
       #end
       #if AMMER_TEST_LUA
-        luaIncludePaths: ["/DevProjects/Repos/ammer-lua/lua-5.3.5/src"],
-        luaLibraryPaths: ["/DevProjects/Repos/ammer-lua/lua-5.3.5/src"],
+        luaIncludePaths: paths("lua.includepaths"),
+        luaLibraryPaths: paths("lua.librarypaths"),
       #end
       #if AMMER_TEST_NEKO
-        nekoIncludePaths: ["/DevProjects/Repos/neko/build"],
-        nekoLibraryPaths: ["/DevProjects/Repos/neko/build/bin"],
+        nekoIncludePaths: paths("neko.includepaths"),
+        nekoLibraryPaths: paths("neko.librarypaths"),
       #end
       #if AMMER_TEST_PYTHON
-        pythonIncludePaths: ["/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m"],
-        pythonLibraryPaths: ["/Library/Frameworks/Python.framework/Versions/3.6/lib"],
+        pythonVersionMinor: int("python.version"),
+        pythonIncludePaths: paths("python.includepaths"),
+        pythonLibraryPaths: paths("python.librarypaths"),
       #end
     } : PlatformConfig));
 
@@ -84,14 +100,18 @@ class TestHarness {
       test.TestStrings.new,
       test.TestStructs.new,
     ]:Array<()->TestBase>)) {
-      var test = ctor();
-      testExprs.push(test.done());
+      var test = ctor().done();
+      testExprs.push(macro if (!$test) _allTestsPassed = false);
     }
 
     platform.addLibrary(library);
     var program = platform.finalise();
     program.build();
 
-    return macro $b{testExprs};
+    return macro {
+      var _allTestsPassed = true;
+      $b{testExprs};
+      if (!_allTestsPassed) Sys.exit(1);
+    };
   }
 }

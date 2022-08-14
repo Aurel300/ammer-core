@@ -1,0 +1,76 @@
+name: Test neko
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-neko:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Adjust path (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+
+    - name: Set up MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.neko.includepaths="$NEKOPATH/include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build/build-neko.hxml
+
+    - name: Run tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        test/test-neko-linux.sh
+
+    - name: Run tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        test/test-neko-macos.sh
+
+    - name: Run tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-neko-windows.sh

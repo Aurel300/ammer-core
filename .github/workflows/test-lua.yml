@@ -1,0 +1,131 @@
+name: Test lua
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-lua:
+    strategy:
+      matrix:
+        # TODO: re-enable windows-latest (issue #13)
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Adjust path (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+
+    # TODO: some deps might be unnecessary
+    - name: Install Lua and dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        pip3 install hererocks
+        hererocks ~/lua5.3 -l5.3 -rlatest --cflags="-fPIC"
+        source ~/lua5.3/bin/activate
+        ln -s ~/lua5.3/lib/liblua53.a ~/lua5.3/lib/liblua.a
+        luarocks install lrexlib-pcre 2.9.1-1
+        luarocks install luv 1.41.1-0
+        luarocks install luasocket 3.0rc1-2
+        luarocks install luautf8 0.1.3-1
+        luarocks install bit32 5.3.5.1-1
+        luarocks install hx-lua-simdjson 0.0.1-1
+
+    - name: Install Lua and dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install lua luarocks
+        luarocks install lrexlib-pcre 2.9.1-1
+        luarocks install luv 1.41.1-0
+        luarocks install luasocket 3.0rc1-2
+        luarocks install luautf8 0.1.3-1
+        luarocks install bit32 5.3.5.1-1
+        luarocks install hx-lua-simdjson 0.0.1-1
+
+    - name: Set up MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Install Lua (Windows)
+      if: matrix.os == 'windows-latest'
+      # commit with Windows fix
+      uses: leafo/gh-actions-lua@d72f3188c2aa48cb3815b68b9c4c81307cb45ee2
+      with:
+        luaVersion: 5.3
+
+    - name: Install Luarocks (Windows)
+      if: matrix.os == 'windows-latest'
+      # unmerged PR with Windows fix
+      uses: hishamhm/gh-actions-luarocks@5013277f6f115c27478f18c1f647f8de98390628
+
+    - name: Install Lua dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        luarocks install bit32 5.3.5.1-1
+
+    - name: Compile tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        source ~/lua5.3/bin/activate
+        cd ammer-core/test
+        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build/build-lua.hxml
+
+    # TODO: the only difference is the `source` call; use leafo's GH actions
+    #       for all three systems?
+    - name: Compile tests (non-Linux)
+      if: matrix.os != 'ubuntu-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build/build-lua.hxml
+
+    - name: Run tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        source ~/lua5.3/bin/activate
+        cd ammer-core/test
+        test/test-lua-linux.sh
+
+    - name: Run tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        test/test-lua-macos.sh
+
+    - name: Run tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        lua bin/lua/test.lua

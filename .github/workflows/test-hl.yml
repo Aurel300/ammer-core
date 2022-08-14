@@ -1,0 +1,157 @@
+name: Test hl, hlc
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-hl:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Adjust path (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
+        haxelib dev ammer-core ammer-core
+
+    - name: Checkout HashLink (non-Windows)
+      if: matrix.os != 'windows-latest'
+      uses: actions/checkout@v2
+      with:
+        repository: "HaxeFoundation/hashlink"
+        path: "hashlink"
+
+    - name: Build and install HashLink (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd hashlink
+        sudo apt-get install libpng-dev
+        sudo apt-get install libturbojpeg-dev
+        sudo apt-get install libvorbis-dev
+        sudo apt-get install libopenal-dev
+        sudo apt-get install libsdl2-dev
+        sudo apt-get install libmbedtls-dev
+        sudo apt-get install libuv1-dev
+        make
+        sudo make install
+
+    - name: Build and install HashLink (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd hashlink
+
+        # https://github.com/HaxeFoundation/hashlink/pull/468
+        sed -i '' 's/brew "mbedtls"/brew "mbedtls@2"/g' Brewfile
+        brew bundle
+        brew link mbedtls@2
+
+        make
+        sudo make install
+
+    - name: Install HashLink (1.12, Windows)
+      shell: bash
+      run: |
+        curl -L https://github.com/HaxeFoundation/hashlink/releases/download/1.12/hl-1.12.0-win.zip -o hashlink.zip
+        unzip hashlink.zip
+        cd hl-1.12.0-win
+        echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
+        echo "HASHLINK_PATH_WIN=$(cygpath -w `pwd`)" >> $GITHUB_ENV
+        pwd >> $GITHUB_PATH
+
+    - name: Set up MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        haxe build/build-hl.hxml
+        haxe build/build-hlc.hxml
+        cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hl
+        cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hlc
+        cd bin/hlc
+        cc -o main -std=c11 -I. main.c -lhl -L. -lexample
+
+    - name: Compile tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        haxe build/build-hl.hxml
+        haxe build/build-hlc.hxml
+        cd bin/hlc
+        cc -o main -std=c11 -I. main.c -lhl -L. -lexample
+
+    - name: Compile tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
+        rm /usr/bin/link
+        cd ammer-core/test
+        mkdir -p bin/hlc
+        cp "$HASHLINK_PATH/libhl.lib" bin/hlc
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build/build-hl.hxml
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build/build-hlc.hxml
+
+    #- name: Compile tests (MSVC)
+    #  if: matrix.os == 'windows-latest'
+    #  run: |
+    #    cd ammer-core/test/bin/hlc
+    #    cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
+
+    - name: Run tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        test/test-hl-linux.sh
+        test/test-hlc-linux.sh
+
+    - name: Run tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        test/test-hl-macos.sh
+        test/test-hlc-macos.sh
+
+    # TODO: compile + run HL/C (issue #12)
+    - name: Run tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-hl-windows.sh
+      #test/test-hlc-windows.sh

@@ -1,0 +1,3 @@
+-D AMMER_TEST_HLC
+build/build-common.hxml
+--hl bin/hlc/main.c
