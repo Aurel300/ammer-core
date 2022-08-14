@@ -455,14 +455,8 @@ class JavaMarshal extends BaseMarshal<
     // TODO: avoid copy somehow? the release call is annoying in l2unref
     l1l2: (l1, l2) -> 'do {
   const char* _java_tmp = (*_java_env)->GetStringUTFChars(_java_env, $l1, NULL);
-  printf("java tmp is: %p\\n", _java_tmp);
-  printf("     as str: %s\\n", _java_tmp);
   $l2 = strdup(_java_tmp);
-  printf("    copy is: %p\\n", $l2);
-  printf("     as str: %s\\n", $l2);
-  (*_java_env)->ReleaseStringUTFChars(_java_env, $l1, $l2);
-  printf("    copy is: %p\\n", $l2);
-  printf("     as str: %s\\n", $l2);
+  (*_java_env)->ReleaseStringUTFChars(_java_env, $l1, _java_tmp);
 } while (0);',
     l2l1: (l2, l1) -> '$l1 = (*_java_env)->NewStringUTF(_java_env, $l2);',
   });

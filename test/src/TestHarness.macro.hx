@@ -89,17 +89,17 @@ class TestHarness {
 
     var testExprs:Array<Expr> = [];
     for (ctor in ([
-      //test.TestHaxe.new,
-      //#if !AMMER_TEST_CS
-      //  test.TestArrays.new,
-      //#end
-      //test.TestBools.new,
-      //test.TestBytes.new,
-      //test.TestCallbacks.new,
-      //test.TestFloats.new,
-      //test.TestIntegers.new,
+      test.TestHaxe.new,
+      #if !AMMER_TEST_CS
+        test.TestArrays.new,
+      #end
+      test.TestBools.new,
+      test.TestBytes.new,
+      test.TestCallbacks.new,
+      test.TestFloats.new,
+      test.TestIntegers.new,
       test.TestStrings.new,
-      //test.TestStructs.new,
+      test.TestStructs.new,
     ]:Array<()->TestBase>)) {
       var test = ctor();
       testExprs.push(test.done());

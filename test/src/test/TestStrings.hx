@@ -10,9 +10,7 @@ class TestStrings extends TestBase {
       [marshal.string()],
       // TODO: non-BMP Unicode on Java fails (modified UTF-8 encoding...)
       //'_return = strdup(strcmp(_arg0, "hello\\U0001F404") == 0 ? "good" : "bad");'
-      'printf("received %p as _arg0\\n", _arg0);
-printf("as str: %s\\n", _arg0);
-_return = strdup(strcmp(_arg0, "hello") == 0 ? "good" : "bad");'
+      '_return = strdup(strcmp(_arg0, "hello") == 0 ? "good" : "bad");'
     );
     //assertEq(macro $f("hello\u{1F404}"), macro "good");
     assertEq(macro $f("hello"), macro "good");
