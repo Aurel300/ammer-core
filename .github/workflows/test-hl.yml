@@ -1,4 +1,4 @@
-name: Test hl
+name: Test hl, hlc
 
 on:
   push:
@@ -15,14 +15,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
 
-    - name: Adjust path
+    - name: Adjust path (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         if [[ -z "$GITHUB_PATH" ]]; then
             echo "${HOME}/.local/bin" >> $GITHUB_PATH
         fi
 
-    - name: Update apt and install necessary packages
+    - name: Update apt and install necessary packages (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         if ! command -v sudo &> /dev/null; then
@@ -47,14 +47,14 @@ jobs:
         haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
         haxelib dev ammer-core ammer-core
 
-    - name: Checkout HashLink
+    - name: Checkout HashLink (non-Windows)
       if: matrix.os != 'windows-latest'
       uses: actions/checkout@v2
       with:
         repository: "HaxeFoundation/hashlink"
         path: "hashlink"
 
-    - name: Build and install HashLink
+    - name: Build and install HashLink (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd hashlink
@@ -68,7 +68,7 @@ jobs:
         make
         sudo make install
 
-    - name: Build and install HashLink
+    - name: Build and install HashLink (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd hashlink
@@ -81,7 +81,7 @@ jobs:
         make
         sudo make install
 
-    - name: Install HashLink (1.12)
+    - name: Install HashLink (1.12, Windows)
       shell: bash
       run: |
         curl -L https://github.com/HaxeFoundation/hashlink/releases/download/1.12/hl-1.12.0-win.zip -o hashlink.zip
@@ -91,11 +91,11 @@ jobs:
         echo "HASHLINK_PATH_WIN=$(cygpath -w `pwd`)" >> $GITHUB_ENV
         pwd >> $GITHUB_PATH
 
-    - name: Set up MSVC
+    - name: Set up MSVC (Windows)
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Compile tests
+    - name: Compile tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
@@ -106,7 +106,7 @@ jobs:
         cd bin/hlc
         cc -o main -std=c11 -I. main.c -lhl -L. -lexample
 
-    - name: Compile tests
+    - name: Compile tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
@@ -115,7 +115,7 @@ jobs:
         cd bin/hlc
         cc -o main -std=c11 -I. main.c -lhl -L. -lexample
 
-    - name: Compile tests
+    - name: Compile tests (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
@@ -133,25 +133,25 @@ jobs:
     #    cd ammer-core/test/bin/hlc
     #    cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
 
-    - name: Run tests
+    - name: Run tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
         ./test-hl-linux.sh
         ./test-hlc-linux.sh
 
-    - name: Run tests
+    - name: Run tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
         ./test-hl-macos.sh
         ./test-hlc-macos.sh
 
-    - name: Run tests
+    # TODO: compile + run HL/C (issue #12)
+    - name: Run tests (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         cd ammer-core/test
-        exit 1
         ./test-hl-windows.sh
       #./test-hlc-windows.sh

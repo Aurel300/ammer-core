@@ -1,4 +1,4 @@
-name: Test cpp-static
+name: Test java, jvm
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test-cpp-static:
+  test-java:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -44,33 +44,37 @@ jobs:
     - name: Set up haxelibs
       shell: bash
       run: |
+        haxelib --quiet install hxjava
         haxelib dev ammer-core ammer-core
-        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
-        cd `haxelib path hxcpp | head -n 1`
-        cd tools/hxcpp
-        haxe compile.hxml
-
-    - name: Compile tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        haxe build-cpp-static.hxml
-
-    - name: Run tests (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cd ammer-core/test
-        ./test-cpp-static-linux.sh
-
-    - name: Run tests (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        cd ammer-core/test
-        ./test-cpp-static-macos.sh
-
-    - name: Run tests (Windows)
+ 
+    - name: Set up MSVC (Windows)
       if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests (Linux)
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" build-jvm.hxml
+
+    - name: Compile tests (macOS)
+      run: |
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" build-jvm.hxml
+ 
+    - name: Compile tests (Windows)
+      shell: bash
+      run: |
+        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
+        rm /usr/bin/link
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build-jvm.hxml
+
+    - name: Run tests
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-cpp-static-windows.sh
+        ./test-java.sh
+        ./test-jvm.sh

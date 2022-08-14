@@ -1,4 +1,4 @@
-name: Test cs
+name: Test neko
 
 on:
   push:
@@ -7,14 +7,29 @@ on:
   pull_request:
 
 jobs:
-  test-cs:
+  test-neko:
     strategy:
       matrix:
-        # TODO: re-enable windows-latest (issue #11)
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
+
+    - name: Adjust path (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if [[ -z "$GITHUB_PATH" ]]; then
+            echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        fi
+
+    - name: Update apt and install necessary packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        if ! command -v sudo &> /dev/null; then
+            apt install sudo
+        fi
+        sudo apt update
+        sudo apt-get install -y software-properties-common
 
     - name: Install Haxe (4.2.5)
       uses: krdlab/setup-haxe@v1
@@ -29,7 +44,6 @@ jobs:
     - name: Set up haxelibs
       shell: bash
       run: |
-        haxelib --quiet install hxcs
         haxelib dev ammer-core ammer-core
 
     - name: Set up MSVC (Windows)
@@ -40,23 +54,23 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        haxe build-cs.hxml
+        haxe -D ammercoretest.neko.includepaths="$NEKOPATH/include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build-neko.hxml
 
     - name: Run tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
-        ./test-cs-linux.sh
+        ./test-neko-linux.sh
 
     - name: Run tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        ./test-cs-macos.sh
+        ./test-neko-macos.sh
 
     - name: Run tests (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-cs-windows.sh
+        ./test-neko-windows.sh

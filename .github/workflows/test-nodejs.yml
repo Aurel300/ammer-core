@@ -1,4 +1,4 @@
-name: Test cpp-static
+name: Test nodejs
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test-cpp-static:
+  test-nodejs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -44,33 +44,22 @@ jobs:
     - name: Set up haxelibs
       shell: bash
       run: |
+        haxelib --quiet install hxnodejs
         haxelib dev ammer-core ammer-core
-        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git
-        cd `haxelib path hxcpp | head -n 1`
-        cd tools/hxcpp
-        haxe compile.hxml
+
+    - name: Install node-gyp
+      shell: bash
+      run: |
+        npm install -g node-gyp
 
     - name: Compile tests
       shell: bash
       run: |
         cd ammer-core/test
-        haxe build-cpp-static.hxml
+        haxe build-nodejs.hxml
 
-    - name: Run tests (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cd ammer-core/test
-        ./test-cpp-static-linux.sh
-
-    - name: Run tests (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        cd ammer-core/test
-        ./test-cpp-static-macos.sh
-
-    - name: Run tests (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Run tests
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-cpp-static-windows.sh
+        ./test-nodejs.sh
