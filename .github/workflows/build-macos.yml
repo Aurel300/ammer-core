@@ -238,7 +238,7 @@ jobs:
         pkg-config --cflags --libs python3
         echo "---"
         cd ammer-core/test
-        haxe -D ammercoretest.python.version=9 build-python.hxml
+        haxe -D ammercoretest.python.includepaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/include/python3.9 -D ammercoretest.python.version=9 build-python.hxml
 
     - name: Run tests
       run: |
