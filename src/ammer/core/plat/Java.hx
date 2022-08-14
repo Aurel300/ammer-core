@@ -457,7 +457,7 @@ class JavaMarshal extends BaseMarshal<
   const char* _java_tmp = (*_java_env)->GetStringUTFChars(_java_env, $l1, NULL);
   printf("java tmp is %s\\n", _java_tmp);
   $l2 = strdup(_java_tmp);
-  (*_java_env)->ReleaseStringUTFChars(_java_env, $l1, $l2);
+  //(*_java_env)->ReleaseStringUTFChars(_java_env, $l1, $l2);
 } while (0);',
     l2l1: (l2, l1) -> '$l1 = (*_java_env)->NewStringUTF(_java_env, $l2);',
   });
