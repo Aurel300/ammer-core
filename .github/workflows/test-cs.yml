@@ -1,0 +1,62 @@
+name: Test cs
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test-cs:
+    strategy:
+      matrix:
+        # TODO: re-enable windows-latest (issue #11)
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib --quiet install hxcs
+        haxelib dev ammer-core ammer-core
+
+    - name: Set up MSVC
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe build-cs.hxml
+
+    - name: Run tests
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        ./test-cs-linux.sh
+
+    - name: Run tests
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        ./test-cs-macos.sh
+
+    - name: Run tests
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        ./test-cs-windows.sh

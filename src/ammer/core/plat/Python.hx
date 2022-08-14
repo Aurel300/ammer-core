@@ -10,7 +10,6 @@ using Lambda;
 
 @:structInit
 class PythonConfig extends BaseConfig {
-  public var pythonNoLibLink:Bool = false;
   public var pythonVersionMinor = 8; // 3.8
   public var pythonIncludePaths:Array<String> = null;
   public var pythonLibraryPaths:Array<String> = null;
@@ -36,7 +35,7 @@ class Python extends Base<
       includePaths: config.pythonIncludePaths,
       libraryPaths: config.pythonLibraryPaths,
       defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
-      linkNames: config.pythonNoLibLink ? [] : ['python3${BuildProgram.useMSVC ? "" : "."}${config.pythonVersionMinor}'],
+      linkNames: ['python3${BuildProgram.useMSVC ? "" : "."}${config.pythonVersionMinor}'],
       // .so is intentional on macOS
       outputPath: lib -> '${config.outputPath}/${lib.config.name}.${BuildProgram.useMSVC ? "pyd" : "so"}',
     });

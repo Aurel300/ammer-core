@@ -1,2 +1,3 @@
 #!/bin/bash
-hl.exe bin/hl/test.hl
+cd bin/hl
+hl.exe test.hl

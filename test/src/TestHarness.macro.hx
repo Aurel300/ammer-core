@@ -63,7 +63,6 @@ class TestHarness {
         nekoLibraryPaths: paths("neko.librarypaths"),
       #end
       #if AMMER_TEST_PYTHON
-        //pythonNoLibLink: bool("python.noliblink"),
         pythonVersionMinor: int("python.version"),
         pythonIncludePaths: paths("python.includepaths"),
         pythonLibraryPaths: paths("python.librarypaths"),
@@ -101,14 +100,18 @@ class TestHarness {
       test.TestStrings.new,
       test.TestStructs.new,
     ]:Array<()->TestBase>)) {
-      var test = ctor();
-      testExprs.push(test.done());
+      var test = ctor().done();
+      testExprs.push(macro if (!$test) _allTestsPassed = false);
     }
 
     platform.addLibrary(library);
     var program = platform.finalise();
     program.build();
 
-    return macro $b{testExprs};
+    return macro {
+      var _allTestsPassed = true;
+      $b{testExprs};
+      if (!_allTestsPassed) Sys.exit(1);
+    };
   }
 }
