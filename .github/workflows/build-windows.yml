@@ -289,7 +289,7 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-python.sh
+        ./test-python-windows.sh
 
 #  test-neko:
 #    runs-on: windows-latest
