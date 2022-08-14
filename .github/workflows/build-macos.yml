@@ -261,6 +261,9 @@ jobs:
 
     - name: Compile tests
       run: |
+        echo "pkg config?"
+        pkg-config --cflags --libs python3.9
+        echo "---"
         cd ammer-core/test
         haxe -D ammercoretest.neko.includepaths="$NEKOPATH/include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build-neko.hxml
 

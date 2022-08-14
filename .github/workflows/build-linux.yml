@@ -333,14 +333,14 @@ jobs:
 
     - name: Compile tests
       run: |
+        echo "pkg config?"
+        pkg-config --cflags --libs python3
+        echo "---"
         cd ammer-core/test
         haxe build-python.hxml
 
     - name: Run tests
       run: |
-        echo "pkg config?"
-        pkg-config --cflags --libs python3
-        echo "---"
         cd ammer-core/test
         ./test-python.sh
 
