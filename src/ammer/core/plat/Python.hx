@@ -35,7 +35,7 @@ class Python extends Base<
       libraryPaths: config.pythonLibraryPaths,
       defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
       // TODO: versioning ...
-      linkNames: ["python3.6"],
+      linkNames: ["python3.8"],
       // .so is intentional, even on OS X
       // TODO: check windows
       outputPath: lib -> '${config.outputPath}/${lib.config.name}.so',

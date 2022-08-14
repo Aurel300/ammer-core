@@ -258,3 +258,71 @@ jobs:
 #        dumpbin /headers C:\Users\runneradmin\AppData\Roaming/luarocks/lib/lua/5.3/bit32.dll
 #        dumpbin /headers D:/a/ammer-core/ammer-core/.lua/bin\lua.exe
 #        lua bin/lua/test.lua
+
+  test-python:
+    runs-on: windows-latest
+    steps:
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        haxe build-python.hxml
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        ./test-python.sh
+
+  test-neko:
+    runs-on: windows-latest
+    steps:
+    - name: Install Haxe (4.2.5)
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.2.5
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        echo "$NEKOPATH"
+        ls "$NEKOPATH"
+        cd ammer-core/test
+        haxe build-neko.hxml
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        ./test-neko-windows.sh
