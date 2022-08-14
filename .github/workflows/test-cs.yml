@@ -40,23 +40,23 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        haxe build-cs.hxml
+        haxe build/build-cs.hxml
 
     - name: Run tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
-        ./test-cs-linux.sh
+        test/test-cs-linux.sh
 
     - name: Run tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        ./test-cs-macos.sh
+        test/test-cs-macos.sh
 
     - name: Run tests (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-cs-windows.sh
+        test/test-cs-windows.sh

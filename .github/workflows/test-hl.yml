@@ -99,8 +99,8 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
-        haxe build-hl.hxml
-        haxe build-hlc.hxml
+        haxe build/build-hl.hxml
+        haxe build/build-hlc.hxml
         cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hl
         cp $GITHUB_WORKSPACE/hashlink/libhl.so bin/hlc
         cd bin/hlc
@@ -110,8 +110,8 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        haxe build-hl.hxml
-        haxe build-hlc.hxml
+        haxe build/build-hl.hxml
+        haxe build/build-hlc.hxml
         cd bin/hlc
         cc -o main -std=c11 -I. main.c -lhl -L. -lexample
 
@@ -124,8 +124,8 @@ jobs:
         cd ammer-core/test
         mkdir -p bin/hlc
         cp "$HASHLINK_PATH/libhl.lib" bin/hlc
-        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hl.hxml
-        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build-hlc.hxml
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build/build-hl.hxml
+        haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build/build-hlc.hxml
 
     #- name: Compile tests (MSVC)
     #  if: matrix.os == 'windows-latest'
@@ -137,15 +137,15 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
-        ./test-hl-linux.sh
-        ./test-hlc-linux.sh
+        test/test-hl-linux.sh
+        test/test-hlc-linux.sh
 
     - name: Run tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        ./test-hl-macos.sh
-        ./test-hlc-macos.sh
+        test/test-hl-macos.sh
+        test/test-hlc-macos.sh
 
     # TODO: compile + run HL/C (issue #12)
     - name: Run tests (Windows)
@@ -153,5 +153,5 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-hl-windows.sh
-      #./test-hlc-windows.sh
+        test/test-hl-windows.sh
+      #test/test-hlc-windows.sh

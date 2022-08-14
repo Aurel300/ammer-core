@@ -56,10 +56,10 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        haxe build-nodejs.hxml
+        haxe build/build-nodejs.hxml
 
     - name: Run tests
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-nodejs.sh
+        test/test-nodejs.sh

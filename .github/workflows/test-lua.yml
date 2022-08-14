@@ -99,7 +99,7 @@ jobs:
       run: |
         source ~/lua5.3/bin/activate
         cd ammer-core/test
-        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
+        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build/build-lua.hxml
 
     # TODO: the only difference is the `source` call; use leafo's GH actions
     #       for all three systems?
@@ -108,20 +108,20 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
+        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build/build-lua.hxml
 
     - name: Run tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         source ~/lua5.3/bin/activate
         cd ammer-core/test
-        ./test-lua-linux.sh
+        test/test-lua-linux.sh
 
     - name: Run tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        ./test-lua-macos.sh
+        test/test-lua-macos.sh
 
     - name: Run tests (Windows)
       if: matrix.os == 'windows-latest'

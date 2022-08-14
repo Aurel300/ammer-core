@@ -1,3 +1,3 @@
 -D AMMER_TEST_JAVA
-build-common.hxml
+build/build-common.hxml
 --java bin/java

@@ -54,23 +54,23 @@ jobs:
       shell: bash
       run: |
         cd ammer-core/test
-        haxe build-cpp-static.hxml
+        haxe build/build-cpp-static.hxml
 
     - name: Run tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
-        ./test-cpp-static-linux.sh
+        test/test-cpp-static-linux.sh
 
     - name: Run tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        ./test-cpp-static-macos.sh
+        test/test-cpp-static-macos.sh
 
     - name: Run tests (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         cd ammer-core/test
-        ./test-cpp-static-windows.sh
+        test/test-cpp-static-windows.sh
