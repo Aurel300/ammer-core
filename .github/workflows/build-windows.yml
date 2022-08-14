@@ -283,6 +283,10 @@ jobs:
     - name: Compile tests
       shell: bash
       run: |
+        echo "python3 config?"
+        python3-config --includes
+        python3-config --libs
+        echo "---"
         cd ammer-core/test
         haxe build-python.hxml
 

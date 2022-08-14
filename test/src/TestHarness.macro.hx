@@ -27,6 +27,9 @@ class TestHarness {
       #end
       ;
 
+    function bool(key:String):Bool {
+      return Context.defined('ammercoretest.$key');
+    }
     function int(key:String):Null<Int> {
       var val = Context.definedValue('ammercoretest.$key');
       if (val == null || val == "") return null;
@@ -60,6 +63,7 @@ class TestHarness {
         nekoLibraryPaths: paths("neko.librarypaths"),
       #end
       #if AMMER_TEST_PYTHON
+        pythonNoLibLink: bool("python.noliblink"),
         pythonVersionMinor: int("python.version"),
         pythonIncludePaths: paths("python.includepaths"),
         pythonLibraryPaths: paths("python.librarypaths"),

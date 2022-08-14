@@ -208,7 +208,7 @@ jobs:
     - name: Compile tests
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
+        haxe  -D ammercoretest.lua.includepaths=`luarocks config --lua-incdir` -D ammercoretest.lua.librarypaths=`luarocks config --lua-libdir` build-lua.hxml
 
     - name: Run tests
       run: |
@@ -239,7 +239,7 @@ jobs:
         python3-config --libs
         echo "---"
         cd ammer-core/test
-        haxe -D ammercoretest.python.includepaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/include/python3.9 -D ammercoretest.python.version=9 build-python.hxml
+        haxe -D ammercoretest.python.noliblink -D ammercoretest.python.includepaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/include/python3.9 -D ammercoretest.python.version=9 build-python.hxml
 
     - name: Run tests
       run: |
