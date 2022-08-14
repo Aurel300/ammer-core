@@ -333,11 +333,8 @@ jobs:
 
     - name: Compile tests
       run: |
-        echo "pkg config?"
-        pkg-config --cflags --libs python3
-        echo "---"
         cd ammer-core/test
-        haxe build-python.hxml
+        haxe -D ammercoretest.python.includepaths="/usr/include/python3.8;/usr/include/x86_64-linux-gnu/python3.8" -D ammercoretest.python.version=8 build-python.hxml
 
     - name: Run tests
       run: |

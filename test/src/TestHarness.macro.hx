@@ -27,6 +27,11 @@ class TestHarness {
       #end
       ;
 
+    function int(key:String):Null<Int> {
+      var val = Context.definedValue('ammercoretest.$key');
+      if (val == null || val == "") return null;
+      return Std.parseInt(val);
+    }
     function paths(key:String):Array<String> {
       var val = Context.definedValue('ammercoretest.$key');
       if (val == null || val == "") return null;
@@ -55,6 +60,7 @@ class TestHarness {
         nekoLibraryPaths: paths("neko.librarypaths"),
       #end
       #if AMMER_TEST_PYTHON
+        pythonVersionMinor: int("python.version"),
         pythonIncludePaths: paths("python.includepaths"),
         pythonLibraryPaths: paths("python.librarypaths"),
       #end

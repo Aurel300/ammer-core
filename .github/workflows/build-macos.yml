@@ -235,10 +235,10 @@ jobs:
     - name: Compile tests
       run: |
         echo "pkg config?"
-        pkg-config --cflags --libs python3.9
+        pkg-config --cflags --libs python3
         echo "---"
         cd ammer-core/test
-        haxe build-python.hxml
+        haxe -D ammercoretest.python.version=9 build-python.hxml
 
     - name: Run tests
       run: |

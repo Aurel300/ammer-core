@@ -10,6 +10,7 @@ using Lambda;
 
 @:structInit
 class PythonConfig extends BaseConfig {
+  public var pythonVersionMinor = 8; // 3.8
   public var pythonIncludePaths:Array<String> = null;
   public var pythonLibraryPaths:Array<String> = null;
 }
@@ -34,10 +35,8 @@ class Python extends Base<
       includePaths: config.pythonIncludePaths,
       libraryPaths: config.pythonLibraryPaths,
       defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
-      // TODO: versioning ...
-      linkNames: ["python38"],
+      linkNames: ['python3${config.pythonVersionMinor}'],
       // .so is intentional, even on OS X
-      // TODO: check windows
       outputPath: lib -> '${config.outputPath}/${lib.config.name}.so',
     });
   }
