@@ -40,41 +40,41 @@ jobs:
 #      run: |
 #        cd ammer-core/test
 #        ./test-cpp-static-windows.sh
-
-  test-cs:
-    runs-on: windows-latest
-    steps:
-    - name: Install Haxe (4.2.5)
-      uses: krdlab/setup-haxe@v1
-      with:
-        haxe-version: 4.2.5
-
-    - name: Checkout ammer-core
-      uses: actions/checkout@v2
-      with:
-        path: "ammer-core"
-
-    - name: Set up haxelibs
-      shell: bash
-      run: |
-        haxelib --quiet install hxcs
-        haxelib dev ammer-core ammer-core
-
-    - name: Set up MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Compile tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        haxe build-cs.hxml
-
-    - name: Run tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        ./test-cs-windows.sh
-
+#
+#  test-cs:
+#    runs-on: windows-latest
+#    steps:
+#    - name: Install Haxe (4.2.5)
+#      uses: krdlab/setup-haxe@v1
+#      with:
+#        haxe-version: 4.2.5
+#
+#    - name: Checkout ammer-core
+#      uses: actions/checkout@v2
+#      with:
+#        path: "ammer-core"
+#
+#    - name: Set up haxelibs
+#      shell: bash
+#      run: |
+#        haxelib --quiet install hxcs
+#        haxelib dev ammer-core ammer-core
+#
+#    - name: Set up MSVC
+#      uses: ilammy/msvc-dev-cmd@v1
+#
+#    - name: Compile tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        haxe build-cs.hxml
+#
+#    - name: Run tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        ./test-cs-windows.sh
+#
 #  test-hashlink:
 #    runs-on: windows-latest
 #    steps:
@@ -283,9 +283,11 @@ jobs:
     - name: Compile tests
       #shell: bash
       run: |
-        ls C:\hostedtoolcache\windows\Python\3.9.13\x64
+        ls C:\hostedtoolcache\windows\Python\3.9.13\x64\include
+        ls C:\hostedtoolcache\windows\Python\3.9.13\x64\libs
+        ls C:\hostedtoolcache\windows\Python\3.9.13\x64\Lib
         cd ammer-core/test
-        haxe -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\include build-python.hxml
+        haxe -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\include -D ammercoretest.python.version=9 build-python.hxml
 
     - name: Run tests
       shell: bash
@@ -293,35 +295,35 @@ jobs:
         cd ammer-core/test
         ./test-python.sh
 
-  test-neko:
-    runs-on: windows-latest
-    steps:
-    - name: Install Haxe (4.2.5)
-      uses: krdlab/setup-haxe@v1
-      with:
-        haxe-version: 4.2.5
-
-    - name: Checkout ammer-core
-      uses: actions/checkout@v2
-      with:
-        path: "ammer-core"
-
-    - name: Set up haxelibs
-      shell: bash
-      run: |
-        haxelib dev ammer-core ammer-core
-
-    - name: Set up MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-
-    - name: Compile tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        haxe -D ammercoretest.neko.includepaths="$NEKOPATH\include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build-neko.hxml
-
-    - name: Run tests
-      shell: bash
-      run: |
-        cd ammer-core/test
-        ./test-neko-windows.sh
+#  test-neko:
+#    runs-on: windows-latest
+#    steps:
+#    - name: Install Haxe (4.2.5)
+#      uses: krdlab/setup-haxe@v1
+#      with:
+#        haxe-version: 4.2.5
+#
+#    - name: Checkout ammer-core
+#      uses: actions/checkout@v2
+#      with:
+#        path: "ammer-core"
+#
+#    - name: Set up haxelibs
+#      shell: bash
+#      run: |
+#        haxelib dev ammer-core ammer-core
+#
+#    - name: Set up MSVC
+#      uses: ilammy/msvc-dev-cmd@v1
+#
+#    - name: Compile tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        haxe -D ammercoretest.neko.includepaths="$NEKOPATH\include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build-neko.hxml
+#
+#    - name: Run tests
+#      shell: bash
+#      run: |
+#        cd ammer-core/test
+#        ./test-neko-windows.sh
