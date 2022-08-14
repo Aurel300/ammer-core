@@ -281,14 +281,11 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile tests
-      shell: bash
+      #shell: bash
       run: |
-        echo "python3 config?"
-        python3-config --includes
-        python3-config --libs
-        echo "---"
+        ls C:\hostedtoolcache\windows\Python\3.9.13\x64
         cd ammer-core/test
-        haxe build-python.hxml
+        haxe -D ammercoretest.python.includepaths=C:\hostedtoolcache\windows\Python\3.9.13\x64\include build-python.hxml
 
     - name: Run tests
       shell: bash

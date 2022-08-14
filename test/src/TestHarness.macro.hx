@@ -63,7 +63,7 @@ class TestHarness {
         nekoLibraryPaths: paths("neko.librarypaths"),
       #end
       #if AMMER_TEST_PYTHON
-        pythonNoLibLink: bool("python.noliblink"),
+        //pythonNoLibLink: bool("python.noliblink"),
         pythonVersionMinor: int("python.version"),
         pythonIncludePaths: paths("python.includepaths"),
         pythonLibraryPaths: paths("python.librarypaths"),
