@@ -11,10 +11,8 @@ typedef BaseTypeMarshal = {
   l3Type:String,
   mangled:String,
   l1l2:(l1:String, l2:String)->String,
-  l2ref:(l2:String)->String,
   l2l3:(l2:String, l3:String)->String,
   l3l2:(l3:String, l2:String)->String,
-  l2unref:(l2:String)->String,
   l2l1:(l2:String, l1:String)->String,
 
   // If present, this type can be used as an element in direct array methods
@@ -32,10 +30,8 @@ typedef BaseTypeMarshalOpt = {
   ?l3Type:String,
   ?mangled:String,
   ?l1l2:(l1:String, l2:String)->String,
-  ?l2ref:(l2:String)->String,
   ?l2l3:(l2:String, l3:String)->String,
   ?l3l2:(l3:String, l2:String)->String,
-  ?l2unref:(l2:String)->String,
   ?l2l1:(l2:String, l1:String)->String,
 
   ?arrayBits:Int,

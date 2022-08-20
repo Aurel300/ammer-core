@@ -305,10 +305,8 @@ class HashlinkMarshal extends BaseMarshal<
       l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
       mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
       l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
-      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
       l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
       l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
-      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
       l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
       arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
       arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
@@ -396,8 +394,6 @@ $l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {hlType: "_OBJ(_BYTES _I32)"}, {
     l1Type: "_ammer_haxe_string*",
     l1l2: (l1, l2) -> '$l2 = hl_to_utf8((const uchar*)$l1->data);',
-    l2ref: BaseMarshal.MARSHAL_NOOP1, // TODO: might need to GC root ?
-    l2unref: BaseMarshal.MARSHAL_NOOP1, // TODO: dealloc?
     l2l1: (l2, l1) -> '$l1 = (_ammer_haxe_string*)hl_alloc_obj(_ammer_haxe_string_type);
 $l1->len = hl_utf8_length((const unsigned char*)$l2, 0);
 $l1->data = hl_gc_alloc_noptr(($l1->len + 1) * sizeof(uchar));

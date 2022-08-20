@@ -42,10 +42,8 @@ abstract class BaseMarshal<
     l3Type: "void",
     mangled: "v",
     l1l2: MARSHAL_NOOP2,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_NOOP2,
     l3l2: MARSHAL_NOOP2,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_NOOP2,
   };
   abstract public function void():TTypeMarshal;
@@ -57,10 +55,8 @@ abstract class BaseMarshal<
     l3Type: "bool",
     mangled: "u1",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
   abstract public function bool():TTypeMarshal;
@@ -73,10 +69,8 @@ abstract class BaseMarshal<
     l3Type: "uint8_t",
     mangled: "u8",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 0,
   };
@@ -87,10 +81,8 @@ abstract class BaseMarshal<
     l3Type: "int8_t",
     mangled: "i8",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 0,
   };
@@ -101,10 +93,8 @@ abstract class BaseMarshal<
     l3Type: "uint16_t",
     mangled: "u16",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 1,
   };
@@ -115,10 +105,8 @@ abstract class BaseMarshal<
     l3Type: "int16_t",
     mangled: "i16",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 1,
   };
@@ -129,10 +117,8 @@ abstract class BaseMarshal<
     l3Type: "uint32_t",
     mangled: "u32",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 2,
   };
@@ -143,10 +129,8 @@ abstract class BaseMarshal<
     l3Type: "int32_t",
     mangled: "i32",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 2,
   };
@@ -158,10 +142,8 @@ abstract class BaseMarshal<
     l3Type: "uint64_t",
     mangled: "u64",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 3,
   };
@@ -172,10 +154,8 @@ abstract class BaseMarshal<
     l3Type: "int64_t",
     mangled: "i64",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 3,
   };
@@ -195,10 +175,8 @@ abstract class BaseMarshal<
     l3Type: "float",
     mangled: "f32",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 2,
   };
@@ -209,10 +187,8 @@ abstract class BaseMarshal<
     l3Type: "double",
     mangled: "f64",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 3,
   };
@@ -226,10 +202,8 @@ abstract class BaseMarshal<
     l3Type: "const char*",
     mangled: "s",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
   abstract public function string():TTypeMarshal;
@@ -308,10 +282,8 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     l3Type: "uint8_t*",
     mangled: "b",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
   function baseBytesRef(
@@ -371,10 +343,8 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     l3Type: '$name*',
     mangled: 'p${Mangle.identifier(name)}_',
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
   static function baseOpaqueDirectInternal(name:String):BaseTypeMarshal return {
@@ -384,10 +354,8 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     l3Type: '$name',
     mangled: 'd${Mangle.identifier(name)}_',
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: (l2, l3) -> '$l3 = *(($name*)$l2);',
     l3l2: (l3, l2) -> '$l2 = ($name*)(&($l3));',
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
   abstract function opaqueInternal(name:String):MarshalOpaque<TTypeMarshal>;
@@ -687,10 +655,8 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
     l3Type: '${element.l3Type}*',
     mangled: 'a${Mangle.identifier(element.l3Type)}_',
     l1l2: MARSHAL_CONVERT_CAST('${element.l2Type}*'),
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_CAST('${element.l3Type}*'),
     l3l2: MARSHAL_CONVERT_CAST('${element.l2Type}*'),
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_CAST('${element.l1Type}*'),
   };
   function baseArrayRef(
@@ -863,10 +829,8 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
     l3Type: "void*",
     mangled: 'h${Mangle.complexType(haxeType)}_',
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2ref: MARSHAL_NOOP1,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
-    l2unref: MARSHAL_NOOP1,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
   abstract function haxePtrInternalType(haxeType:ComplexType):TTypeMarshal;

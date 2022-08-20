@@ -443,10 +443,8 @@ class NodejsMarshal extends BaseMarshal<
       l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
       mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
       l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
-      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
       l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
       l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
-      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
       l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
       arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
       arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
@@ -572,7 +570,6 @@ class NodejsMarshal extends BaseMarshal<
   $l2 = (const char *)malloc(_nodejs_tmp + 1);
   NAPI_CALL_I(napi_get_value_string_utf8(_nodejs_env, $l1, (char*)$l2, _nodejs_tmp + 1, &_nodejs_tmp));
 } while (0);',
-    // l2ref: BaseMarshal.MARSHAL_NOOP1, // TODO: ref?
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_string_utf8(_nodejs_env, $l2, NAPI_AUTO_LENGTH, &$l1));',
   });
   public function string():NodejsTypeMarshal return MARSHAL_STRING;

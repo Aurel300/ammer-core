@@ -362,10 +362,8 @@ class JavaMarshal extends BaseMarshal<
       l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
       mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
       l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
-      l2ref:     over != null && over.l2ref     != null ? over.l2ref     : base.l2ref,
       l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
       l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
-      l2unref:   over != null && over.l2unref   != null ? over.l2unref   : base.l2unref,
       l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
       arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
       arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
@@ -452,7 +450,7 @@ class JavaMarshal extends BaseMarshal<
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {primitive: false, javaMangle: "Ljava/lang/String;"}, {
     l1Type: "jstring",
-    // TODO: avoid copy somehow? the release call is annoying in l2unref
+    // TODO: avoid copy somehow?
     l1l2: (l1, l2) -> 'do {
   const char* _java_tmp = (*_java_env)->GetStringUTFChars(_java_env, $l1, NULL);
   $l2 = strdup(_java_tmp);

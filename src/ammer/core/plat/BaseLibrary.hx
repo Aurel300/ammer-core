@@ -119,7 +119,6 @@ abstract class BaseLibrary<
     lb
       .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
       .lmapi(args, (idx, arg) -> arg.l1l2(argsL1[idx], '_l2_arg_$idx'))
-      .lmapi(args, (idx, arg) -> arg.l2ref('_l2_arg_$idx'))
       .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
       .lmapi(args, (idx, arg) -> arg.l2l3('_l2_arg_$idx', '${config.argPrefix}${idx}'))
       .ifi(ret.mangled != "v" && config.returnIdent == options.l3Return)
@@ -133,8 +132,7 @@ abstract class BaseLibrary<
           .ail('${ret.l1Type} ${retL1Name};')
         .ifd()
         .ail(ret.l2l1("_l2_return", retL1Name))
-      .ifd()
-      .lmapi(args, (idx, arg) -> arg.l2unref('_l2_arg_$idx'));
+      .ifd();
   }
   abstract public function addNamedFunction(
     name:String,
