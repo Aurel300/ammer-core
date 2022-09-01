@@ -762,7 +762,7 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
   } {
     var mangled = 'h${Mangle.complexType(haxeType)}_';
 
-    var tdefRef = library.typeDefCreate();
+    var tdefRef = library.typeDefCreate(false);
     tdefRef.name += '_HaxeRef_$mangled';
     var tp = {
       name: tdefRef.name,

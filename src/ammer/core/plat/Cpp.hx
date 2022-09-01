@@ -64,25 +64,51 @@ class CppLibrary extends BaseLibrary<
   CppMarshal
 > {
   var lbHeader = new LineBuf();
-  var nativeTypes:Map<String, {
-    tdef:TypeDefinition,
-    fields:Map<String, Bool>,
-  }> = new Map();
-  var nativeTypesOther:Array<TypeDefinition> = [];
   var haxeRefCt:ComplexType = null;
 
-  function pushNative(name:String, signature:ComplexType, pos:Position):Void {
+  var absLibPath:String;
+  var headerPath:String;
+  var codePath:String;
+
+  function pushNative(name:String, native:String, signature:ComplexType, pos:Position):Void {
     tdef.fields.push({
       pos: pos,
       name: name,
       meta: [{
         pos: pos,
-        params: [macro $v{name}],
+        params: [macro $v{native}],
         name: ":native",
       }],
       kind: TypeUtils.ffunCt(signature, macro throw 0),
       access: [APrivate, AStatic],
+    });/*
+    var argCount = (switch (signature) {
+      case TFunction(args, _): args.length;
+      case _: throw 0;
     });
+    var args = [ for (i in 0...argCount) macro $i{'arg$i'} ];
+    tdef.fields.push({
+      pos: pos,
+      name: name,
+      meta: [],
+      kind: TypeUtils.ffunCt(signature, macro return $i{"_native_" + name}($a{args})),
+      access: [APublic, AStatic],
+    });*/
+  }
+
+  public function addCppIncludes(tdef:TypeDefinition, code:Bool):Void {
+    tdef.meta.push({
+      pos: config.pos,
+      params: [macro $v{"#include \"" + headerPath + "\""}],
+      name: ":headerCode",
+    });
+    if (code) {
+      tdef.meta.push({
+        pos: config.pos,
+        params: [macro $v{"#include \"" + codePath + "\""}],
+        name: ":cppFileCode",
+      });
+    }
   }
 
   public function new(platform:Cpp, config:CppLibraryConfig) {
@@ -90,8 +116,14 @@ class CppLibrary extends BaseLibrary<
 
     var exth = config.language.extensionHeader();
     var ext = config.language.extension();
+    absLibPath = sys.FileSystem.absolutePath('${platform.config.buildPath}/${config.name}');
+    headerPath = '$absLibPath/lib.cpp_static.$exth';
+    codePath = '$absLibPath/lib.cpp_static.$ext';
 
-    var native = typeDefCreate();
+    addCppIncludes(tdef, true);
+
+    // TODO: share type across libraries?
+    var native = typeDefCreate(false);
     native.name = '${config.typeDefName}_NativeHaxeRef';
     native.isExtern = true;
     native.meta = [{
@@ -99,7 +131,9 @@ class CppLibrary extends BaseLibrary<
       params: [macro "_ammer_haxe_ref"],
       name: ":native",
     }];
-    nativeTypesOther.push(native);
+    addCppIncludes(native, false);
+    TypeUtils.defineType(native);
+
     haxeRefCt = TPath({
       params: [TPType(TPath({
         pack: config.typeDefPack,
@@ -109,76 +143,50 @@ class CppLibrary extends BaseLibrary<
       name: "Pointer", // Star?
     });
 
-    pushNative("_ammer_ref_create",   (macro : (Dynamic) -> $haxeRefCt), config.pos);
-    pushNative("_ammer_ref_delete",   (macro : ($haxeRefCt) -> Void), config.pos);
-    pushNative("_ammer_ref_getcount", (macro : ($haxeRefCt) -> Int), config.pos);
-    pushNative("_ammer_ref_setcount", (macro : ($haxeRefCt, Int) -> Void), config.pos);
-    pushNative("_ammer_ref_getvalue", (macro : ($haxeRefCt) -> Dynamic), config.pos);
+    pushNative("_ammer_ref_create",   '_ammer_ref_${config.name}_create',   (macro : (Dynamic) -> $haxeRefCt), config.pos);
+    pushNative("_ammer_ref_delete",   '_ammer_ref_${config.name}_delete',   (macro : ($haxeRefCt) -> Void), config.pos);
+    pushNative("_ammer_ref_getcount", '_ammer_ref_${config.name}_getcount', (macro : ($haxeRefCt) -> Int), config.pos);
+    pushNative("_ammer_ref_setcount", '_ammer_ref_${config.name}_setcount', (macro : ($haxeRefCt, Int) -> Void), config.pos);
+    pushNative("_ammer_ref_getvalue", '_ammer_ref_${config.name}_getvalue', (macro : ($haxeRefCt) -> Dynamic), config.pos);
 
     lbHeader.ail('
 #pragma once
+#ifndef _AMMER_CORE_HAXE_REF
+#define _AMMER_CORE_HAXE_REF 1
 typedef struct { ::Dynamic value; int32_t refcount; } _ammer_haxe_ref;
-_ammer_haxe_ref* _ammer_ref_create(::Dynamic value);
-void _ammer_ref_delete(_ammer_haxe_ref* ref);
-int32_t _ammer_ref_getcount(_ammer_haxe_ref* ref);
-void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc);
-::Dynamic _ammer_ref_getvalue(_ammer_haxe_ref* ref);
+static _ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value);
+static void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref);
+static int32_t _ammer_ref_${config.name}_getcount(_ammer_haxe_ref* ref);
+static void _ammer_ref_${config.name}_setcount(_ammer_haxe_ref* ref, int32_t rc);
+static ::Dynamic _ammer_ref_${config.name}_getvalue(_ammer_haxe_ref* ref);
+#endif
 ');
     lb.ail('
-_ammer_haxe_ref* _ammer_ref_create(::Dynamic value) {
+static _ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = value;
   ref->refcount = 0;
   ::hx::GCAddRoot((hx::Object**)&ref->value);
   return ref;
 }
-void _ammer_ref_delete(_ammer_haxe_ref* ref) {
+static void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
   ::hx::GCRemoveRoot((hx::Object**)&ref->value);
   ref->value = nullptr;
   ${config.freeFunction}(ref);
 }
-int32_t _ammer_ref_getcount(_ammer_haxe_ref* ref) {
+static int32_t _ammer_ref_${config.name}_getcount(_ammer_haxe_ref* ref) {
   return ref->refcount;
 }
-void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc) {
+static void _ammer_ref_${config.name}_setcount(_ammer_haxe_ref* ref, int32_t rc) {
   ref->refcount = rc;
 }
-::Dynamic _ammer_ref_getvalue(_ammer_haxe_ref* ref) {
+static ::Dynamic _ammer_ref_${config.name}_getvalue(_ammer_haxe_ref* ref) {
   return ref->value;
 } // TODO: get/set unnecessary, just read/write field directly on native?
 ');
   }
 
   override function finalise(platConfig:CppConfig):Void {
-    var ext = config.language.extension();
-    var exth = config.language.extensionHeader();
-    var absLibPath = sys.FileSystem.absolutePath('${platConfig.buildPath}/${config.name}');
-    var headerPath = '$absLibPath/lib.cpp_static.$exth';
-    var codePath = '$absLibPath/lib.cpp_static.$ext';
-    tdef.meta.push({
-      pos: Context.currentPos(),
-      params: [macro $v{"#include \"" + headerPath + "\""}],
-      name: ":headerCode",
-    });
-    tdef.meta.push({
-      pos: Context.currentPos(),
-      params: [macro $v{"#include \"" + codePath + "\""}],
-      name: ":cppFileCode",
-    });
-    for (nativeType in nativeTypes) {
-      nativeType.tdef.meta.push({
-        pos: config.pos,
-        params: [macro $v{"#include \"" + headerPath + "\""}],
-        name: ":headerCode",
-      });
-    }
-    for (nativeType in nativeTypesOther) {
-      nativeType.meta.push({
-        pos: config.pos,
-        params: [macro $v{"#include \"" + headerPath + "\""}],
-        name: ":headerCode",
-      });
-    }
     var xml = new LineBuf()
       .ail('<files id="haxe">')
       .i()
@@ -443,7 +451,7 @@ class CppMarshal extends BaseMarshal<
   }
 
   function opaqueInternal(name:String):MarshalOpaque<CppTypeMarshal> {
-    var native = library.typeDefCreate();
+    var native = library.typeDefCreate(false);
     native.name = '${library.config.typeDefName}_Native_${Mangle.identifier(name)}';
     native.isExtern = true;
     native.meta = [{
@@ -451,10 +459,8 @@ class CppMarshal extends BaseMarshal<
       params: [macro $v{name}],
       name: ":native",
     }];
-    library.nativeTypes[name] = {
-      tdef: native,
-      fields: new Map(),
-    };
+    library.addCppIncludes(native, false);
+    TypeUtils.defineType(native);
     var haxeType:ComplexType = TPath({
       params: [TPType(TPath({
         pack: library.config.typeDefPack,
@@ -618,7 +624,8 @@ class CppMarshal extends BaseMarshal<
       value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
       macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
     );
-    library.nativeTypesOther.push(res.tdef);
+    library.addCppIncludes(res.tdef, false);
+    TypeUtils.defineType(res.tdef);
     return res.marshal;
   }
 

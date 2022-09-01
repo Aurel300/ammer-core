@@ -650,16 +650,20 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
 NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
   });
 
-  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<NodejsTypeMarshal> return baseHaxePtrInternal(
-    haxeType,
-    (macro : Dynamic),
-    macro null,
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
-    rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
-    value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
-  ).marshal;
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<NodejsTypeMarshal> {
+    var ret = baseHaxePtrInternal(
+      haxeType,
+      (macro : Dynamic),
+      macro null,
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
+      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+      value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+    );
+    TypeUtils.defineType(ret.tdef);
+    return ret.marshal;
+  }
 
   function haxePtrInternalType(haxeType:ComplexType):NodejsTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
       haxeType: (macro : Dynamic),

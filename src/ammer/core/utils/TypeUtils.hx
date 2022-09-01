@@ -1,5 +1,6 @@
 package ammer.core.utils;
 
+import haxe.macro.Context;
 import haxe.macro.Expr;
 
 class TypeUtils {
@@ -37,5 +38,12 @@ class TypeUtils {
       });
       case _: throw 0;
     });
+  }
+
+  public static var definedTypes:Array<TypeDefinition> = [];
+
+  public static function defineType(tdef:TypeDefinition):Void {
+    definedTypes.push(tdef);
+    Context.defineType(tdef);
   }
 }

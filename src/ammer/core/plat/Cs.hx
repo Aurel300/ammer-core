@@ -635,6 +635,7 @@ return old_val;';
       }).fields
     );
     library.haxeRefTdefs[ret.mangled] = ret.tdef;
+    TypeUtils.defineType(ret.tdef);
     return ret.marshal;
   }
 
