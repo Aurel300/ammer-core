@@ -9,4 +9,6 @@ enum abstract PlatformId(String) {
   var Neko = "neko";
   var Nodejs = "nodejs";
   var Python = "python";
+
+  var None = "none";
 }

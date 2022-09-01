@@ -24,6 +24,8 @@ class Library {
       case Neko:     (cast library : ammer.core.plat.Neko.NekoLibrary).marshal;
       case Nodejs:   (cast library : ammer.core.plat.Nodejs.NodejsLibrary).marshal;
       case Python:   (cast library : ammer.core.plat.Python.PythonLibrary).marshal;
+
+      case None:     (cast library : ammer.core.plat.None.NoneLibrary).marshal;
     }));
   }
 
