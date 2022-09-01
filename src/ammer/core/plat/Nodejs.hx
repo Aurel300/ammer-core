@@ -32,7 +32,7 @@ class Nodejs extends Base<
   public function finalise():BuildProgram {
     var ops:Array<BuildOp> = [];
     for (lib in libraries) {
-      var ext = lib.config.abi.extension();
+      var ext = lib.config.language.extension();
       ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
       ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
       ops.push(BOAlways(

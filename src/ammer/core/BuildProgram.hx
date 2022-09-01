@@ -84,7 +84,7 @@ class BuildProgram {
       case [File(dst), _, WriteData(data)]:
         Sys.println('write $dst');
         sys.io.File.saveBytes(extensions(dst), data);
-      case [File(dst), File(src), CompileObject(abi, opt)]:
+      case [File(dst), File(src), CompileObject(lang, opt)]:
         if (useMSVC) {
           var args = [];
           for (path in opt.includePaths) {
@@ -95,17 +95,17 @@ class BuildProgram {
           run("cl.exe", args);
         } else {
           var args = ["-fPIC", "-o", extensions(dst), "-c", extensions(src)];
-          if (abi == Cpp || abi == ObjectiveCpp) {
+          if (lang == Cpp || lang == ObjectiveCpp) {
             args.push("-std=c++11");
           }
           for (path in opt.includePaths) {
             args.push("-I");
             args.push(path);
           }
-          run(abi.match(Cpp | ObjectiveCpp) ? "g++" : "cc", args);
+          run(lang.match(Cpp | ObjectiveCpp) ? "g++" : "cc", args);
         }
       case [_, _, CompileObject(_)]: throw "invalid CompileObject command";
-      case [File(dst), File(src), LinkLibrary(abi, opt)]:
+      case [File(dst), File(src), LinkLibrary(lang, opt)]:
         if (useMSVC) {
           var args = ['/Fe${extensions(dst)}', "/LD", extensions(src)];
           for (d in opt.defines) {
@@ -147,7 +147,7 @@ class BuildProgram {
           }
           for (lib in opt.libraries)
             args.push('-l$lib');
-          run(abi.match(Cpp | ObjectiveCpp) ? "g++" : "cc", args);
+          run(lang.match(Cpp | ObjectiveCpp) ? "g++" : "cc", args);
         }
       case [_, _, LinkLibrary(_)]: throw "invalid LinkLibrary command";
       case [File(path), _, EnsureDirectory]:

@@ -46,17 +46,27 @@ abstract class Base<
   }):BuildProgram {
     var ops:Array<BuildOp> = [];
     for (lib in libraries) {
-      var ext = lib.config.abi.extension();
+      var ext = lib.config.language.extension();
       ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
       ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
-      ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
-        WriteContent(lib.lb.done())
-      ));
+
+      // Disabling the following operation is useful for debugging. When
+      // disabled, the generated C source is no longer rewritten when Haxe is
+      // invoked, but the remaining operations (compiling objects and linking
+      // a dynamic library) are still performed. It is thus possible to change
+      // the generated C source, e.g. to insert debugging statements, and see
+      // the effects of those changes when Haxe is invoked again.
+      if (true) {
+        ops.push(BOAlways(
+          File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
+          WriteContent(lib.lb.done())
+        ));
+      }
+
       ops.push(BODependent(
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
-        CompileObject(lib.config.abi, {
+        CompileObject(lib.config.language, {
           includePaths: (options.includePaths != null ? options.includePaths : [])
             .concat(lib.config.includePaths),
         })
@@ -64,7 +74,7 @@ abstract class Base<
       ops.push(BODependent(
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%DLL%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
-        LinkLibrary(lib.config.abi, {
+        LinkLibrary(lib.config.language, {
           defines: (options.defines != null ? options.defines : []),
           libraryPaths: (options.libraryPaths != null ? options.libraryPaths : [])
             .concat(lib.config.libraryPaths),
