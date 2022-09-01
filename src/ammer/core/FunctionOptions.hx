@@ -10,6 +10,8 @@ typedef FunctionOptions = {
 
   // L3 return expression; default: config.returnIdent
   ?l3Return:String,
+
+  ?comment:String,
 };
 
 #end
