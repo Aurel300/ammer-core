@@ -130,7 +130,7 @@ JNIEXPORT void ${javaMangle("_ammer_java_frombytesunref")}(JNIEnv *_java_env, jc
 
 typedef struct { jobject value; int32_t refcount; } _ammer_haxe_ref;
 JNIEXPORT jlong ${javaMangle("_ammer_ref_create")}(JNIEnv *_java_env, jclass _java_cls, jobject value) {
-  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = (*_java_env)->NewGlobalRef(_java_env, value);
   ref->refcount = 0;
   return (jlong)ref;

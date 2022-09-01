@@ -118,7 +118,7 @@ DEFINE_PRIM(_ammer_neko_fromhaxeref, 1);
 
 typedef struct { value* data; int32_t refcount; } _ammer_haxe_ref;
 static value _ammer_ref_create(value obj) {
-  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   // TODO: remove double allocation?
   ref->data = alloc_root(1);
   *ref->data = obj;
