@@ -10,7 +10,7 @@ class LibraryConfig {
   public var linkNames:Array<String> = [];
   public var includePaths:Array<String> = [];
   public var libraryPaths:Array<String> = [];
-  public var abi:LibraryAbi = C;
+  public var language:LibraryLanguage = C;
   public var pos:Position = null;
   public var typeDefPack:Array<String> = null;
   public var typeDefName:String = null;
@@ -23,34 +23,6 @@ class LibraryConfig {
   // these two could be per-function?
   public var argPrefix:String = "_arg";
   public var returnIdent:String = "_return";
-}
-
-@:using(ammer.core.LibraryConfig.LibraryAbiTools)
-enum LibraryAbi {
-  C;
-  Cpp;
-  ObjectiveC;
-  ObjectiveCpp;
-}
-
-class LibraryAbiTools {
-  public static function extension(abi:LibraryAbi):String {
-    return (switch (abi) {
-      case C: "c";
-      case Cpp: "cpp";
-      case ObjectiveC: "m";
-      case ObjectiveCpp: "mm";
-    });
-  }
-
-  public static function extensionHeader(abi:LibraryAbi):String {
-    return (switch (abi) {
-      case C: "h";
-      case Cpp: "hpp";
-      case ObjectiveC: "h";
-      case ObjectiveCpp: "hpp"; // TODO: is this correct?
-    });
-  }
 }
 
 #end

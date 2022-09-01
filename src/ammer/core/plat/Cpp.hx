@@ -32,8 +32,8 @@ class Cpp extends Base<
   public function finalise():BuildProgram {
     var ops:Array<BuildOp> = [];
     for (lib in libraries) {
-      var ext = lib.config.abi.extension();
-      var exth = lib.config.abi.extensionHeader();
+      var ext = lib.config.language.extension();
+      var exth = lib.config.language.extensionHeader();
       ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
       ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
       ops.push(BOAlways(
@@ -81,6 +81,9 @@ class CppLibrary extends BaseLibrary<
 
   public function new(config:CppLibraryConfig) {
     super(config, new CppMarshal(this));
+
+    var exth = config.language.extensionHeader();
+    var ext = config.language.extension();
 
     var native = typeDefCreate();
     native.name = '${config.typeDefName}_NativeHaxeRef';
@@ -141,8 +144,8 @@ void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc) {
   }
 
   override function finalise(platConfig:CppConfig):Void {
-    var ext = config.abi.extension();
-    var exth = config.abi.extensionHeader();
+    var ext = config.language.extension();
+    var exth = config.language.extensionHeader();
     var absLibPath = sys.FileSystem.absolutePath('${platConfig.buildPath}/${config.name}');
     var headerPath = '$absLibPath/lib.cpp_static.$exth';
     var codePath = '$absLibPath/lib.cpp_static.$ext';

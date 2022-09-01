@@ -1,7 +1,5 @@
 package ammer.core;
 
-import ammer.core.LibraryConfig.LibraryAbi;
-
 enum BuildOp {
   BOCwd(
     path:String,
@@ -35,8 +33,8 @@ enum BuildOpCommand {
   Copy;
   WriteContent(_:String);
   WriteData(_:haxe.io.Bytes);
-  CompileObject(abi:LibraryAbi, opt:MakeCompileOptions);
-  LinkLibrary(abi:LibraryAbi, opt:MakeLinkOptions);
+  CompileObject(lang:LibraryLanguage, opt:MakeCompileOptions);
+  LinkLibrary(lang:LibraryLanguage, opt:MakeLinkOptions);
   EnsureDirectory;
   Command(cmd:String, args:Array<String>);
 }
