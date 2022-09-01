@@ -2,12 +2,22 @@ package ammer.core.plat;
 
 import haxe.macro.Expr;
 
+@:allow(ammer.core.plat)
 abstract class Base<
+  TSelf:Base<
+    TSelf,
+    TConfig,
+    TLibraryConfig,
+    TTypeMarshal,
+    TLibrary,
+    TMarshal
+  >,
   TConfig:BaseConfig,
   TLibraryConfig:LibraryConfig,
   TTypeMarshal:BaseTypeMarshal,
   TLibrary:BaseLibrary<
     TLibrary,
+    TSelf,
     TConfig,
     TLibraryConfig,
     TTypeMarshal,
@@ -15,6 +25,7 @@ abstract class Base<
   >,
   TMarshal:BaseMarshal<
     TMarshal,
+    TSelf,
     TConfig,
     TLibraryConfig,
     TLibrary,
@@ -29,6 +40,8 @@ abstract class Base<
     this.platformId = platformId;
     this.config = config;
   }
+
+  abstract public function createLibrary(libConfig:TLibraryConfig):TLibrary;
 
   public function addLibrary(library:TLibrary):Void {
     @:privateAccess library.finalise(config);

@@ -20,6 +20,7 @@ typedef PythonLibraryConfig = LibraryConfig;
 typedef PythonTypeMarshal = BaseTypeMarshal;
 
 class Python extends Base<
+  Python,
   PythonConfig,
   PythonLibraryConfig,
   PythonTypeMarshal,
@@ -28,6 +29,10 @@ class Python extends Base<
 > {
   public function new(config:PythonConfig) {
     super("python", config);
+  }
+
+  public function createLibrary(libConfig:PythonLibraryConfig):PythonLibrary {
+    return new PythonLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -45,6 +50,7 @@ class Python extends Base<
 @:allow(ammer.core.plat)
 class PythonLibrary extends BaseLibrary<
   PythonLibrary,
+  Python,
   PythonConfig,
   PythonLibraryConfig,
   PythonTypeMarshal,
@@ -63,8 +69,8 @@ class PythonLibrary extends BaseLibrary<
     });
   }
 
-  public function new(config:PythonLibraryConfig) {
-    super(config, new PythonMarshal(this));
+  public function new(platform:Python, config:PythonLibraryConfig) {
+    super(platform, config, new PythonMarshal(this));
     tdefExtern = typeDefCreate();
     tdefExtern.name += "_Native";
     tdefExtern.isExtern = true;
@@ -328,6 +334,7 @@ PyMODINIT_FUNC PyInit_${config.name}(void) {
 @:allow(ammer.core.plat)
 class PythonMarshal extends BaseMarshal<
   PythonMarshal,
+  Python,
   PythonConfig,
   PythonLibraryConfig,
   PythonLibrary,

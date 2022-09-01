@@ -30,6 +30,7 @@ typedef JavaTypeMarshal = {
 };
 
 class Java extends Base<
+  Java,
   JavaConfig,
   JavaLibraryConfig,
   JavaTypeMarshal,
@@ -38,6 +39,10 @@ class Java extends Base<
 > {
   public function new(config:JavaConfig) {
     super("java", config);
+  }
+
+  public function createLibrary(libConfig:JavaLibraryConfig):JavaLibrary {
+    return new JavaLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -51,6 +56,7 @@ class Java extends Base<
 @:allow(ammer.core.plat)
 class JavaLibrary extends BaseLibrary<
   JavaLibrary,
+  Java,
   JavaConfig,
   JavaLibraryConfig,
   JavaTypeMarshal,
@@ -69,8 +75,8 @@ class JavaLibrary extends BaseLibrary<
     });
   }
 
-  public function new(config:JavaLibraryConfig) {
-    super(config, new JavaMarshal(this));
+  public function new(platform:Java, config:JavaLibraryConfig) {
+    super(platform, config, new JavaMarshal(this));
     tdef.meta.push({
       pos: config.pos,
       name: ":nativeGen",
@@ -340,6 +346,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 @:allow(ammer.core.plat)
 class JavaMarshal extends BaseMarshal<
   JavaMarshal,
+  Java,
   JavaConfig,
   JavaLibraryConfig,
   JavaLibrary,

@@ -10,9 +10,18 @@ import ammer.core.utils.LineBuf;
 abstract class BaseLibrary<
   TSelf:BaseLibrary<
     TSelf,
+    TPlatform,
     TConfig,
     TLibraryConfig,
     TTypeMarshal,
+    TMarshal
+  >,
+  TPlatform:Base<
+    TPlatform,
+    TConfig,
+    TLibraryConfig,
+    TTypeMarshal,
+    TSelf,
     TMarshal
   >,
   TConfig:BaseConfig,
@@ -20,6 +29,7 @@ abstract class BaseLibrary<
   TTypeMarshal:BaseTypeMarshal,
   TMarshal:BaseMarshal<
     TMarshal,
+    TPlatform,
     TConfig,
     TLibraryConfig,
     TSelf,
@@ -28,6 +38,7 @@ abstract class BaseLibrary<
 > {
   public var marshal:TMarshal;
 
+  var platform:TPlatform;
   var config:TLibraryConfig;
   var tdef:TypeDefinition;
   var tdefs:Array<TypeDefinition> = [];
@@ -35,7 +46,8 @@ abstract class BaseLibrary<
   var functionNames:Map<String, Int> = new Map();
   var finalised = false;
 
-  function new(config:TLibraryConfig, marshal:TMarshal) {
+  function new(platform:TPlatform, config:TLibraryConfig, marshal:TMarshal) {
+    this.platform = platform;
     this.marshal = marshal;
     this.config = config;
     if (config.pos == null) config.pos = Context.currentPos();

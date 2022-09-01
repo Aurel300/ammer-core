@@ -48,16 +48,7 @@ class Platform {
   }
 
   public function createLibrary(config:LibraryConfig):Library {
-    return @:privateAccess new Library(kind, (switch (kind) {
-      case Cpp:      new ammer.core.plat.Cpp.CppLibrary(config);
-      case Cs:       new ammer.core.plat.Cs.CsLibrary(config);
-      case Hashlink: new ammer.core.plat.Hashlink.HashlinkLibrary(config);
-      case Java:     new ammer.core.plat.Java.JavaLibrary(cast config);
-      case Lua:      new ammer.core.plat.Lua.LuaLibrary(config);
-      case Neko:     new ammer.core.plat.Neko.NekoLibrary(config);
-      case Nodejs:   new ammer.core.plat.Nodejs.NodejsLibrary(config);
-      case Python:   new ammer.core.plat.Python.PythonLibrary(config);
-    }));
+    return @:privateAccess new Library(kind, plat.createLibrary(config));
   }
 
   public function addLibrary(library:Library):Void {

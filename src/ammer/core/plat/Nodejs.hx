@@ -19,6 +19,7 @@ typedef NodejsLibraryConfig = LibraryConfig;
 typedef NodejsTypeMarshal = BaseTypeMarshal;
 
 class Nodejs extends Base<
+  Nodejs,
   NodejsConfig,
   NodejsLibraryConfig,
   NodejsTypeMarshal,
@@ -27,6 +28,10 @@ class Nodejs extends Base<
 > {
   public function new(config:NodejsConfig) {
     super("nodejs", config);
+  }
+
+  public function createLibrary(libConfig:NodejsLibraryConfig):NodejsLibrary {
+    return new NodejsLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -72,6 +77,7 @@ class Nodejs extends Base<
 
 class NodejsLibrary extends BaseLibrary<
   NodejsLibrary,
+  Nodejs,
   NodejsConfig,
   NodejsLibraryConfig,
   NodejsTypeMarshal,
@@ -91,8 +97,8 @@ class NodejsLibrary extends BaseLibrary<
     });
   }
 
-  public function new(config:NodejsLibraryConfig) {
-    super(config, new NodejsMarshal(this));
+  public function new(platform:Nodejs, config:NodejsLibraryConfig) {
+    super(platform, config, new NodejsMarshal(this));
     tdef.isExtern = true;
     tdef.meta.push({
       pos: config.pos,
@@ -139,7 +145,7 @@ static napi_value _ammer_ref_create(napi_env _nodejs_env, napi_callback_info _no
   size_t _nodejs_argc = 1;
   napi_value _nodejs_argv[1];
   NAPI_CALL(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
-  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   NAPI_CALL(napi_create_reference(_nodejs_env, _nodejs_argv[0], 1, &ref->value));
   ref->refcount = 0;
   napi_value res;
@@ -426,6 +432,7 @@ NAPI_MODULE_INIT() {
 @:allow(ammer.core.plat)
 class NodejsMarshal extends BaseMarshal<
   NodejsMarshal,
+  Nodejs,
   NodejsConfig,
   NodejsLibraryConfig,
   NodejsLibrary,

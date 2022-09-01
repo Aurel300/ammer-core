@@ -26,6 +26,7 @@ typedef HashlinkTypeMarshal = {
 };
 
 class Hashlink extends Base<
+  Hashlink,
   HashlinkConfig,
   HashlinkLibraryConfig,
   HashlinkTypeMarshal,
@@ -34,6 +35,10 @@ class Hashlink extends Base<
 > {
   public function new(config:HashlinkConfig) {
     super("hl", config);
+  }
+
+  public function createLibrary(libConfig:HashlinkLibraryConfig):HashlinkLibrary {
+    return new HashlinkLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -52,6 +57,7 @@ class Hashlink extends Base<
 @:allow(ammer.core.plat)
 class HashlinkLibrary extends BaseLibrary<
   HashlinkLibrary,
+  Hashlink,
   HashlinkConfig,
   HashlinkLibraryConfig,
   HashlinkTypeMarshal,
@@ -74,8 +80,8 @@ class HashlinkLibrary extends BaseLibrary<
     });
   }
 
-  public function new(config:HashlinkLibraryConfig) {
-    super(config, new HashlinkMarshal(this));
+  public function new(platform:Hashlink, config:HashlinkLibraryConfig) {
+    super(platform, config, new HashlinkMarshal(this));
 
     #if (haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
     pushNative("_ammer_init",         (macro : (String) -> Void), config.pos);
@@ -288,6 +294,7 @@ DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32));');
 @:allow(ammer.core.plat)
 class HashlinkMarshal extends BaseMarshal<
   HashlinkMarshal,
+  Hashlink,
   HashlinkConfig,
   HashlinkLibraryConfig,
   HashlinkLibrary,
