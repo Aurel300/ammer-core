@@ -5,6 +5,7 @@ package ammer.core.plat;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import ammer.core.utils.LineBuf;
+import ammer.core.utils.TypeUtils;
 
 @:allow(ammer.core.plat)
 abstract class BaseLibrary<
@@ -70,7 +71,7 @@ abstract class BaseLibrary<
     if (finalised) throw "library was already finalised";
     finalised = true;
     for (tdef in tdefs) {
-      Context.defineType(tdef); // TODO: moduleDependency arg
+      TypeUtils.defineType(tdef); // TODO: moduleDependency arg
     }
   }
 

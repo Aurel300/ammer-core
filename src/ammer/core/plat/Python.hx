@@ -510,7 +510,7 @@ class PythonMarshal extends BaseMarshal<
 
   function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<PythonTypeMarshal> {
     var tdefExternExpr = library.tdefExternExpr;
-    return baseHaxePtrInternal(
+    var ret = baseHaxePtrInternal(
       haxeType,
       (macro : Int),
       macro 0,
@@ -521,7 +521,9 @@ class PythonMarshal extends BaseMarshal<
       macro (@:privateAccess $tdefExternExpr._ammer_ref_delete)(handle),
       null,
       handle -> macro $handle == null || $handle == 0
-    ).marshal;
+    );
+    TypeUtils.defineType(ret.tdef);
+    return ret.marshal;
   }
 
   function haxePtrInternalType(haxeType:ComplexType):PythonTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {

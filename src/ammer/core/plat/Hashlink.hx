@@ -552,16 +552,20 @@ hl_from_utf8((uchar*)$l1->data, $l1->len, $l2);', // TODO: handle null?
     };
   }
 
-  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<HashlinkTypeMarshal> return baseHaxePtrInternal(
-    haxeType,
-    (macro : hl.Abstract<"abstract_haxe_ref">),
-    macro null,
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
-    rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
-    value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
-  ).marshal;
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<HashlinkTypeMarshal> {
+    var ret = baseHaxePtrInternal(
+      haxeType,
+      (macro : hl.Abstract<"abstract_haxe_ref">),
+      macro null,
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
+      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+      value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+    );
+    TypeUtils.defineType(ret.tdef);
+    return ret.marshal;
+  }
 
   function haxePtrInternalType(haxeType:ComplexType):HashlinkTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
     hlType: "_ABSTRACT(abstract_haxe_ref)",

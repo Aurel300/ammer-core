@@ -514,7 +514,7 @@ class JavaMarshal extends BaseMarshal<
 
   function opaqueInternal(name:String):MarshalOpaque<JavaTypeMarshal> return {
     type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
-      primitive: false,
+      primitive: true,
       javaMangle: "J",
     }, {
       haxeType: (macro : haxe.Int64),
@@ -523,7 +523,7 @@ class JavaMarshal extends BaseMarshal<
       l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("jlong"),
     }),
     typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-      primitive: false,
+      primitive: true,
       javaMangle: "J",
     }, {
       haxeType: (macro : haxe.Int64),
@@ -670,19 +670,23 @@ JNIEXPORT void ${library.javaMangle(unrefFrom)}(JNIEnv *_java_env, jclass _java_
     };
   }
 
-  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<JavaTypeMarshal> return baseHaxePtrInternal(
-    haxeType,
-    (macro : haxe.Int64),
-    macro 0,
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
-    rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
-    value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
-  ).marshal;
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<JavaTypeMarshal> {
+    var ret = baseHaxePtrInternal(
+      haxeType,
+      (macro : haxe.Int64),
+      macro 0,
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
+      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+      value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+    );
+    TypeUtils.defineType(ret.tdef);
+    return ret.marshal;
+  }
 
   function haxePtrInternalType(haxeType:ComplexType):JavaTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
-    primitive: false, // TODO: why? (same in opaque ptr)
+    primitive: true,
     javaMangle: "J",
   }, {
     haxeType: (macro : haxe.Int64),

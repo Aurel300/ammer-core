@@ -492,16 +492,20 @@ lua_setfield(_lua_state, -2, "high");'),
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
   });
 
-  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<LuaTypeMarshal> return baseHaxePtrInternal(
-    haxeType,
-    (macro : lua.UserData),
-    macro null,
-    macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_getvalue"]) : (lua.UserData) -> $haxeType)(handle),
-    macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_getcount"]) : (lua.UserData) -> Int)(handle),
-    rc -> macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_setcount"]) : (lua.UserData, Int) -> Void)(handle, $rc),
-    value -> macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_create"]) : ($haxeType) -> lua.UserData)($value),
-    macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_delete"]) : (lua.UserData) -> Void)(handle)
-  ).marshal;
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<LuaTypeMarshal> {
+    var ret = baseHaxePtrInternal(
+      haxeType,
+      (macro : lua.UserData),
+      macro null,
+      macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_getvalue"]) : (lua.UserData) -> $haxeType)(handle),
+      macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_getcount"]) : (lua.UserData) -> Int)(handle),
+      rc -> macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_setcount"]) : (lua.UserData, Int) -> Void)(handle, $rc),
+      value -> macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_create"]) : ($haxeType) -> lua.UserData)($value),
+      macro ((untyped $e{library.fieldExpr("_ammer_native")}["_ammer_ref_delete"]) : (lua.UserData) -> Void)(handle)
+    );
+    TypeUtils.defineType(ret.tdef);
+    return ret.marshal;
+  }
 
   function haxePtrInternalType(haxeType:ComplexType):LuaTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
     haxeType: (macro : lua.UserData),

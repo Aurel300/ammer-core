@@ -518,16 +518,20 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
     });
   }
 
-  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<NekoTypeMarshal> return baseHaxePtrInternal(
-    haxeType,
-    (macro : Dynamic),
-    macro null,
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
-    rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
-    value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
-    macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
-  ).marshal;
+  function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<NekoTypeMarshal> {
+    var ret = baseHaxePtrInternal(
+      haxeType,
+      (macro : Dynamic),
+      macro null,
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
+      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+      value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
+      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+    );
+    TypeUtils.defineType(ret.tdef);
+    return ret.marshal;
+  }
 
   function haxePtrInternalType(haxeType:ComplexType):NekoTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
     haxeType: (macro : Dynamic),
