@@ -117,6 +117,9 @@ abstract class BaseLibrary<
     options:FunctionOptions
   ):Void {
     lb
+      .ifi(options.comment != null)
+        .ail("// comment: " + options.comment)
+      .ifd()
       .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
       .lmapi(args, (idx, arg) -> arg.l1l2(argsL1[idx], '_l2_arg_$idx'))
       .lmapi(args, (idx, arg) -> '${arg.l3Type} ${config.argPrefix}${idx};')
