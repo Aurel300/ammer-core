@@ -48,6 +48,11 @@ class Marshal {
           name: name,
           type: (cast type : ammer.core.plat.Python.PythonTypeMarshal),
         } : ammer.core.plat.BaseFieldRef<ammer.core.plat.Python.PythonTypeMarshal>);
+
+      case None: cast ({
+          name: name,
+          type: (cast type : ammer.core.plat.None.NoneTypeMarshal),
+        } : ammer.core.plat.BaseFieldRef<ammer.core.plat.None.NoneTypeMarshal>);
     });
   }
 

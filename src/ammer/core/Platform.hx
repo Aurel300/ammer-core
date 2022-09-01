@@ -33,13 +33,15 @@ class Platform {
       case "python":
         kind = PlatformId.Python;
         plat = new ammer.core.plat.Python((cast config : ammer.core.plat.Python.PythonConfig));
+
       case _:
-        throw Context.fatalError("unsupported ammer platform", Context.currentPos());
+        kind = PlatformId.None;
+        plat = new ammer.core.plat.None((cast config : ammer.core.plat.None.NoneConfig));
     };
     return new Platform(kind, plat);
   }
 
-  var kind:PlatformId;
+  public var kind(default, null):PlatformId;
   var plat:Dynamic;
 
   function new(kind:PlatformId, plat:Dynamic) {
