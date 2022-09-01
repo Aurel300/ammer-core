@@ -80,9 +80,14 @@ abstract class BaseLibrary<
     code:String,
     ?tag:String
   ):String {
-    var crc = haxe.crypto.Crc32.make(haxe.io.Bytes.ofString(code));
-    var name = '${config.internalPrefix}_${tag != null ? '${tag}_' : ""}${StringTools.hex(crc, 8)}_'
-      + '${ret.mangled}__${args.map(arg -> arg.mangled).join("__")}';
+    // The signature is also hashed because some FFI mechanisms (Neko in
+    // particular) seem to not accept very long identifiers.
+    var signature = '${ret.mangled}__${args.map(arg -> arg.mangled).join("__")}';
+    var crcCode = haxe.crypto.Crc32.make(haxe.io.Bytes.ofString(code));
+    var crcSignature = haxe.crypto.Crc32.make(haxe.io.Bytes.ofString(signature));
+    var name = '${config.internalPrefix}_${tag != null ? '${tag}_' : ""}${StringTools.hex(crcCode, 8)}_'
+      + '${config.name}_'
+      + '${StringTools.hex(crcSignature, 8)}';
     if (functionNames.exists(name)) {
       // "num" prevents a conflict with Neko PRIM macros...
       return '${name}__num${functionNames[name]++}';
