@@ -120,7 +120,7 @@ class HashlinkLibrary extends BaseLibrary<
 
 typedef struct { void* value; int32_t refcount; } _ammer_haxe_ref;
 HL_PRIM _ammer_haxe_ref* HL_NAME(_ammer_ref_create)(vdynamic* value) {
-  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = value;
   ref->refcount = 0;
   hl_add_root(&ref->value);

@@ -146,7 +146,7 @@ static PyObject* _ammer_python_frombytesunref(PyObject *_python_self, PyObject *
 
 typedef struct { PyObject* value; int32_t refcount; } _ammer_haxe_ref;
 static PyObject* _ammer_ref_create(PyObject *_python_self, PyObject *_python_args) {
-  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = PyTuple_GetItem(_python_args, 0);
   ref->refcount = 0;
   Py_XINCREF(ref->value);

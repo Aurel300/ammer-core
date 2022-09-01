@@ -290,16 +290,16 @@ static napi_value _ammer_nodejs_fromhaxeref(napi_env _nodejs_env, napi_callback_
 NAPI_MODULE_INIT() {
   napi_property_descriptor _init_wrap[] = {
 ').addBuf(lbInit).ail('
-    {"_ammer_nodejs_tohaxecopy", NULL, _ammer_nodejs_tohaxecopy, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_nodejs_fromhaxecopy", NULL, _ammer_nodejs_fromhaxecopy, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_nodejs_tohaxeref", NULL, _ammer_nodejs_tohaxeref, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_nodejs_fromhaxeref", NULL, _ammer_nodejs_fromhaxeref, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_nodejs_tohaxecopy", NULL, _ammer_nodejs_tohaxecopy, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_nodejs_fromhaxecopy", NULL, _ammer_nodejs_fromhaxecopy, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_nodejs_tohaxeref", NULL, _ammer_nodejs_tohaxeref, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_nodejs_fromhaxeref", NULL, _ammer_nodejs_fromhaxeref, NULL, NULL, NULL, napi_default, NULL},
 
-    {"_ammer_ref_create", NULL, _ammer_ref_create, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_ref_delete", NULL, _ammer_ref_delete, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_ref_getcount", NULL, _ammer_ref_getcount, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_ref_setcount", NULL, _ammer_ref_setcount, NULL, NULL, NULL, 0, NULL},
-    {"_ammer_ref_getvalue", NULL, _ammer_ref_getvalue, NULL, NULL, NULL, 0, NULL},
+    {"_ammer_ref_create", NULL, _ammer_ref_create, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_ref_delete", NULL, _ammer_ref_delete, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_ref_getcount", NULL, _ammer_ref_getcount, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_ref_setcount", NULL, _ammer_ref_setcount, NULL, NULL, NULL, napi_default, NULL},
+    {"_ammer_ref_getvalue", NULL, _ammer_ref_getvalue, NULL, NULL, NULL, napi_default, NULL},
   };
   if (napi_define_properties(env, exports, ${exportCount + nativeCount}, _init_wrap) != napi_ok) return NULL;
   _ammer_nodejs_env = env;
@@ -342,7 +342,7 @@ NAPI_MODULE_INIT() {
         .ail("#undef NAPI_CALL_I")
       .d()
       .ail("}");
-    lbInit.ail('{"${name}", NULL, ${name}, NULL, NULL, NULL, 0, NULL},');
+    lbInit.ail('{"${name}", NULL, ${name}, NULL, NULL, NULL, napi_default, NULL},');
     exportCount++;
     tdef.fields.push({
       pos: options.pos,

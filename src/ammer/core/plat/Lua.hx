@@ -89,7 +89,7 @@ static int _ammer_ref_create(lua_State* _lua_state) {
   lua_pushinteger(_lua_state, idx);
   lua_pushvalue(_lua_state, 1);
   lua_settable(_lua_state, -3);
-  _ammer_haxe_ref* ref = ${config.mallocFunction}(sizeof(_ammer_haxe_ref));
+  _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = idx;
   ref->refcount = 0;
   lua_pushlightuserdata(_lua_state, ref);
