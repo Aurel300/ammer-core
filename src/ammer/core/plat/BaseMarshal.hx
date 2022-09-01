@@ -9,10 +9,11 @@ using Lambda;
 
 // TODO: add std.* prefix to `haxeType`s
 abstract class BaseMarshal<
-  TSelf:BaseMarshal<TSelf, TConfig, TLibraryConfig, TLibrary, TTypeMarshal>,
+  TSelf:BaseMarshal<TSelf, TPlatform, TConfig, TLibraryConfig, TLibrary, TTypeMarshal>,
+  TPlatform:Base<TPlatform, TConfig, TLibraryConfig, TTypeMarshal, TLibrary, TSelf>,
   TConfig:BaseConfig,
   TLibraryConfig:LibraryConfig,
-  TLibrary:BaseLibrary<TLibrary, TConfig, TLibraryConfig, TTypeMarshal, TSelf>,
+  TLibrary:BaseLibrary<TLibrary, TPlatform, TConfig, TLibraryConfig, TTypeMarshal, TSelf>,
   TTypeMarshal:BaseTypeMarshal
 > {
   static final MARSHAL_NOOP1 = (_:String) -> "";

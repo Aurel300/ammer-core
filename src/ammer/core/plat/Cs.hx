@@ -23,6 +23,7 @@ typedef CsTypeMarshal = {
 };
 
 class Cs extends Base<
+  Cs,
   CsConfig,
   CsLibraryConfig,
   CsTypeMarshal,
@@ -31,6 +32,10 @@ class Cs extends Base<
 > {
   public function new(config:CsConfig) {
     super("cs", config);
+  }
+
+  public function createLibrary(libConfig:CsLibraryConfig):CsLibrary {
+    return new CsLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -43,6 +48,7 @@ class Cs extends Base<
 @:allow(ammer.core.plat)
 class CsLibrary extends BaseLibrary<
   CsLibrary,
+  Cs,
   CsConfig,
   CsLibraryConfig,
   CsTypeMarshal,
@@ -53,8 +59,8 @@ class CsLibrary extends BaseLibrary<
 
   var lbImport = new LineBuf();
 
-  public function new(config:CsLibraryConfig) {
-    super(config, new CsMarshal(this));
+  public function new(platform:Cs, config:CsLibraryConfig) {
+    super(platform, config, new CsMarshal(this));
     tdef.meta.push({
       pos: config.pos,
       name: ":nativeGen",
@@ -263,6 +269,7 @@ LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
 @:allow(ammer.core.plat)
 class CsMarshal extends BaseMarshal<
   CsMarshal,
+  Cs,
   CsConfig,
   CsLibraryConfig,
   CsLibrary,

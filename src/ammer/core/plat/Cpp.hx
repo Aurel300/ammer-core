@@ -18,6 +18,7 @@ typedef CppLibraryConfig = LibraryConfig;
 typedef CppTypeMarshal = BaseTypeMarshal;
 
 class Cpp extends Base<
+  Cpp,
   CppConfig,
   CppLibraryConfig,
   CppTypeMarshal,
@@ -27,6 +28,10 @@ class Cpp extends Base<
   public function new(config:CppConfig) {
     super("cpp-static", config);
     if (!config.staticLink) throw "todo";
+  }
+
+  public function createLibrary(libConfig:CppLibraryConfig):CppLibrary {
+    return new CppLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -52,6 +57,7 @@ class Cpp extends Base<
 @:allow(ammer.core.plat)
 class CppLibrary extends BaseLibrary<
   CppLibrary,
+  Cpp,
   CppConfig,
   CppLibraryConfig,
   CppTypeMarshal,
@@ -79,8 +85,8 @@ class CppLibrary extends BaseLibrary<
     });
   }
 
-  public function new(config:CppLibraryConfig) {
-    super(config, new CppMarshal(this));
+  public function new(platform:Cpp, config:CppLibraryConfig) {
+    super(platform, config, new CppMarshal(this));
 
     var exth = config.language.extensionHeader();
     var ext = config.language.extension();
@@ -325,6 +331,7 @@ void _ammer_ref_setcount(_ammer_haxe_ref* ref, int32_t rc) {
 @:allow(ammer.core.plat)
 class CppMarshal extends BaseMarshal<
   CppMarshal,
+  Cpp,
   CppConfig,
   CppLibraryConfig,
   CppLibrary,

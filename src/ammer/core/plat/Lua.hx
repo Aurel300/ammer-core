@@ -19,6 +19,7 @@ typedef LuaLibraryConfig = LibraryConfig;
 typedef LuaTypeMarshal = BaseTypeMarshal;
 
 class Lua extends Base<
+  Lua,
   LuaConfig,
   LuaLibraryConfig,
   LuaTypeMarshal,
@@ -27,6 +28,10 @@ class Lua extends Base<
 > {
   public function new(config:LuaConfig) {
     super("lua", config);
+  }
+
+  public function createLibrary(libConfig:LuaLibraryConfig):LuaLibrary {
+    return new LuaLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -42,6 +47,7 @@ class Lua extends Base<
 @:allow(ammer.core.plat)
 class LuaLibrary extends BaseLibrary<
   LuaLibrary,
+  Lua,
   LuaConfig,
   LuaLibraryConfig,
   LuaTypeMarshal,
@@ -49,8 +55,8 @@ class LuaLibrary extends BaseLibrary<
 > {
   var lbInit = new LineBuf();
 
-  public function new(config:LuaLibraryConfig) {
-    super(config, new LuaMarshal(this));
+  public function new(platform:Lua, config:LuaLibraryConfig) {
+    super(platform, config, new LuaMarshal(this));
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_native",
@@ -287,6 +293,7 @@ lua_gettable(_lua_state, -2);')
 @:allow(ammer.core.plat)
 class LuaMarshal extends BaseMarshal<
   LuaMarshal,
+  Lua,
   LuaConfig,
   LuaLibraryConfig,
   LuaLibrary,

@@ -19,6 +19,7 @@ typedef NekoLibraryConfig = LibraryConfig;
 typedef NekoTypeMarshal = BaseTypeMarshal;
 
 class Neko extends Base<
+  Neko,
   NekoConfig,
   NekoLibraryConfig,
   NekoTypeMarshal,
@@ -27,6 +28,10 @@ class Neko extends Base<
 > {
   public function new(config:NekoConfig) {
     super("neko", config);
+  }
+
+  public function createLibrary(libConfig:NekoLibraryConfig):NekoLibrary {
+    return new NekoLibrary(this, libConfig);
   }
 
   public function finalise():BuildProgram {
@@ -42,6 +47,7 @@ class Neko extends Base<
 @:allow(ammer.core.plat)
 class NekoLibrary extends BaseLibrary<
   NekoLibrary,
+  Neko,
   NekoConfig,
   NekoLibraryConfig,
   NekoTypeMarshal,
@@ -61,8 +67,8 @@ class NekoLibrary extends BaseLibrary<
     });
   }
 
-  public function new(config:NekoLibraryConfig) {
-    super(config, new NekoMarshal(this));
+  public function new(platform:Neko, config:NekoLibraryConfig) {
+    super(platform, config, new NekoMarshal(this));
     pushNative("_ammer_neko_tohaxecopy", 2, config.pos);
     pushNative("_ammer_neko_fromhaxecopy", 2, config.pos);
     pushNative("_ammer_neko_fromhaxeref", 1, config.pos);
@@ -326,6 +332,7 @@ DEFINE_PRIM(_ammer_init, 2);');
 @:allow(ammer.core.plat)
 class NekoMarshal extends BaseMarshal<
   NekoMarshal,
+  Neko,
   NekoConfig,
   NekoLibraryConfig,
   NekoLibrary,
