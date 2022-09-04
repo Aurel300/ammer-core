@@ -19,6 +19,7 @@ typedef MarshalBytes<TTypeMarshal> = {
 
   alloc:(size:Expr)->Expr,
   zalloc:(size:Expr)->Expr,
+  nullPtr:Expr,
   free:(self:Expr)->Expr,
   copy:(self:Expr, size:Expr)->Expr,
   blit:(source:Expr, sourcepos:Expr, dest:Expr, destpos:Expr, size:Expr)->Expr,
