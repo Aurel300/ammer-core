@@ -139,11 +139,12 @@ class NoneMarshal extends BaseMarshal<
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<NoneTypeMarshal> {
-    return {
-      type: BaseMarshal.baseOpaquePtrInternal(name),
-      typeDeref: BaseMarshal.baseOpaqueDirectInternal(name),
-    };
+  function opaqueInternal(name:String):NoneTypeMarshal {
+    return BaseMarshal.baseOpaqueInternal(name);
+  }
+
+  function structPtrDerefInternal(name:String):NoneTypeMarshal {
+    return BaseMarshal.baseStructPtrDerefInternal(name);
   }
 
   function arrayPtrInternalType(element:NoneTypeMarshal):NoneTypeMarshal {

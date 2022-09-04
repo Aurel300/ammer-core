@@ -450,7 +450,7 @@ class CppMarshal extends BaseMarshal<
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<CppTypeMarshal> {
+  function opaqueInternal(name:String):CppTypeMarshal {
     var native = library.typeDefCreate(false);
     native.name = '${library.config.typeDefName}_Native_${Mangle.identifier(name)}';
     native.isExtern = true;
@@ -469,14 +469,24 @@ class CppMarshal extends BaseMarshal<
       pack: ["cpp"],
       name: "Pointer", // Star?
     });
-    return {
-      type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
-        haxeType: haxeType,
-      }),
-      typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-        haxeType: haxeType,
-      }),
-    };
+    return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+      haxeType: haxeType,
+    });
+  }
+
+  function structPtrDerefInternal(name:String):CppTypeMarshal {
+    var haxeType:ComplexType = TPath({
+      params: [TPType(TPath({
+        pack: library.config.typeDefPack,
+        // TODO: bit hacky, this works because opaqueInternal was called before
+        name: '${library.config.typeDefName}_Native_${Mangle.identifier('$name*')}',
+      }))],
+      pack: ["cpp"],
+      name: "Pointer", // Star?
+    });
+    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
+      haxeType: haxeType,
+    });
   }
 
   function arrayPtrInternalType(element:CppTypeMarshal):CppTypeMarshal {

@@ -6,7 +6,7 @@ import haxe.macro.Expr;
 
 typedef MarshalOpaque<TTypeMarshal> = {
   type:TTypeMarshal,
-  typeDeref:TTypeMarshal,
+  nullPtr:Null<Expr>,
 };
 
 #end

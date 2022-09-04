@@ -406,20 +406,21 @@ class CsMarshal extends BaseMarshal<
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<CsTypeMarshal> return {
-    type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
+  function opaqueInternal(name:String):CsTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+    primitive: false,
+    csType: "System.IntPtr",
+  }, {
+    haxeType: (macro : cs.system.IntPtr),
+  });
+
+  function structPtrDerefInternal(name:String):CsTypeMarshal {
+    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
       primitive: false,
       csType: "System.IntPtr",
     }, {
       haxeType: (macro : cs.system.IntPtr),
-    }),
-    typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-      primitive: false,
-      csType: "System.IntPtr",
-    }, {
-      haxeType: (macro : cs.system.IntPtr),
-    }),
-  };
+    });
+  }
 
   function arrayPtrInternalType(element:CsTypeMarshal):CsTypeMarshal {
     var elType = element.arrayType != null ? element.arrayType : element.haxeType;

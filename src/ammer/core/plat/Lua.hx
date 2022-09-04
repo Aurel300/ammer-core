@@ -473,18 +473,17 @@ lua_setfield(_lua_state, -2, "high");'),
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<LuaTypeMarshal> return {
-    type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
-      haxeType: (macro : lua.UserData),
-      l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
-      l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
-    }),
-    typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-      haxeType: (macro : lua.UserData),
-      l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
-      l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
-    }),
-  };
+  function opaqueInternal(name:String):LuaTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+    haxeType: (macro : lua.UserData),
+    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
+  });
+
+  function structPtrDerefInternal(name:String):LuaTypeMarshal return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
+    haxeType: (macro : lua.UserData),
+    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
+  });
 
   function arrayPtrInternalType(element:LuaTypeMarshal):LuaTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
     haxeType: (macro : lua.UserData),

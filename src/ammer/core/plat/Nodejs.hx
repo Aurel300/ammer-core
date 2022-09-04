@@ -628,20 +628,21 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<NodejsTypeMarshal> return {
-    type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
+  function opaqueInternal(name:String):NodejsTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+    haxeType: (macro : Dynamic),
+    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
+    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
+NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
+  });
+
+  function structPtrDerefInternal(name:String):NodejsTypeMarshal {
+    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
       haxeType: (macro : Dynamic),
       l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
       l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
 NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
-    }),
-    typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-      haxeType: (macro : Dynamic),
-      l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_unwrap(_nodejs_env, $l1, (void**)&$l2));',
-      l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_object(_nodejs_env, &$l1));
-NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
-    }),
-  };
+    });
+  }
 
   function arrayPtrInternalType(element:NodejsTypeMarshal):NodejsTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
     haxeType: (macro : Dynamic),
