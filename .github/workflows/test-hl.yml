@@ -2,8 +2,7 @@ name: Test hl, hlc
 
 on:
   push:
-    branches:
-      - master
+    branches: [master, dev]
   pull_request:
 
 jobs:
