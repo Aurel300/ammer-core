@@ -241,6 +241,11 @@ abstract class BaseMarshal<
       [int32()],
       '_return = (uint8_t*)${library.config.callocFunction}(_arg0, 1);'
     );
+    var nullPtr = library.addFunction(
+      type,
+      [],
+      '_return = (uint8_t*)0;'
+    );
     var free = library.addFunction(
       void(),
       [type],
@@ -265,6 +270,7 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
 
       alloc: alloc,
       zalloc: (size) -> macro $zalloc($size),
+      nullPtr: macro $e{nullPtr}(),
       free: (self) -> macro $free($self),
       copy: (self, size) -> macro $copy($self, $size),
       blit: blit,
