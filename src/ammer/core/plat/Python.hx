@@ -39,7 +39,7 @@ class Python extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.pythonIncludePaths,
       libraryPaths: config.pythonLibraryPaths,
-      defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
+      defines: lib -> ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"].concat(lib.config.defines),
       linkNames: ['python3${BuildProgram.useMSVC ? "" : "."}${config.pythonVersionMinor}'],
       // .so is intentional on macOS
       outputPath: lib -> '${config.outputPath}/${lib.config.name}.${BuildProgram.useMSVC ? "pyd" : "so"}',

@@ -40,6 +40,7 @@ enum BuildOpCommand {
 }
 
 typedef MakeCompileOptions = {
+  defines:Array<String>,
   includePaths:Array<String>,
 };
 
