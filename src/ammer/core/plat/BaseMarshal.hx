@@ -750,15 +750,6 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
   abstract function haxePtrInternal(haxeType:haxe.macro.Type):TTypeMarshal;
   */
 
-  /*
-  public function haxePtr(haxeType:ComplexType):TTypeMarshal {
-    var cacheKey = Mangle.complexType(haxeType);
-    if (cacheHaxe.exists(cacheKey))
-      return cacheHaxe[cacheKey];
-    return cacheHaxe[cacheKey] = haxePtrInternal(haxeType);
-  }
-*/
-
   public function haxePtr(haxeType:ComplexType):MarshalHaxe<TTypeMarshal> {
     var cacheKey = Mangle.complexType(haxeType);
     if (cacheHaxe.exists(cacheKey))
@@ -838,6 +829,7 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
       tdef: tdefRef,
       marshal: {
         type: haxePtrInternalType(haxeType),
+        refCt: ct,
         create: (val) -> macro @:privateAccess $p{tp.pack.concat([tp.name])}.create($val),
         restore: (handle) -> macro @:privateAccess $p{tp.pack.concat([tp.name])}.restore($handle),
       },
