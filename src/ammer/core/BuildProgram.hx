@@ -87,6 +87,9 @@ class BuildProgram {
       case [File(dst), File(src), CompileObject(lang, opt)]:
         if (useMSVC) {
           var args = [];
+          for (d in opt.defines) {
+            args.push('/D$d');
+          }
           for (path in opt.includePaths) {
             args.push("/I");
             args.push(path);
@@ -97,6 +100,10 @@ class BuildProgram {
           var args = ["-fPIC", "-o", extensions(dst), "-c", extensions(src)];
           if (lang == Cpp || lang == ObjectiveCpp) {
             args.push("-std=c++11");
+          }
+          for (d in opt.defines) {
+            args.push("-D");
+            args.push(d);
           }
           for (path in opt.includePaths) {
             args.push("-I");

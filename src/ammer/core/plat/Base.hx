@@ -53,7 +53,7 @@ abstract class Base<
   function baseDynamicLinkProgram(options:{
     ?includePaths:Array<String>,
     ?libraryPaths:Array<String>,
-    ?defines:Array<String>,
+    ?defines:TLibrary->Array<String>,
     ?linkNames:Array<String>,
     ?outputPath:TLibrary->String,
   }):BuildProgram {
@@ -80,6 +80,7 @@ abstract class Base<
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
         CompileObject(lib.config.language, {
+          defines: (options.defines != null ? options.defines(lib) : lib.config.defines),
           includePaths: (options.includePaths != null ? options.includePaths : [])
             .concat(lib.config.includePaths),
         })
@@ -88,7 +89,7 @@ abstract class Base<
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%DLL%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         LinkLibrary(lib.config.language, {
-          defines: (options.defines != null ? options.defines : []),
+          defines: (options.defines != null ? options.defines(lib) : lib.config.defines),
           libraryPaths: (options.libraryPaths != null ? options.libraryPaths : [])
             .concat(lib.config.libraryPaths),
           libraries: (options.linkNames != null ? options.linkNames : [])
