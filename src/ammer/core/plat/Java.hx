@@ -512,26 +512,25 @@ class JavaMarshal extends BaseMarshal<
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<JavaTypeMarshal> return {
-    type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
-      primitive: true,
-      javaMangle: "J",
-    }, {
-      haxeType: (macro : haxe.Int64),
-      l1Type: "jlong",
-      l1l2: BaseMarshal.MARSHAL_CONVERT_CAST('$name*'),
-      l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("jlong"),
-    }),
-    typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-      primitive: true,
-      javaMangle: "J",
-    }, {
-      haxeType: (macro : haxe.Int64),
-      l1Type: "jlong",
-      l1l2: BaseMarshal.MARSHAL_CONVERT_CAST('$name*'),
-      l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("jlong"),
-    }),
-  };
+  function opaqueInternal(name:String):JavaTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+    primitive: true,
+    javaMangle: "J",
+  }, {
+    haxeType: (macro : haxe.Int64),
+    l1Type: "jlong",
+    l1l2: BaseMarshal.MARSHAL_CONVERT_CAST(name),
+    l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("jlong"),
+  });
+
+  function structPtrDerefInternal(name:String):JavaTypeMarshal return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
+    primitive: true,
+    javaMangle: "J",
+  }, {
+    haxeType: (macro : haxe.Int64),
+    l1Type: "jlong",
+    l1l2: BaseMarshal.MARSHAL_CONVERT_CAST('$name*'),
+    l2l1: BaseMarshal.MARSHAL_CONVERT_CAST("jlong"),
+  });
 
   function arrayPtrInternalType(element:JavaTypeMarshal):JavaTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
     primitive: false,

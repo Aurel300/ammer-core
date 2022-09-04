@@ -457,7 +457,7 @@ hl_from_utf8((uchar*)$l1->data, $l1->len, $l2);', // TODO: handle null?
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<HashlinkTypeMarshal> {
+  function opaqueInternal(name:String):HashlinkTypeMarshal {
     var mname = Mangle.identifier(name);
     var haxeType:ComplexType = TPath({
       // no prefix results in collisions with other type declarations
@@ -466,18 +466,27 @@ hl_from_utf8((uchar*)$l1->data, $l1->len, $l2);', // TODO: handle null?
       pack: ["hl"],
       name: "Abstract",
     });
-    return {
-      type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
-        hlType: '_ABSTRACT(abstract_$mname)',
-      }, {
-        haxeType: haxeType,
-      }),
-      typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-        hlType: '_ABSTRACT(abstract_$mname)',
-      }, {
-        haxeType: haxeType,
-      }),
-    };
+    return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+      hlType: '_ABSTRACT(abstract_$mname)',
+    }, {
+      haxeType: haxeType,
+    });
+  }
+
+  function structPtrDerefInternal(name:String):HashlinkTypeMarshal {
+    var mname = Mangle.identifier('$name*');
+    var haxeType:ComplexType = TPath({
+      // no prefix results in collisions with other type declarations
+      // TODO: name with _ammer prefix
+      params: [TPExpr(macro $v{"abstract_" + mname})],
+      pack: ["hl"],
+      name: "Abstract",
+    });
+    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
+      hlType: '_ABSTRACT(abstract_$mname)',
+    }, {
+      haxeType: haxeType,
+    });
   }
 
   function arrayPtrInternalType(element:HashlinkTypeMarshal):HashlinkTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {

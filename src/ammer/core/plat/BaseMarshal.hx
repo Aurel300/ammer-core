@@ -340,21 +340,80 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
   public function opaque(name:String):MarshalOpaque<TTypeMarshal> {
     if (cacheOpaque.exists(name))
       return cacheOpaque[name];
-    return cacheOpaque[name] = opaqueInternal(name);
+
+    var type = opaqueInternal(name);
+
+    var nullPtr = library.addFunction(
+      type,
+      [],
+      '_return = (${type.l3Type})0;'
+    );
+
+    return cacheOpaque[name] = {
+      type: type,
+      nullPtr: macro $nullPtr(),
+    };
   }
 
-  static function baseOpaquePtrInternal(name:String):BaseTypeMarshal return {
+  static function baseOpaqueInternal(name:String):BaseTypeMarshal return {
     haxeType: (macro : Void), // must be overridden
-    l1Type: '$name*',
-    l2Type: '$name*',
-    l3Type: '$name*',
+    l1Type: name,
+    l2Type: name,
+    l3Type: name,
     mangled: 'p${Mangle.identifier(name)}_',
     l1l2: MARSHAL_CONVERT_DIRECT,
     l2l3: MARSHAL_CONVERT_DIRECT,
     l3l2: MARSHAL_CONVERT_DIRECT,
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
-  static function baseOpaqueDirectInternal(name:String):BaseTypeMarshal return {
+  abstract function opaqueInternal(name:String):TTypeMarshal;
+
+  public function boxPtr(
+    valueType:TTypeMarshal
+  ):MarshalBox<TTypeMarshal> {
+    // TODO: check valueType is primitive
+    if (cacheBox.exists(valueType.mangled))
+      return cacheBox[valueType.mangled];
+
+    var typePtr = opaque('${valueType.l3Type}*');
+
+    var get = library.addFunction(
+      valueType,
+      [typePtr.type],
+      '_return = *_arg0;'
+    );
+    var set = library.addFunction(
+      void(),
+      [typePtr.type, valueType],
+      '*_arg0 = _arg1;'
+    );
+    var nullPtr = library.addFunction(
+      typePtr.type,
+      [],
+      '_return = (${valueType.l3Type}*)0;'
+    );
+    var alloc = library.addFunction(
+      typePtr.type,
+      [],
+      '_return = (${valueType.l3Type}*)${library.config.callocFunction}(1, sizeof(${valueType.l3Type}));'
+    );
+    var free = library.addFunction(
+      void(),
+      [typePtr.type],
+      '${library.config.freeFunction}(_arg0);'
+    );
+
+    return cacheBox[valueType.mangled] = {
+      type: typePtr.type,
+      get: (self) -> macro $get($self),
+      set: (self, val) -> macro $set($self, $val),
+      alloc: macro $alloc(),
+      free: (self) -> macro $free($self),
+      nullPtr: macro $nullPtr(),
+    };
+  }
+
+  static function baseStructPtrDerefInternal(name:String):BaseTypeMarshal return {
     haxeType: (macro : Void), // must be overridden
     l1Type: '$name*',
     l2Type: '$name*',
@@ -365,51 +424,7 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     l3l2: (l3, l2) -> '$l2 = ($name*)(&($l3));',
     l2l1: MARSHAL_CONVERT_DIRECT,
   };
-  abstract function opaqueInternal(name:String):MarshalOpaque<TTypeMarshal>;
-
-  public function boxPtr(
-    valueType:TTypeMarshal
-  ):MarshalBox<TTypeMarshal> {
-    // TODO: check valueType is primitive
-    if (cacheBox.exists(valueType.mangled))
-      return cacheBox[valueType.mangled];
-
-    var types = opaque(valueType.l3Type);
-    var get = library.addFunction(
-      valueType,
-      [types.type],
-      '_return = *_arg0;'
-    );
-    var set = library.addFunction(
-      void(),
-      [types.type, valueType],
-      '*_arg0 = _arg1;'
-    );
-    var nullPtr = library.addFunction(
-      types.type,
-      [],
-      '_return = (${valueType.l3Type}*)0;'
-    );
-    var alloc = library.addFunction(
-      types.type,
-      [],
-      '_return = (${valueType.l3Type}*)${library.config.callocFunction}(1, sizeof(${valueType.l3Type}));'
-    );
-    var free = library.addFunction(
-      void(),
-      [types.type],
-      '${library.config.freeFunction}(_arg0);'
-    );
-
-    return cacheBox[valueType.mangled] = {
-      type: types.type,
-      get: (self) -> macro $get($self),
-      set: (self, val) -> macro $set($self, $val),
-      alloc: macro $alloc(),
-      free: (self) -> macro $free($self),
-      nullPtr: macro $nullPtr(),
-    };
-  }
+  abstract function structPtrDerefInternal(name:String):TTypeMarshal;
 
   public function structPtr(
     name:String,
@@ -426,20 +441,22 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     if (cacheStruct.exists(cacheKey))
       return cacheStruct[cacheKey];
 
-    var types = opaque(name);
+    var typePtr = opaque('${name}*');
+    var typeDeref = structPtrDerefInternal(name);
+
     var fieldGet = new Map();
     var fieldSet = new Map();
     var fieldRef = new Map();
     var libExpr = library.typeDefExpr();
     for (field in fields) {
       if (field.read == null || field.read) {
-        fieldGet[field.name] = structPtrInternalFieldGetter(name, types.type, field);
+        fieldGet[field.name] = structPtrInternalFieldGetter(name, typePtr.type, field);
       }
       if (field.write == null || field.write) {
-        fieldSet[field.name] = structPtrInternalFieldSetter(name, types.type, field);
+        fieldSet[field.name] = structPtrInternalFieldSetter(name, typePtr.type, field);
       }
       if (field.ref == null || field.ref) {
-        fieldRef[field.name] = structPtrInternalFieldReffer(name, types.type, {
+        fieldRef[field.name] = structPtrInternalFieldReffer(name, typePtr.type, {
           name: field.name,
           type: boxPtr(field.type).type,
           // others should not be needed (unless structPtrInternalFieldReffer
@@ -448,7 +465,7 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
       }
     }
     var nullPtrF = library.addFunction(
-      types.type,
+      typePtr.type,
       [],
       '_return = ($name*)0;'
     );
@@ -458,18 +475,18 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     var clone = null;
     if (allocatable) {
       var allocF = library.addFunction(
-        types.type,
+        typePtr.type,
         [],
         '_return = ($name*)${library.config.callocFunction}(1, sizeof($name));'
       );
       var freeF = library.addFunction(
         void(),
-        [types.type],
+        [typePtr.type],
         '${library.config.freeFunction}(_arg0);'
       );
       var cloneF = library.addFunction(
-        types.type,
-        [types.type],
+        typePtr.type,
+        [typePtr.type],
         '_return = ($name*)${library.config.callocFunction}(1, sizeof($name));
 ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
       );
@@ -478,8 +495,8 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
       clone = (self) -> macro $cloneF($self);
     }
     return cacheStruct[cacheKey] = {
-      type: types.type,
-      typeDeref: types.typeDeref,
+      type: typePtr.type,
+      typeDeref: typeDeref,
       fieldGet: fieldGet,
       fieldSet: fieldSet,
       fieldRef: fieldRef,

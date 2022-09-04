@@ -485,24 +485,30 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<NekoTypeMarshal> {
+  function opaqueInternal(name:String):NekoTypeMarshal {
     var mname = Mangle.identifier(name);
     if (!library.abstractKinds.exists(name)) {
       library.lb.ail('DEFINE_KIND(_neko_abstract_kind_$mname);');
       library.abstractKinds[name] = true;
     }
-    return {
-      type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
-        haxeType: (macro : Dynamic),
-        l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
-        l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
-      }),
-      typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-        haxeType: (macro : Dynamic),
-        l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
-        l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
-      }),
-    };
+    return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+      haxeType: (macro : Dynamic),
+      l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
+      l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
+    });
+  }
+
+  function structPtrDerefInternal(name:String):NekoTypeMarshal {
+    var mname = Mangle.identifier('$name*');
+    if (!library.abstractKinds.exists('$name*')) {
+      library.lb.ail('DEFINE_KIND(_neko_abstract_kind_$mname);');
+      library.abstractKinds['$name*'] = true;
+    }
+    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
+      haxeType: (macro : Dynamic),
+      l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
+      l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
+    });
   }
 
   function arrayPtrInternalType(element:NekoTypeMarshal):NekoTypeMarshal {

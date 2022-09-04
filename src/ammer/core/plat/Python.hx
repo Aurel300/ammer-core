@@ -489,18 +489,19 @@ class PythonMarshal extends BaseMarshal<
     };
   }
 
-  function opaqueInternal(name:String):MarshalOpaque<PythonTypeMarshal> return {
-    type: baseExtend(BaseMarshal.baseOpaquePtrInternal(name), {
+  function opaqueInternal(name:String):PythonTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+    haxeType: (macro : Int),
+    l1l2: (l1, l2) -> '$l2 = ($name)(PyLong_AsUnsignedLongLong($l1));',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
+  });
+
+  function structPtrDerefInternal(name:String):PythonTypeMarshal {
+    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
       haxeType: (macro : Int),
       l1l2: (l1, l2) -> '$l2 = ($name*)(PyLong_AsUnsignedLongLong($l1));',
       l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
-    }),
-    typeDeref: baseExtend(BaseMarshal.baseOpaqueDirectInternal(name), {
-      haxeType: (macro : Int),
-      l1l2: (l1, l2) -> '$l2 = ($name*)(PyLong_AsUnsignedLongLong($l1));',
-      l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLongLong((uint64_t)$l2);',
-    }),
-  };
+    });
+  }
 
   function arrayPtrInternalType(element:PythonTypeMarshal):PythonTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
     haxeType: (macro : Int),
