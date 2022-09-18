@@ -6,6 +6,7 @@ class TestHarness {
     var platformId =
       #if AMMER_TEST_CPP_STATIC "cpp-static" #end
       #if AMMER_TEST_CS "cs" #end
+      #if AMMER_TEST_EVAL "eval" #end
       #if AMMER_TEST_HL "hl" #end
       #if AMMER_TEST_HLC "hlc" #end
       #if AMMER_TEST_JAVA "java" #end
@@ -17,6 +18,7 @@ class TestHarness {
       ;
     var gcMajor = macro
       #if AMMER_TEST_CPP_STATIC cpp.vm.Gc.run(true)
+      #elseif AMMER_TEST_EVAL eval.vm.Gc.major()
       #elseif (AMMER_TEST_HL || AMMER_TEST_HLC) hl.Gc.major()
       #elseif (AMMER_TEST_JAVA || AMMER_TEST_JVM) java.vm.Gc.run(true)
       #elseif AMMER_TEST_LUA lua.Lua.collectgarbage(Collect)
@@ -44,6 +46,9 @@ class TestHarness {
     var platform = ammer.core.Platform.createCurrentPlatform(({
       buildPath: 'bin/$platformId/ammer_build',
       outputPath: 'bin/$platformId',
+      #if AMMER_TEST_EVAL
+        haxeRepoPath: paths("eval.haxerepopath")[0],
+      #end
       #if AMMER_TEST_HLC
         hlc: true,
       #end

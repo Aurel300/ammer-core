@@ -1,0 +1,3 @@
+-D AMMER_TEST_EVAL
+build/build-common.hxml
+--interp

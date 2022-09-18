@@ -24,6 +24,10 @@ class Marshal {
           name: name,
           type: (cast type : ammer.core.plat.Cs.CsTypeMarshal),
         } : ammer.core.plat.BaseFieldRef<ammer.core.plat.Cs.CsTypeMarshal>);
+      case Eval: cast ({
+          name: name,
+          type: (cast type : ammer.core.plat.Eval.EvalTypeMarshal),
+        } : ammer.core.plat.BaseFieldRef<ammer.core.plat.Eval.EvalTypeMarshal>);
       case Hashlink: cast ({
           name: name,
           type: (cast type : ammer.core.plat.Hashlink.HashlinkTypeMarshal),

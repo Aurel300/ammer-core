@@ -3,6 +3,7 @@ package ammer.core;
 enum abstract PlatformId(String) {
   var Cpp = "cpp";
   var Cs = "cs";
+  var Eval = "eval";
   var Hashlink = "hashlink";
   var Java = "java";
   var Lua = "lua";

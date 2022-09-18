@@ -18,6 +18,7 @@ class Library {
     return @:privateAccess new Marshal(kind, (switch (kind) {
       case Cpp:      (cast library : ammer.core.plat.Cpp.CppLibrary).marshal;
       case Cs:       (cast library : ammer.core.plat.Cs.CsLibrary).marshal;
+      case Eval:     (cast library : ammer.core.plat.Eval.EvalLibrary).marshal;
       case Hashlink: (cast library : ammer.core.plat.Hashlink.HashlinkLibrary).marshal;
       case Java:     (cast library : ammer.core.plat.Java.JavaLibrary).marshal;
       case Lua:      (cast library : ammer.core.plat.Lua.LuaLibrary).marshal;
