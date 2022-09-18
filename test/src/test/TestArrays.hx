@@ -22,7 +22,7 @@ class TestArrays extends TestBase {
       {m: marshal.int64(),   l: macro haxe.Int64.make(0xF0001324, 0xF0432100)},
       {m: marshal.uint64(),  l: macro haxe.Int64.make(0xF0001324, 0xF0432100)},
       #end
-      #if !(AMMER_TEST_LUA || AMMER_TEST_NEKO || AMMER_TEST_NODEJS || AMMER_TEST_PYTHON)
+      #if !(AMMER_TEST_EVAL || AMMER_TEST_LUA || AMMER_TEST_NEKO || AMMER_TEST_NODEJS || AMMER_TEST_PYTHON)
       {m: marshal.float32(), l: macro 7                                      },
       #end
       {m: marshal.float64(), l: macro 7                                      },

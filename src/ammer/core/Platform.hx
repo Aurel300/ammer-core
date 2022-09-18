@@ -15,6 +15,9 @@ class Platform {
       case "cs":
         kind = PlatformId.Cs;
         plat = new ammer.core.plat.Cs((cast config : ammer.core.plat.Cs.CsConfig));
+      case "eval":
+        kind = PlatformId.Eval;
+        plat = new ammer.core.plat.Eval((cast config : ammer.core.plat.Eval.EvalConfig));
       case "hl":
         kind = PlatformId.Hashlink;
         plat = new ammer.core.plat.Hashlink((cast config : ammer.core.plat.Hashlink.HashlinkConfig));

@@ -6,7 +6,7 @@ class TestFloats extends TestBase {
   public function new() {
     super("TestFloats");
     for (kind in [
-      #if !(AMMER_TEST_LUA || AMMER_TEST_NEKO || AMMER_TEST_NODEJS || AMMER_TEST_PYTHON)
+      #if !(AMMER_TEST_EVAL || AMMER_TEST_LUA || AMMER_TEST_NEKO || AMMER_TEST_NODEJS || AMMER_TEST_PYTHON)
       {m: marshal.float32() },
       #end
       {m: marshal.float64() },
