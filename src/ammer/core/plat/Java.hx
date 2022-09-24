@@ -2,13 +2,6 @@ package ammer.core.plat;
 
 #if macro
 
-import haxe.macro.Context;
-import haxe.macro.Expr;
-import ammer.core.utils.*;
-
-using StringTools;
-using Lambda;
-
 @:structInit
 class JavaConfig extends BaseConfig {
   public var javaIncludePaths:Array<String> = null;
