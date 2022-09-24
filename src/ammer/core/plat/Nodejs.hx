@@ -2,12 +2,6 @@ package ammer.core.plat;
 
 #if macro
 
-import haxe.macro.Context;
-import haxe.macro.Expr;
-import ammer.core.utils.*;
-
-using Lambda;
-
 @:structInit
 class NodejsConfig extends BaseConfig {
   public var nodeGypBinary:String = "node-gyp";
