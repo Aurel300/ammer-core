@@ -39,6 +39,8 @@ class Eval extends Base<
     var ops:Array<BuildOp> = [];
     for (lib in libraries) {
       // TODO: avoid clashes in the Haxe plugins directory somehow
+      ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
+      ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
       ops.push(BOAlways(File('${config.haxeRepoPath}/plugins/ammer_core_${lib.config.name}/c'), EnsureDirectory));
       ops.push(BOAlways(File('${config.haxeRepoPath}/plugins/ammer_core_${lib.config.name}/ml'), EnsureDirectory));
       ops.push(BOAlways(

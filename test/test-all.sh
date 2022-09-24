@@ -3,6 +3,7 @@
 true \
     && echo "cpp-static ... " && test/test-cpp-static.sh \
     && echo "cs ... " && test/test-cs.sh \
+    && echo "eval ... " && haxe build/build-eval.hxml \
     && echo "hl ... " && test/test-hl.sh \
     && echo "hlc ... " && test/test-hlc.sh \
     && echo "java ... " && test/test-java.sh \
