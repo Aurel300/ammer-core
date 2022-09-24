@@ -1,0 +1,108 @@
+name: Test eval
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+
+jobs:
+  # from https://github.com/HaxeFoundation/haxe/blob/development/.github/workflows/main.yml
+  # TODO: use https://github.com/ocaml/setup-ocaml for ocaml/opam (for caching)
+  test-eval-mac:
+    runs-on: macos-latest
+    env:
+      PLATFORM: mac
+      OPAMYES: 1
+    steps:
+
+    - name: Checkout Haxe
+      uses: actions/checkout@v2
+      with:
+        repository: HaxeFoundation/haxe
+        submodules: recursive
+        path: "haxe"
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Install Neko from S3
+      run: |
+        set -ex
+        curl -sSL https://build.haxe.org/builds/neko/$PLATFORM/neko_latest.tar.gz -o $RUNNER_TEMP/neko_latest.tar.gz
+        tar -xf $RUNNER_TEMP/neko_latest.tar.gz -C $RUNNER_TEMP
+        NEKOPATH=`echo $RUNNER_TEMP/neko-*-*`
+        sudo mkdir -p /usr/local/bin
+        sudo mkdir -p /usr/local/lib/neko
+        sudo ln -s $NEKOPATH/{neko,nekoc,nekoml,nekotools}  /usr/local/bin/
+        sudo ln -s $NEKOPATH/libneko.*                      /usr/local/lib/
+        sudo ln -s $NEKOPATH/*.ndll                         /usr/local/lib/neko/
+        echo "NEKOPATH=$NEKOPATH" >> $GITHUB_ENV
+
+    - name: Install dependencies
+      env:
+        ZLIB_VERSION: 1.2.12
+        MBEDTLS_VERSION: 2.25.0
+        PCRE_VERSION: 10.39
+      run: |
+        cd haxe
+        set -ex
+        brew uninstall openssl@1.0.2t || echo
+        brew uninstall python@2.7.17 || echo
+        brew untap local/openssl || echo
+        brew untap local/python2 || echo
+        brew update
+        # brew unlink python@2
+        brew bundle --file=tests/Brewfile --no-upgrade || brew link --overwrite awscli
+        brew install cpanminus
+        cpanm IPC::System::Simple
+        cpanm String::ShellQuote
+        curl -L https://www.zlib.net/zlib-$ZLIB_VERSION.tar.gz | tar xz
+        cd zlib-$ZLIB_VERSION
+        ./configure
+        make && make install
+        curl -L https://github.com/ARMmbed/mbedtls/archive/v$MBEDTLS_VERSION.tar.gz | tar xz
+        cd mbedtls-$MBEDTLS_VERSION
+        make && make install
+        curl -L https://github.com/PhilipHazel/pcre2/releases/download/pcre2-10.39/pcre2-$PCRE_VERSION.tar.gz | tar xz
+        cd pcre2-$PCRE_VERSION
+        ./configure --enable-utf8 --enable-pcre2-8 --enable-pcre2-16 --enable-pcre2-32 --enable-unicode-properties --enable-pcregrep-libz --enable-pcregrep-libbz2 --enable-jit
+        make && make install
+
+    - name: Install OCaml libraries
+      run: |
+        cd haxe
+        set -ex
+        opam init # --disable-sandboxing
+        opam update
+        opam switch create 4.07.1
+        eval $(opam env)
+        opam env
+        opam pin add ctypes 0.17.1 --yes
+        opam pin add haxe . --no-action
+        opam install haxe --deps-only --assume-depexts
+        opam list
+        ocamlopt -v
+
+    - name: Build Haxe
+      run: |
+        cd haxe
+        set -ex
+        eval $(opam env)
+        opam config exec -- make -s -j`sysctl -n hw.ncpu` STATICLINK=1 "LIB_PARAMS=/usr/local/lib/libz.a /usr/local/lib/libpcre.a /usr/local/lib/libmbedtls.a /usr/local/lib/libmbedcrypto.a /usr/local/lib/libmbedx509.a -cclib '-framework Security -framework CoreFoundation'" haxe
+        opam config exec -- make -s haxelib
+        make -s install
+        echo "HAXE_PATH=`pwd`" >> $GITHUB_ENV
+
+    - name: Set up haxelibs
+      shell: bash
+      run: |
+        haxelib setup ~/haxelib
+        haxelib dev ammer-core ammer-core
+
+    - name: Run tests
+      run: |
+        cd ammer-core/test
+        eval $(opam env)
+        haxe -D ammercoretest.eval.haxerepopath="$HAXE_PATH" build/build-eval.hxml

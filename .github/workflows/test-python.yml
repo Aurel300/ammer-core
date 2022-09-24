@@ -59,8 +59,11 @@ jobs:
     - name: Compile tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
+        python3-config --cflags
+        python3-config --ldflags
+        python3-config --libs
         cd ammer-core/test
-        haxe -D ammercoretest.python.includepaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/include/python3.9 -D ammercoretest.python.librarypaths=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/lib/python3.9/config-3.9-darwin -D ammercoretest.python.version=9 build/build-python.hxml
+        haxe -D ammercoretest.python.includepaths=/usr/local/opt/python@3.10/Frameworks/Python.framework/Versions/3.10/include/python3.10 -D ammercoretest.python.librarypaths=/usr/local/opt/python@3.10/Frameworks/Python.framework/Versions/3.10/lib/python3.10/config-3.10-darwin -D ammercoretest.python.version=10 build/build-python.hxml
 
     - name: Compile tests (Windows)
       if: matrix.os == 'windows-latest'
