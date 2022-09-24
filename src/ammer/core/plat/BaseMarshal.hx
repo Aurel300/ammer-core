@@ -193,6 +193,19 @@ abstract class BaseMarshal<
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 3,
   };
+  static function baseFloat64As32():BaseTypeMarshal return {
+    haxeType: (macro : Float),
+    l1Type: "double",
+    l2Type: "double",
+    l3Type: "float",
+    mangled: "f32",
+    l1l2: MARSHAL_CONVERT_DIRECT,
+    l2l3: MARSHAL_CONVERT_DIRECT, // cast?
+    l3l2: MARSHAL_CONVERT_DIRECT, // cast?
+    l2l1: MARSHAL_CONVERT_DIRECT,
+    arrayBits: 2,
+  };
+  // TODO: flag to enable lossy double/single conversions
   abstract public function float32():TTypeMarshal;
   abstract public function float64():TTypeMarshal;
 

@@ -409,16 +409,15 @@ alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
   public function uint64():NekoTypeMarshal return MARSHAL_UINT64;
   public function int64():NekoTypeMarshal return MARSHAL_INT64;
 
-  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
-  //   l1l2: (l1, l2) -> '$l2 = val_float($l1);',
-  //   l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
-  // });
-  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
-    //l1l2: (l1, l2) -> '$l2 = val_float($l1);',
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
     l1l2: (l1, l2) -> '$l2 = val_number($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
   });
-  public function float32():NekoTypeMarshal return throw "!";
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
+    l1l2: (l1, l2) -> '$l2 = val_number($l1);',
+    l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',
+  });
+  public function float32():NekoTypeMarshal return MARSHAL_FLOAT32;
   public function float64():NekoTypeMarshal return MARSHAL_FLOAT64;
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {

@@ -424,15 +424,15 @@ class PythonMarshal extends BaseMarshal<
   public function uint64():PythonTypeMarshal return MARSHAL_UINT64;
   public function int64():PythonTypeMarshal return MARSHAL_INT64;
 
-  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
-  //   l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
-  //   l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',
-  // });
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
+    l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
+    l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',
+  });
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
     l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
     l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',
   });
-  public function float32():PythonTypeMarshal return throw "!";
+  public function float32():PythonTypeMarshal return MARSHAL_FLOAT32;
   public function float64():PythonTypeMarshal return MARSHAL_FLOAT64;
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
