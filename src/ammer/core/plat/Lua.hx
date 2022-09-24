@@ -406,15 +406,15 @@ lua_setfield(_lua_state, -2, "high");'),
   public function uint64():LuaTypeMarshal return MARSHAL_UINT64;
   public function int64():LuaTypeMarshal return MARSHAL_INT64;
 
-  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
-  //   l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
-  //   l2l1: (l2, l1) -> 'lua_pushnumber(_lua_state, $l2);',
-  // });
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
+    l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
+    l2l1: MARSHAL_PUSH((l2) -> 'lua_pushnumber(_lua_state, $l2);'),
+  });
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
     l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushnumber(_lua_state, $l2);'),
   });
-  public function float32():LuaTypeMarshal throw "!";
+  public function float32():LuaTypeMarshal return MARSHAL_FLOAT32;
   public function float64():LuaTypeMarshal return MARSHAL_FLOAT64;
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {

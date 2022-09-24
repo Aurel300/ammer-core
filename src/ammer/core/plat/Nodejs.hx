@@ -551,15 +551,15 @@ class NodejsMarshal extends BaseMarshal<
   public function uint64():NodejsTypeMarshal return MARSHAL_UINT64;
   public function int64():NodejsTypeMarshal return MARSHAL_INT64;
 
-  // static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
-  //   l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
-  //   l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',
-  // });
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
+    l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
+    l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',
+  });
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',
   });
-  public function float32():NodejsTypeMarshal throw "!";
+  public function float32():NodejsTypeMarshal return MARSHAL_FLOAT32;
   public function float64():NodejsTypeMarshal return MARSHAL_FLOAT64;
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {

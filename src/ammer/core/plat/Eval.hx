@@ -510,6 +510,16 @@ Store_field($l1, 0, _eval_tmp);',
   public function uint64():EvalTypeMarshal return MARSHAL_UINT64;
   public function int64():EvalTypeMarshal return MARSHAL_INT64;
 
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
+    mlType: "value",
+    evalL1: MARSHAL_DIRECT,
+    l1Eval: MARSHAL_DIRECT,
+  }, {
+    l1l2: (l1, l2) -> '$l2 = Tag_val($l1) == 0 ? ((double)Int32_val(Field($l1, 0))) : Double_val(Field($l1, 0));',
+    l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 1);
+_eval_tmp = caml_copy_double($l2);
+Store_field($l1, 0, _eval_tmp);',
+  });
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
     mlType: "value",
     evalL1: MARSHAL_DIRECT,
@@ -520,7 +530,7 @@ Store_field($l1, 0, _eval_tmp);',
 _eval_tmp = caml_copy_double($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
-  public function float32():EvalTypeMarshal return throw "!";
+  public function float32():EvalTypeMarshal return MARSHAL_FLOAT32;
   public function float64():EvalTypeMarshal return MARSHAL_FLOAT64;
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
