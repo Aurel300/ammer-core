@@ -85,8 +85,11 @@ abstract class Base<
             .concat(lib.config.includePaths),
         })
       ));
+      var outputPath = options.outputPath != null
+        ? options.outputPath(lib)
+        : '${config.outputPath}/%LIB%${lib.config.name}.%DLL%';
       ops.push(BODependent(
-        File('${config.buildPath}/${lib.config.name}/lib.$platformId.%DLL%'),
+        File(outputPath),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         LinkLibrary(lib.config.language, {
           defines: (options.defines != null ? options.defines(lib) : lib.config.defines),
@@ -96,13 +99,6 @@ abstract class Base<
             .concat(lib.config.linkNames),
           staticLibraries: [],
         })
-      ));
-      ops.push(BODependent(
-        File(options.outputPath != null
-          ? options.outputPath(lib)
-          : '${config.outputPath}/%LIB%${lib.config.name}.%DLL%'),
-        File('${config.buildPath}/${lib.config.name}/lib.$platformId.%DLL%'),
-        Copy
       ));
     }
     return new BuildProgram(ops);
