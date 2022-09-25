@@ -58,13 +58,44 @@ class CppLibrary extends BaseLibrary<
   CppMarshal
 > {
   var lbHeader = new LineBuf();
+  var definedNativeTypes:Map<String, ComplexType> = [];
   var haxeRefCt:ComplexType = null;
 
   var absLibPath:String;
   var headerPath:String;
   var codePath:String;
 
-  function pushNative(name:String, native:String, signature:ComplexType, pos:Position):Void {
+  function defineNativeType(name:String):ComplexType {
+    // TODO: is there a better way to turn the type into cpp.Pointers?
+    var pointerWrap = false;
+    if (name.endsWith("*")) {
+      // we only do this once, we want void** -> cpp.Pointer<void*>
+      pointerWrap = true;
+      name = name.substr(0, name.length - 1);
+    }
+
+    var ret = definedNativeTypes[name];
+    if (ret == null) {
+      var native = typeDefCreate(false);
+      native.name = '${config.typeDefName}_Native_${Mangle.identifier(name)}';
+      native.isExtern = true;
+      native.meta = [{
+        pos: config.pos,
+        params: [macro $v{name}],
+        name: ":native",
+      }];
+      addCppIncludes(native, false);
+      TypeUtils.defineType(native);
+      definedNativeTypes[name] = ret = TPath({
+        pack: config.typeDefPack,
+        name: native.name,
+      });
+    }
+
+    return pointerWrap ? (macro : cpp.Pointer<$ret>) : ret;
+  }
+
+  function pushNative(name:String, native:String, signature:ComplexType, pos:Position, pub:Bool = false):Void {
     tdef.fields.push({
       pos: pos,
       name: name,
@@ -74,20 +105,8 @@ class CppLibrary extends BaseLibrary<
         name: ":native",
       }],
       kind: TypeUtils.ffunCt(signature, macro throw 0),
-      access: [APrivate, AStatic],
-    });/*
-    var argCount = (switch (signature) {
-      case TFunction(args, _): args.length;
-      case _: throw 0;
+      access: [pub ? APublic : APrivate, AStatic],
     });
-    var args = [ for (i in 0...argCount) macro $i{'arg$i'} ];
-    tdef.fields.push({
-      pos: pos,
-      name: name,
-      meta: [],
-      kind: TypeUtils.ffunCt(signature, macro return $i{"_native_" + name}($a{args})),
-      access: [APublic, AStatic],
-    });*/
   }
 
   public function addCppIncludes(tdef:TypeDefinition, code:Bool):Void {
@@ -124,6 +143,20 @@ class CppLibrary extends BaseLibrary<
       pos: config.pos,
       params: [macro "_ammer_haxe_ref"],
       name: ":native",
+    }, {
+      pos: config.pos,
+      name: ":structAccess",
+    }];
+    native.fields = [{
+      pos: config.pos,
+      name: "refcount",
+      kind: FVar((macro : Int)),
+      access: [APrivate],
+    }, {
+      pos: config.pos,
+      name: "value",
+      kind: FVar((macro : Any)),
+      access: [APrivate],
     }];
     addCppIncludes(native, false);
     TypeUtils.defineType(native);
@@ -137,47 +170,30 @@ class CppLibrary extends BaseLibrary<
       name: "Pointer", // Star?
     });
 
-    pushNative("_ammer_ref_create",   '_ammer_ref_${config.name}_create',   (macro : (Dynamic) -> $haxeRefCt), config.pos);
-    pushNative("_ammer_ref_delete",   '_ammer_ref_${config.name}_delete',   (macro : ($haxeRefCt) -> Void), config.pos);
-    pushNative("_ammer_ref_getcount", '_ammer_ref_${config.name}_getcount', (macro : ($haxeRefCt) -> Int), config.pos);
-    pushNative("_ammer_ref_setcount", '_ammer_ref_${config.name}_setcount', (macro : ($haxeRefCt, Int) -> Void), config.pos);
-    pushNative("_ammer_ref_getvalue", '_ammer_ref_${config.name}_getvalue', (macro : ($haxeRefCt) -> Dynamic), config.pos);
+    pushNative("_ammer_ref_create", '_ammer_ref_${config.name}_create', (macro : (Dynamic) -> $haxeRefCt), config.pos);
+    pushNative("_ammer_ref_delete", '_ammer_ref_${config.name}_delete', (macro : ($haxeRefCt) -> Void), config.pos);
 
     lbHeader.ail('
 #pragma once
 #ifndef _AMMER_CORE_HAXE_REF
 #define _AMMER_CORE_HAXE_REF 1
 typedef struct { ::Dynamic value; int32_t refcount; } _ammer_haxe_ref;
-static _ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value);
-static void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref);
-static int32_t _ammer_ref_${config.name}_getcount(_ammer_haxe_ref* ref);
-static void _ammer_ref_${config.name}_setcount(_ammer_haxe_ref* ref, int32_t rc);
-static ::Dynamic _ammer_ref_${config.name}_getvalue(_ammer_haxe_ref* ref);
-#endif
-');
+_ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value);
+void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref);
+#endif');
     lb.ail('
-static _ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value) {
+_ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = value;
   ref->refcount = 0;
   ::hx::GCAddRoot((hx::Object**)&ref->value);
   return ref;
 }
-static void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
+void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
   ::hx::GCRemoveRoot((hx::Object**)&ref->value);
   ref->value = nullptr;
   ${config.freeFunction}(ref);
-}
-static int32_t _ammer_ref_${config.name}_getcount(_ammer_haxe_ref* ref) {
-  return ref->refcount;
-}
-static void _ammer_ref_${config.name}_setcount(_ammer_haxe_ref* ref, int32_t rc) {
-  ref->refcount = rc;
-}
-static ::Dynamic _ammer_ref_${config.name}_getvalue(_ammer_haxe_ref* ref) {
-  return ref->value;
-} // TODO: get/set unnecessary, just read/write field directly on native?
-');
+}');
   }
 
   override function finalise(platConfig:CppConfig):Void {
@@ -252,17 +268,7 @@ static ::Dynamic _ammer_ref_${config.name}_getvalue(_ammer_haxe_ref* ref) {
       .map(args, arg -> arg.l1Type, ", ")
       .a(args.length == 0 ? "void" : "")
       .al(");");
-    tdef.fields.push({
-      pos: options.pos,
-      name: name,
-      meta: [{
-        pos: options.pos,
-        params: [macro $v{name}],
-        name: ":native",
-      }],
-      kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType, macro throw 0),
-      access: [APublic, AStatic],
-    });
+    pushNative(name, name, TFunction(args.map(arg -> arg.haxeType), ret.haxeType), options.pos, true);
     return fieldExpr(name);
   }
 
@@ -444,44 +450,13 @@ class CppMarshal extends BaseMarshal<
     };
   }
 
-  function opaqueInternal(name:String):CppTypeMarshal {
-    var native = library.typeDefCreate(false);
-    native.name = '${library.config.typeDefName}_Native_${Mangle.identifier(name)}';
-    native.isExtern = true;
-    native.meta = [{
-      pos: library.config.pos,
-      params: [macro $v{name}],
-      name: ":native",
-    }];
-    library.addCppIncludes(native, false);
-    TypeUtils.defineType(native);
-    var haxeType:ComplexType = TPath({
-      params: [TPType(TPath({
-        pack: library.config.typeDefPack,
-        name: native.name,
-      }))],
-      pack: ["cpp"],
-      name: "Pointer", // Star?
-    });
-    return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
-      haxeType: haxeType,
-    });
-  }
+  function opaqueInternal(name:String):CppTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
+    haxeType: library.defineNativeType(name),
+  });
 
-  function structPtrDerefInternal(name:String):CppTypeMarshal {
-    var haxeType:ComplexType = TPath({
-      params: [TPType(TPath({
-        pack: library.config.typeDefPack,
-        // TODO: bit hacky, this works because opaqueInternal was called before
-        name: '${library.config.typeDefName}_Native_${Mangle.identifier('$name*')}',
-      }))],
-      pack: ["cpp"],
-      name: "Pointer", // Star?
-    });
-    return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
-      haxeType: haxeType,
-    });
-  }
+  function structPtrDerefInternal(name:String):CppTypeMarshal return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
+    haxeType: library.defineNativeType('$name*'),
+  });
 
   function arrayPtrInternalType(element:CppTypeMarshal):CppTypeMarshal {
     var elType = element.arrayType != null ? element.arrayType : element.haxeType;
@@ -538,93 +513,14 @@ class CppMarshal extends BaseMarshal<
     };
   }
 
-  // test of direct getter/setter optimisation
-  /*
-  override function structPtrInternalFieldGetter(
-    structName:String,
-    type:CppTypeMarshal,
-    field:BaseFieldRef<CppTypeMarshal>
-  ):(self:Expr)->Expr {
-    return (switch (field.type) {
-      case MARSHAL_VOID
-      | MARSHAL_BOOL
-      | MARSHAL_UINT8
-      | MARSHAL_INT8
-      | MARSHAL_UINT16
-      | MARSHAL_INT16
-      | MARSHAL_UINT32
-      | MARSHAL_INT32
-      | MARSHAL_UINT64
-      | MARSHAL_INT64
-      | MARSHAL_FLOAT32
-      | MARSHAL_FLOAT64:
-        var fname = field.name;
-        var haxeType = field.type.haxeType;
-        /*
-        if (!library.nativeTypes[structName].fields.exists(fname)) {
-          library.nativeTypes[structName].tdef.fields.push({
-            pos: library.config.pos,
-            name: fname,
-            kind: FVar(field.type.haxeType, null),
-            access: [APublic],
-          });
-          library.nativeTypes[structName].fields[fname] = true;
-        }
-        (self) -> macro ((@:privateAccess $self.ref.$fname) : $haxeType);
-        * /
-        var syntax = '{0}.$fname';
-        (self) -> macro ((untyped __cpp__($v{syntax}, $self.ref)) : $haxeType);
-      case _: super.structPtrInternalFieldGetter(structName, type, field);
-    });
-  }
-
-  override function structPtrInternalFieldSetter(
-    structName:String,
-    type:CppTypeMarshal,
-    field:BaseFieldRef<CppTypeMarshal>
-  ):(self:Expr, val:Expr)->Expr {
-    return (switch (field.type) {
-      case MARSHAL_VOID
-      | MARSHAL_BOOL
-      | MARSHAL_UINT8
-      | MARSHAL_INT8
-      | MARSHAL_UINT16
-      | MARSHAL_INT16
-      | MARSHAL_UINT32
-      | MARSHAL_INT32
-      | MARSHAL_UINT64
-      | MARSHAL_INT64
-      | MARSHAL_FLOAT32
-      | MARSHAL_FLOAT64:
-        var fname = field.name;
-        var haxeType = field.type.haxeType;
-        /*
-        if (!library.nativeTypes[structName].fields.exists(fname)) {
-          library.nativeTypes[structName].tdef.fields.push({
-            pos: library.config.pos,
-            name: fname,
-            kind: FVar(field.type.haxeType, null),
-            access: [APublic],
-          });
-          library.nativeTypes[structName].fields[fname] = true;
-        }
-        (self, val) -> macro (if (true) { $self.ref.$fname = ($val : $haxeType); } : Void);
-        * /
-        var syntax = '{0}.$fname = {1}';
-        (self, val) -> macro ((untyped __cpp__($v{syntax}, $self.ref, ($val : $haxeType))) : Void);
-      case _: super.structPtrInternalFieldSetter(structName, type, field);
-    });
-  }
-  */
-
   function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<CppTypeMarshal> {
     var res = baseHaxePtrInternal(
       haxeType,
       library.haxeRefCt,
       macro null,
-      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
-      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
-      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
+      macro @:privateAccess handle.ref.value,
+      macro @:privateAccess handle.ref.refcount,
+      rc -> macro @:privateAccess handle.ref.refcount = $rc,
       value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
       macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
     );
