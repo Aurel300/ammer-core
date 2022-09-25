@@ -209,6 +209,8 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
           .lmap(config.libraryPaths, path -> '<libpath name="$path"/>')
           .lmap(config.linkNames, name -> '<lib name="-l$name" unless="windows" />')
           .lmap(config.linkNames, name -> '<lib name="$name" if="windows" />')
+          // TODO: allow only on Mac
+          .lmap(config.frameworks, name -> '<flag value="-framework" /><flag value="$name" />')
         .d()
         .ail("</target>")
       //.ifd()

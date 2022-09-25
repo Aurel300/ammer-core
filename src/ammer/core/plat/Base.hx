@@ -88,6 +88,7 @@ abstract class Base<
       var outputPath = options.outputPath != null
         ? options.outputPath(lib)
         : '${config.outputPath}/%LIB%${lib.config.name}.%DLL%';
+      var linkName = outputPath.split("/").pop();
       ops.push(BODependent(
         File(outputPath),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
@@ -97,6 +98,8 @@ abstract class Base<
             .concat(lib.config.libraryPaths),
           libraries: (options.linkNames != null ? options.linkNames : [])
             .concat(lib.config.linkNames),
+          linkName: linkName,
+          frameworks: lib.config.frameworks,
           staticLibraries: [],
         })
       ));

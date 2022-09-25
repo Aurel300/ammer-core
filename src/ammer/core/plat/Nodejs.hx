@@ -44,7 +44,7 @@ class Nodejs extends Base<
   "include_dirs": [${lib.config.includePaths.map(p -> '"$p"').join(",")}],
   "link_settings": {
     "library_dirs": [${lib.config.libraryPaths.map(p -> '"$p"').join(",")}],
-    "libraries": [${lib.config.linkNames.map(p -> '"-l$p"').join(",")}],
+    "libraries": [${lib.config.linkNames.map(p -> '"-l$p"').concat(lib.config.frameworks.map(f -> '"$f.framework"')).join(",")}],
   },
 }]}')
       ));
