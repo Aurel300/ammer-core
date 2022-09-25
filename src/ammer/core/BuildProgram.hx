@@ -127,6 +127,9 @@ class BuildProgram {
         } else {
           var args = ["-m64", "-o", extensions(dst)];
           if (Sys.systemName() == "Mac") {
+            // TODO: make install_name configurable (e.g. @rpath/../etc)
+            args.push("-install_name");
+            args.push('@executable_path/${extensions(opt.linkName)}');
             args.push("-dynamiclib");
           } else {
             args.push("-shared");
@@ -139,6 +142,13 @@ class BuildProgram {
           }
           for (path in opt.libraryPaths)
             args.push('-L$path');
+          if (opt.frameworks != null) {
+            // TODO: emit warning or error when not used on Mac
+            for (framework in opt.frameworks) {
+              args.push("-framework");
+              args.push(framework);
+            }
+          }
           if (opt.staticLibraries != null) {
             if (Sys.systemName() == "Mac") {
               // TODO: mixing dynamic and static linking on Mac

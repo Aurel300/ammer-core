@@ -48,5 +48,7 @@ typedef MakeLinkOptions = {
   defines:Array<String>,
   libraryPaths:Array<String>,
   libraries:Array<String>,
+  linkName:String,
+  ?frameworks:Array<String>,
   ?staticLibraries:Array<String>,
 };

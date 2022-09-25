@@ -10,6 +10,7 @@ class LibraryConfig {
   public var linkNames:Array<String> = [];
   public var includePaths:Array<String> = [];
   public var libraryPaths:Array<String> = [];
+  public var frameworks:Array<String> = [];
   public var defines:Array<String> = [];
   public var language:LibraryLanguage = C;
   public var pos:Position = null;

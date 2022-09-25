@@ -45,6 +45,7 @@ class Eval extends Base<
       ops.push(BOAlways(File('${config.haxeRepoPath}/plugins/ammer_core_${lib.config.name}/ml'), EnsureDirectory));
       ops.push(BOAlways(
         File('${config.haxeRepoPath}/plugins/ammer_core_${lib.config.name}/dune'),
+        // TODO: support frameworks
         WriteContent('(data_only_dirs cmxs hx)
 (include_subdirs unqualified)
 (library
