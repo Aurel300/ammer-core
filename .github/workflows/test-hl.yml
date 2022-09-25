@@ -122,15 +122,16 @@ jobs:
         rm /usr/bin/link
         cd ammer-core/test
         mkdir -p bin/hlc
+        cp "$HASHLINK_PATH/libhl.dll" bin/hlc
         cp "$HASHLINK_PATH/libhl.lib" bin/hlc
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build/build-hl.hxml
         haxe -D ammercoretest.hl.includepaths="$HASHLINK_PATH/include" -D ammercoretest.hl.librarypaths="$HASHLINK_PATH" build/build-hlc.hxml
 
-    #- name: Compile tests (MSVC)
-    #  if: matrix.os == 'windows-latest'
-    #  run: |
-    #    cd ammer-core/test/bin/hlc
-    #    cl.exe /DLIBHL_EXPORTS /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib lib.hl.lib main.c /link /VERBOSE /SUBSYSTEM:CONSOLE /LIBPATH:"." /LIBPATH:"ammer_build\example"
+    - name: Compile tests (MSVC)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd ammer-core/test/bin/hlc
+        cl.exe /Femain.exe /I"$env:HASHLINK_PATH_WIN\include" /I. libhl.lib libexample.lib main.c /link /SUBSYSTEM:CONSOLE /LIBPATH:"."
 
     - name: Run tests (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -146,11 +147,10 @@ jobs:
         test/test-hl-macos.sh
         test/test-hlc-macos.sh
 
-    # TODO: compile + run HL/C (issue #12)
     - name: Run tests (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         cd ammer-core/test
         test/test-hl-windows.sh
-      #test/test-hlc-windows.sh
+        test/test-hlc-windows.sh

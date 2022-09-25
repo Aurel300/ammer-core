@@ -40,7 +40,6 @@ class Hashlink extends Base<
       includePaths: config.hlIncludePaths,
       libraryPaths: config.hlLibraryPaths,
       linkNames: [BuildProgram.useMSVC ? "libhl" : "hl"],
-      defines: lib -> ["LIBHL_EXPORTS"].concat(lib.config.defines),
       outputPath: lib -> config.hlc
         ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
         : '${config.outputPath}/${lib.config.name}.hdll',
