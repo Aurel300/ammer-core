@@ -63,6 +63,16 @@ class NoneLibrary extends BaseLibrary<
     return "#invalid#";
   }
 
+  public function staticCall(
+    ret:NoneTypeMarshal,
+    args:Array<NoneTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    return "#invalid#";
+  }
+
   public function addCallback(
     ret:NoneTypeMarshal,
     args:Array<NoneTypeMarshal>,
