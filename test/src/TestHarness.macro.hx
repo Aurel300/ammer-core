@@ -58,6 +58,7 @@ class TestHarness {
       #end
       #if (AMMER_TEST_JAVA || AMMER_TEST_JVM)
         javaIncludePaths: paths("java.includepaths"),
+        javaLibraryPaths: paths("java.librarypaths"),
       #end
       #if AMMER_TEST_LUA
         luaIncludePaths: paths("lua.includepaths"),

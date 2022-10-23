@@ -9,15 +9,7 @@ class EvalConfig extends BaseConfig {
 
 typedef EvalLibraryConfig = LibraryConfig;
 
-typedef EvalTypeMarshalExt = {
-  mlType:String,
-  evalL1:(eval:String)->String,
-  l1Eval:(l1:String)->String,
-};
-typedef EvalTypeMarshal = {
-  >BaseTypeMarshal,
-  >EvalTypeMarshalExt,
-};
+typedef EvalTypeMarshal = BaseTypeMarshal;
 
 class Eval extends Base<
   Eval,
@@ -91,6 +83,7 @@ class EvalLibrary extends BaseLibrary<
 > {
   var lbInit = new LineBuf();
   var lbml = new LineBuf();
+  var staticCallbackIds:Array<String> = [];
 
   public function new(platform:Eval, config:EvalLibraryConfig) {
     super(platform, config, new EvalMarshal(this));
@@ -165,6 +158,12 @@ CAMLprim value _ammer_ref_getvalue(value vref) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)Int64_val(Field(vref, 0));
   CAMLreturn(ref->data);
 }
+
+static value _ammer_haxe_scb;
+static value _ammer_haxe_decode_i64;
+static value _ammer_haxe_encode_i64;
+static value _ammer_haxe_decode_string;
+static value _ammer_haxe_encode_string;
 ');
 
     lbml.ail('
@@ -197,20 +196,45 @@ external _ammer_ref_delete : value -> value = "_ammer_ref_delete"
 external _ammer_ref_getcount : value -> value = "_ammer_ref_getcount"
 external _ammer_ref_setcount : value -> value -> value = "_ammer_ref_setcount"
 external _ammer_ref_getvalue : value -> value = "_ammer_ref_getvalue"
-');
 
+external _ammer_init : value array -> (value -> Int64.t) -> (Int64.t -> value) -> (value -> Extlib_leftovers.UTF8.t) -> (Extlib_leftovers.UTF8.t -> value) -> value = "_ammer_init"
+');
+  }
+
+  override function finalise(platConfig:EvalConfig):Void {
+    var scbInit = [ for (id => cb in staticCallbackIds) {
+      macro $p{tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name])}.$cb;
+    } ];
     tdef.fields.push({
       pos: config.pos,
       name: "_ammer_native",
       kind: FVar(
         (macro : Any),
-        macro eval.vm.Context.loadPlugin($v{platform.config.buildPath} + "/" + $v{config.name} + "." + Sys.systemName() + ".cmo")
+        macro {
+          var scb:Array<Any> = $a{scbInit};
+          var plugin:Any = eval.vm.Context.loadPlugin($v{platform.config.buildPath} + "/" + $v{config.name} + "." + Sys.systemName() + ".cmo");
+          ((untyped plugin._ammer_init) : (Array<Any>) -> Void)(scb);
+          plugin;
+        }
       ),
       access: [APrivate, AStatic],
     });
-  }
 
-  override function finalise(platConfig:EvalConfig):Void {
+    lb.ail('
+CAMLprim value _ammer_init(value scb, value decode_i64, value encode_i64, value decode_string, value encode_string) {
+  CAMLparam1(scb);
+  _ammer_haxe_scb = scb;
+  caml_register_global_root(&_ammer_haxe_scb);
+  _ammer_haxe_decode_i64 = decode_i64;
+  caml_register_global_root(&_ammer_haxe_decode_i64);
+  _ammer_haxe_encode_i64 = encode_i64;
+  caml_register_global_root(&_ammer_haxe_encode_i64);
+  _ammer_haxe_decode_string = decode_string;
+  caml_register_global_root(&_ammer_haxe_decode_string);
+  _ammer_haxe_encode_string = encode_string;
+  caml_register_global_root(&_ammer_haxe_encode_string);
+  CAMLreturn(Val_unit);
+}');
     lbml
       .ail(";; EvalStdLib.StdContext.register [")
       .ail('"_ammer_eval_tohaxecopy", vstatic_function (function | [v1;v2] -> encode_bytes (_ammer_eval_tohaxecopy v1 v2) | _ -> assert false);')
@@ -220,6 +244,7 @@ external _ammer_ref_getvalue : value -> value = "_ammer_ref_getvalue"
       .ail('"_ammer_ref_getcount", vstatic_function (function | [v1] -> _ammer_ref_getcount v1 | _ -> assert false);')
       .ail('"_ammer_ref_setcount", vstatic_function (function | [v1;v2] -> _ammer_ref_setcount v1 v2 | _ -> assert false);')
       .ail('"_ammer_ref_getvalue", vstatic_function (function | [v1] -> _ammer_ref_getvalue v1 | _ -> assert false);')
+      .ail('"_ammer_init", vstatic_function (function | [VArray v1] -> _ammer_init (v1.avalues) decode_haxe_i64_fix encode_haxe_i64_direct decode_string encode_string | _ -> assert false);')
       .addBuf(lbInit)
       .ail("];");
     super.finalise(platConfig);
@@ -273,57 +298,48 @@ external _ammer_ref_getvalue : value -> value = "_ammer_ref_getvalue"
       .d()
       .ail("}");
     lbml.ai('external $name : ')
-      .a(args.length == 0 ? "unit" : "")
-      .map(args, arg -> arg.mlType, " -> ")
-      .a(" -> ")
-      .a(ret.mlType)
-      .a(" =")
+      .a(args.length == 0 ? "unit -> " : "")
+      .map(args, _ -> "value -> ")
+      .a("value =")
       .ifi(args.length > 5)
         .a(' "bc_$name"')
       .ifd()
       .al(' "nat_$name"');
     var evalCall = new LineBuf()
       .a('$name ')
-      .mapi(args, (idx, arg) -> arg.evalL1('arg$idx'), " ")
+      .mapi(args, (idx, arg) -> 'arg$idx', " ")
       .a(args.length == 0 ? "()" : "")
       .done();
     lbInit.ail('"${name}", vstatic_function (function')
       .ai('| [')
       .mapi(args, (idx, arg) -> 'arg$idx', "; ")
       .a('] -> ')
-      .al(ret.l1Eval(evalCall))
+      .al(evalCall)
       .al('| _ -> vbool true);');
     var funcType = TFunction(args.map(arg -> arg.haxeType), ret.haxeType);
     // TODO: position?
     return macro ((untyped $e{fieldExpr("_ammer_native")}.$name) : $funcType);
   }
 
+  // CAMLlocal within scopes (`do { ... } while (0);` as in other platforms)
+  // might be problematic, use a counter instead
   var closureScope = 0;
-  public function closureCall(
-    fn:String,
-    clType:MarshalClosure<EvalTypeMarshal>,
+
+  function baseCall(
+    lb:LineBuf,
+    scope:String,
+    ret:EvalTypeMarshal,
+    args:Array<EvalTypeMarshal>,
     outputExpr:String,
-    args:Array<String>
-  ):String {
-    // TODO: ref/unref args?
-    // CAMLlocal within scopes (`do { ... } while (0);` as in other platforms)
-    // might be problematic, use a counter instead
-    var scope = '_cl${closureScope++}';
-    return new LineBuf()
-      .ail('${clType.type.l2Type} ${scope}_l2_fn;')
-      .ail(clType.type.l3l2(fn, '${scope}_l2_fn'))
-      .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} ${scope}_l2_arg_${idx};')
-      .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '${scope}_l2_arg_$idx'))
-      .ail('CAMLlocal1(${scope}_l1_fn_ref);')
-      .ail(clType.type.l2l1('${scope}_l2_fn', '${scope}_l1_fn_ref'))
-      .ail('CAMLlocal1(${scope}_l1_fn);')
-      .ail('${scope}_l1_fn = ((_ammer_haxe_ref*)Int64_val(Field(${scope}_l1_fn_ref, 0)))->data;')
-
-      // TODO: what about VFieldClosure ?
+    argExprs:Array<String>
+  ):Void {
+    lb
+      // TODO: what about VFieldClosure ? pass an extra decode function?
       .ail('${scope}_l1_fn = Field(${scope}_l1_fn, 0);') // VFunction of vfunc * bool
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} ${scope}_l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '${scope}_l2_arg_$idx'))
       .lmapi(args, (idx, arg) -> 'CAMLlocal1(${scope}_l1_arg_${idx});')
-      .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('${scope}_l2_arg_$idx', '${scope}_l1_arg_$idx'))
-
+      .lmapi(args, (idx, arg) -> arg.l2l1('${scope}_l2_arg_$idx', '${scope}_l1_arg_$idx'))
       // args are a linked list (`value list`)
       .ail('CAMLlocal1(${scope}_l1_arg_${args.length}_cell);
 ${scope}_l1_arg_${args.length}_cell = Val_int(0);')
@@ -332,15 +348,50 @@ ${scope}_l1_arg_${idx}_cell = caml_alloc(2, 0);
 Store_field(${scope}_l1_arg_${idx}_cell, 0, ${scope}_l1_arg_${idx});')
       .lmapi(args, (idx, arg) -> 'Store_field(${scope}_l1_arg_${idx}_cell, 1, ${scope}_l1_arg_${idx + 1}_cell);')
 
-      .ifi(clType.ret.mangled != "v")
-        .ail('${clType.ret.l1Type} ${scope}_l1_output;')
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l1Type} ${scope}_l1_output;')
         .ail('${scope}_l1_output = caml_callback(${scope}_l1_fn, ${scope}_l1_arg_0_cell);')
-        .ail('${clType.ret.l2Type} ${scope}_l2_output;')
-        .ail(clType.ret.l1l2('${scope}_l1_output', '${scope}_l2_output'))
-        .ail(clType.ret.l2l3('${scope}_l2_output', outputExpr))
+        .ail('${ret.l2Type} ${scope}_l2_output;')
+        .ail(ret.l1l2('${scope}_l1_output', '${scope}_l2_output'))
+        .ail(ret.l2l3('${scope}_l2_output', outputExpr))
       .ife()
         .ail('caml_callback(${scope}_l1_fn, ${scope}_l1_arg_0_cell);')
-      .ifd()
+      .ifd();
+  }
+
+  public function closureCall(
+    fn:String,
+    clType:MarshalClosure<EvalTypeMarshal>,
+    outputExpr:String,
+    args:Array<String>
+  ):String {
+    var scope = '_cl${closureScope++}';
+    return new LineBuf()
+      .ail('${clType.type.l2Type} ${scope}_l2_fn;')
+      .ail(clType.type.l3l2(fn, '${scope}_l2_fn'))
+      .ail('CAMLlocal1(${scope}_l1_fn_ref);')
+      .ail(clType.type.l2l1('${scope}_l2_fn', '${scope}_l1_fn_ref'))
+      .ail('CAMLlocal1(${scope}_l1_fn);')
+      .ail('${scope}_l1_fn = ((_ammer_haxe_ref*)Int64_val(Field(${scope}_l1_fn_ref, 0)))->data;')
+      .apply(baseCall.bind(_, scope, clType.ret, clType.args, outputExpr, args))
+      .done();
+  }
+
+  public function staticCall(
+    ret:EvalTypeMarshal,
+    args:Array<EvalTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var scope = '_cl${closureScope++}';
+    var name = baseStaticCall(ret, args, code);
+    var scbId = staticCallbackIds.length;
+    staticCallbackIds.push(name);
+    return new LineBuf()
+      .ail('CAMLlocal1(${scope}_l1_fn);')
+      .ail('${scope}_l1_fn = Field(_ammer_haxe_scb, ${scbId});')
+      .apply(baseCall.bind(_, scope, ret, args, outputExpr, argExprs))
       .done();
   }
 
@@ -361,7 +412,7 @@ Store_field(${scope}_l1_arg_${idx}_cell, 0, ${scope}_l1_arg_${idx});')
         .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
           .ail(code)
-          .ail('CAMLreturn(${config.returnIdent});')
+          .ail('CAMLreturnT(${ret.l3Type}, ${config.returnIdent});')
         .ife()
           .ail(code)
           .ail("CAMLreturn0;")
@@ -383,7 +434,6 @@ class EvalMarshal extends BaseMarshal<
 > {
   static function baseExtend(
     base:BaseTypeMarshal,
-    ext:EvalTypeMarshalExt,
     ?over:BaseTypeMarshal.BaseTypeMarshalOpt
   ):EvalTypeMarshal {
     return {
@@ -399,89 +449,52 @@ class EvalMarshal extends BaseMarshal<
       l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
       arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
       arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
-      mlType:    ext.mlType,
-      evalL1:    ext.evalL1,
-      l1Eval:    ext.l1Eval,
     };
   }
 
-  static final MARSHAL_DIRECT = (v:String) -> v;
-
   static final MARSHAL_VOID = baseExtend(BaseMarshal.baseVoid(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: BaseMarshal.MARSHAL_NOOP2,
     l2l1: (l2, l1) -> '$l1 = Val_unit;',
   });
   public function void():EvalTypeMarshal return MARSHAL_VOID;
 
   static final MARSHAL_BOOL = baseExtend(BaseMarshal.baseBool(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = (Int_val($l1) == 1);',
     l2l1: (l2, l1) -> '$l1 = Val_int($l2 ? 1 : 2);',
   });
   public function bool():EvalTypeMarshal return MARSHAL_BOOL;
 
   static final MARSHAL_UINT8 = baseExtend(BaseMarshal.baseUint8(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Int32_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 0);
 _eval_tmp = caml_copy_int32($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
   static final MARSHAL_INT8 = baseExtend(BaseMarshal.baseInt8(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Int32_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 0);
 _eval_tmp = caml_copy_int32($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
   static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Int32_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 0);
 _eval_tmp = caml_copy_int32($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
   static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Int32_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 0);
 _eval_tmp = caml_copy_int32($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
   static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Int32_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 0);
 _eval_tmp = caml_copy_int32($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
   static final MARSHAL_INT32 = baseExtend(BaseMarshal.baseInt32(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Int32_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 0);
 _eval_tmp = caml_copy_int32($l2);
@@ -495,39 +508,27 @@ Store_field($l1, 0, _eval_tmp);',
   public function int32():EvalTypeMarshal return MARSHAL_INT32;
 
   static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {
-    mlType: "int64",
-    evalL1: (eval) -> '(decode_haxe_i64_fix ($eval))',
-    l1Eval: (l1) -> '(encode_haxe_i64_direct ($l1))',
-  }, {
-    l1l2: (l1, l2) -> '$l2 = Int64_val($l1);',
-    l2l1: (l2, l1) -> '$l1 = caml_copy_int64($l2);',
+    l1l2: (l1, l2) -> '_eval_tmp = caml_callback(_ammer_haxe_decode_i64, $l1);
+$l2 = Int64_val(_eval_tmp);',
+    l2l1: (l2, l1) -> '_eval_tmp = caml_copy_int64($l2);
+$l1 = caml_callback(_ammer_haxe_encode_i64, _eval_tmp);',
   });
   static final MARSHAL_INT64 = baseExtend(BaseMarshal.baseInt64(), {
-    mlType: "int64",
-    evalL1: (eval) -> '(decode_haxe_i64_fix ($eval))',
-    l1Eval: (l1) -> '(encode_haxe_i64_direct ($l1))',
-  }, {
-    l1l2: (l1, l2) -> '$l2 = Int64_val($l1);',
-    l2l1: (l2, l1) -> '$l1 = caml_copy_int64($l2);',
+    l1l2: (l1, l2) -> '_eval_tmp = caml_callback(_ammer_haxe_decode_i64, $l1);
+$l2 = Int64_val(_eval_tmp);',
+    l2l1: (l2, l1) -> '_eval_tmp = caml_copy_int64($l2);
+$l1 = caml_callback(_ammer_haxe_encode_i64, _eval_tmp);',
   });
   public function uint64():EvalTypeMarshal return MARSHAL_UINT64;
   public function int64():EvalTypeMarshal return MARSHAL_INT64;
 
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Tag_val($l1) == 0 ? ((double)Int32_val(Field($l1, 0))) : Double_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 1);
 _eval_tmp = caml_copy_double($l2);
 Store_field($l1, 0, _eval_tmp);',
   });
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     l1l2: (l1, l2) -> '$l2 = Tag_val($l1) == 0 ? ((double)Int32_val(Field($l1, 0))) : Double_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 1);
 _eval_tmp = caml_copy_double($l2);
@@ -537,20 +538,14 @@ Store_field($l1, 0, _eval_tmp);',
   public function float64():EvalTypeMarshal return MARSHAL_FLOAT64;
 
   static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
-    mlType: "Extlib_leftovers.UTF8.t",
-    evalL1: (eval) -> '(decode_string ($eval))',
-    l1Eval: (l1) -> '(encode_string ($l1))',
-  }, {
-    l1l2: (l1, l2) -> '$l2 = String_val($l1);',
-    l2l1: (l2, l1) -> '$l1 = caml_copy_string($l2);',
+    l1l2: (l1, l2) -> '_eval_tmp = caml_callback(_ammer_haxe_decode_string, $l1);
+$l2 = String_val(_eval_tmp);',
+    l2l1: (l2, l1) -> '_eval_tmp = caml_copy_string($l2);
+$l1 = caml_callback(_ammer_haxe_encode_string, _eval_tmp);',
   });
   public function string():EvalTypeMarshal return MARSHAL_STRING;
 
   static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
-    mlType: "value",
-      evalL1: MARSHAL_DIRECT,
-      l1Eval: MARSHAL_DIRECT,
-  }, {
     haxeType: (macro : eval.integers.UInt64),
     l1l2: (l1, l2) -> '$l2 = (uint8_t*)Int64_val(Field($l1, 0));',
     l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 15);
@@ -567,11 +562,6 @@ Store_field($l1, 0, _eval_tmp);',
     toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
     fromHaxeRef:Null<(bytes:Expr)->Expr>,
   } {
-    //var pathBytesRef = baseBytesRef(
-    //  (macro : eval.integers.UInt64), macro 0,
-    //  (macro : Int), macro 0, // handle unused
-    //  macro {}
-    //);
     return {
       toHaxeCopy: (self, size) -> macro {
         var _self = ($self : eval.integers.UInt64);
@@ -599,10 +589,6 @@ Store_field($l1, 0, _eval_tmp);',
   function opaqueInternal(name:String):EvalTypeMarshal {
     var mname = Mangle.identifier(name);
     return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
-      mlType: "value",
-      evalL1: MARSHAL_DIRECT,
-      l1Eval: MARSHAL_DIRECT,
-    }, {
       haxeType: (macro : eval.integers.UInt64),
       l1l2: (l1, l2) -> '$l2 = ($name)Int64_val(Field($l1, 0));',
       l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 15);
@@ -614,10 +600,6 @@ Store_field($l1, 0, _eval_tmp);',
   function structPtrDerefInternal(name:String):EvalTypeMarshal {
     var mname = Mangle.identifier('$name*');
     return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
-      mlType: "value",
-      evalL1: MARSHAL_DIRECT,
-      l1Eval: MARSHAL_DIRECT,
-    }, {
       haxeType: (macro : eval.integers.UInt64),
       l1l2: (l1, l2) -> '$l2 = ($name*)Int64_val(Field($l1, 0));',
       l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 15);
@@ -627,10 +609,6 @@ Store_field($l1, 0, _eval_tmp);',
   }
 
   function arrayPtrInternalType(element:EvalTypeMarshal):EvalTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     haxeType: (macro : eval.integers.UInt64),
       l1l2: (l1, l2) -> '$l2 = (${element.l2Type}*)Int64_val(Field($l1, 0));',
       l2l1: (l2, l1) -> '$l1 = caml_alloc(1, 15);
@@ -658,10 +636,6 @@ Store_field($l1, 0, _eval_tmp);',
   }
 
   function haxePtrInternalType(haxeType:ComplexType):EvalTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
-    mlType: "value",
-    evalL1: MARSHAL_DIRECT,
-    l1Eval: MARSHAL_DIRECT,
-  }, {
     haxeType: (macro : eval.integers.UInt64),
     l1l2: (l1, l2) -> '$l2 = (_ammer_haxe_ref*)Int64_val(Field($l1, 0));',
     l2l1: (l2, l1) -> 'if ($l2 == NULL) {

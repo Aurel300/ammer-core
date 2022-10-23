@@ -56,6 +56,8 @@ class HashlinkLibrary extends BaseLibrary<
   HashlinkTypeMarshal,
   HashlinkMarshal
 > {
+  var staticCallbackIds:Array<String> = [];
+
   function pushNative(name:String, signature:ComplexType, pos:Position):Void {
     tdef.fields.push({
       pos: pos,
@@ -77,34 +79,15 @@ class HashlinkLibrary extends BaseLibrary<
     super(platform, config, new HashlinkMarshal(this));
 
     #if (haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
-    pushNative("_ammer_init",         (macro : (String) -> Void), config.pos);
+    pushNative("_ammer_init",         (macro : (String, hl.NativeArray<Any>) -> Void), config.pos);
     #else
-    pushNative("_ammer_init",         (macro : (haxe.Int64, String) -> Void), config.pos);
+    pushNative("_ammer_init",         (macro : (haxe.Int64, String, hl.NativeArray<Any>) -> Void), config.pos);
     #end
     pushNative("_ammer_ref_create",   (macro : (Dynamic) -> hl.Abstract<"abstract_haxe_ref">), config.pos);
     pushNative("_ammer_ref_delete",   (macro : (hl.Abstract<"abstract_haxe_ref">) -> Void), config.pos);
     pushNative("_ammer_ref_getcount", (macro : (hl.Abstract<"abstract_haxe_ref">) -> Int), config.pos);
     pushNative("_ammer_ref_setcount", (macro : (hl.Abstract<"abstract_haxe_ref">, Int) -> Void), config.pos);
     pushNative("_ammer_ref_getvalue", (macro : (hl.Abstract<"abstract_haxe_ref">) -> Dynamic), config.pos);
-
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_native",
-      kind: FVar(
-        (macro : Int),
-        macro {
-          _ammer_init(
-            #if !(haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
-            haxe.Int64.make(0, 0),
-            #end
-            ""
-          );
-          0;
-        }
-      ),
-      access: [APrivate, AStatic],
-    });
-    // TODO: could be nicer with a union?
 
     // TODO: prefix
     lb.ail('
@@ -139,24 +122,56 @@ HL_PRIM vdynamic* HL_NAME(_ammer_ref_getvalue)(_ammer_haxe_ref* ref) {
 }
 DEFINE_PRIM(_DYN, _ammer_ref_getvalue, _ABSTRACT(abstract_haxe_ref));
 
-typedef struct { hl_type *t; vbyte *data; int32_t len; } _ammer_haxe_string;
-static hl_type *_ammer_haxe_string_type;
+static varray* _ammer_haxe_scb;
+typedef struct { hl_type* t; vbyte* data; int32_t len; } _ammer_haxe_string;
+static hl_type* _ammer_haxe_string_type;
 ');
     #if (haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
-    lb.ail('HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_string *ex_string) {
+    lb.ail('HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_string* ex_string, varray* scb) {
   _ammer_haxe_string_type = ex_string->t;
+  _ammer_haxe_scb = scb;
+  hl_add_root(&_ammer_haxe_scb);
 }
-DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32));');
+DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_BYTES _I32) _ARR);');
     #else
     lb.ail('
 typedef struct { hl_type *t; int32_t high; int32_t low; } _ammer_haxe_int64;
 static hl_type *_ammer_haxe_int64_type;
-HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_int64 *ex_int64, _ammer_haxe_string *ex_string) {
+HL_PRIM void HL_NAME(_ammer_init)(_ammer_haxe_int64* ex_int64, _ammer_haxe_string* ex_string, varray* scb) {
   _ammer_haxe_int64_type = ex_int64->t;
   _ammer_haxe_string_type = ex_string->t;
+  _ammer_haxe_scb = scb;
+  hl_add_root(&_ammer_haxe_scb);
 }
-DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32));');
+DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32) _ARR);');
     #end
+  }
+
+  override function finalise(platConfig:HashlinkConfig):Void {
+    var scbInit = [ for (id => cb in staticCallbackIds) {
+      macro scb[$v{id}] = $p{tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name])}.$cb;
+    } ];
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : Int),
+        macro {
+          var scb = new hl.NativeArray<Any>($v{staticCallbackIds.length});
+          $b{scbInit};
+          _ammer_init(
+            #if !(haxe >= version("4.2.6") && hl_ver >= version("1.12.0") && !hl_legacy32)
+            haxe.Int64.make(0, 0),
+            #end
+            "",
+            scb
+          );
+          0;
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+    super.finalise(platConfig);
   }
 
   public function addNamedFunction(
@@ -209,51 +224,79 @@ DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32));');
     return fieldExpr(name);
   }
 
+  function baseCall(
+    lb:LineBuf,
+    ret:HashlinkTypeMarshal,
+    args:Array<HashlinkTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    lb
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+      .lmapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l1Type} _l1_output;')
+        .ail('_l1_output = (_l1_fn->hasValue')
+      .ife()
+        .ail('(_l1_fn->hasValue')
+      .ifd()
+      .i()
+        .ai('? ((${ret.l1Type} (*)(vdynamic *')
+        .map(args, arg -> ', ${arg.l1Type}')
+        .a('))(_l1_fn->fun))(_l1_fn->value')
+        .mapi(args, (idx, arg) -> ', _l1_arg_${idx}')
+        .al(")")
+        .ai(': ((${ret.l1Type} (*)(')
+        .map(args, arg -> arg.l1Type, ", ")
+        .a('))(_l1_fn->fun))(')
+        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
+        .al("));")
+      .d()
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l2Type} _l2_output;')
+        .ail(ret.l1l2("_l1_output", "_l2_output"))
+        .ail(ret.l2l3("_l2_output", outputExpr))
+      .ifd();
+  }
+
   public function closureCall(
     fn:String,
     clType:MarshalClosure<HashlinkTypeMarshal>,
     outputExpr:String,
     args:Array<String>
   ):String {
-    // TODO: ref/unref args?
     return new LineBuf()
       .ail("do {")
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .ail("_ammer_haxe_ref* _l1_fn_ref;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail("vclosure* _l1_fn;")
         .ail("_l1_fn = _l1_fn_ref->value;")
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ail('_l1_output = (_l1_fn->hasValue')
-        .ife()
-          .ail('(_l1_fn->hasValue')
-        .ifd()
-        .i()
-          .ai('? ((${clType.ret.l1Type} (*)(vdynamic *')
-          .map(clType.args, arg -> ', ${arg.l1Type}')
-          .a('))(_l1_fn->fun))(_l1_fn->value')
-          //.map(args, arg -> ', ${arg}')
-          .mapi(args, (idx, arg) -> ', _l1_arg_${idx}')
-          .al(")")
-          .ai(': ((${clType.ret.l1Type} (*)(')
-          .map(clType.args, arg -> arg.l1Type, ", ")
-          .a('))(_l1_fn->fun))(')
-          //.map(args, arg -> arg, ", ")
-          .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
-          .al("));")
-        .d()
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
+        .apply(baseCall.bind(_, clType.ret, clType.args, outputExpr, args))
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function staticCall(
+    ret:HashlinkTypeMarshal,
+    args:Array<HashlinkTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    var scbId = staticCallbackIds.length;
+    staticCallbackIds.push(name);
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('vclosure* _l1_fn = hl_aptr(_ammer_haxe_scb, vclosure*)[$scbId];')
+        .apply(baseCall.bind(_, ret, args, outputExpr, argExprs))
       .d()
       .ail("} while (0);")
       .done();

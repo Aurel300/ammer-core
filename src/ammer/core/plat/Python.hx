@@ -53,6 +53,7 @@ class PythonLibrary extends BaseLibrary<
   var lbInit = new LineBuf();
   var tdefExtern:TypeDefinition;
   var tdefExternExpr:Expr;
+  var staticCallbackIds:Array<String> = [];
 
   function pushNative(name:String, signature:ComplexType, pos:Position):Void {
     tdefExtern.fields.push({
@@ -85,21 +86,9 @@ class PythonLibrary extends BaseLibrary<
     pushNative("_ammer_ref_setcount", (macro : (Int, Int) -> Void), config.pos);
     pushNative("_ammer_ref_getvalue", (macro : (Int) -> Dynamic), config.pos);
 
-    pushNative("_ammer_init", (macro : (haxe.Int64) -> Void), config.pos);
+    pushNative("_ammer_init", (macro : (haxe.Int64, Array<Any>) -> Void), config.pos);
 
     tdefExternExpr = macro $p{config.typeDefPack.concat([config.typeDefName + "_Native"])};
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_native",
-      kind: FVar(
-        (macro : Int),
-        macro {
-          @:privateAccess $tdefExternExpr._ammer_init(haxe.Int64.make(0xF0000000, 0xF0000000));
-          0;
-        }
-      ),
-      access: [APrivate, AStatic],
-    });
     lb.ail("#define PY_SSIZE_T_CLEAN");
     lb.ail("#include <Python.h>");
     lb.ail("static PyTypeObject *_ammer_haxe_int64_type;");
@@ -172,16 +161,35 @@ static PyObject* _ammer_ref_getvalue(PyObject *_python_self, PyObject *_python_a
     return ref->value;
   }
 }
+static PyObject* _ammer_haxe_scb;
 ');
   }
 
   override function finalise(platConfig:PythonConfig):Void {
+    var scbInit = [ for (id => cb in staticCallbackIds) {
+      macro $p{tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name])}.$cb;
+    } ];
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : Int),
+        macro {
+          var scb:Array<Any> = $a{scbInit};
+          @:privateAccess $tdefExternExpr._ammer_init(haxe.Int64.make(0xF0000000, 0xF0000000), scb);
+          0;
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+
     lb
       .ail('static PyObject *_ammer_init(PyObject *_python_self, PyObject *_python_args) {
   PyObject *ex_int64;
   // TODO: get rid of parsetuple
-  if (!PyArg_ParseTuple(_python_args, \"O\", &ex_int64)) return NULL;
+  if (!PyArg_ParseTuple(_python_args, \"OO\", &ex_int64, &_ammer_haxe_scb)) return NULL;
   _ammer_haxe_int64_type = Py_TYPE(ex_int64);
+  Py_XINCREF(_ammer_haxe_scb);
   Py_RETURN_NONE;
 }
 PyMODINIT_FUNC PyInit_${config.name}(void) {
@@ -263,38 +271,68 @@ PyMODINIT_FUNC PyInit_${config.name}(void) {
     return fieldExpr(name);
   }
 
+  function baseCall(
+    lb:LineBuf,
+    ret:PythonTypeMarshal,
+    args:Array<PythonTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    lb
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+      .lmapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+      .ai('PyObject* _python_args = PyTuple_Pack(${args.length}')
+      .mapi(args, (idx, arg) -> ', _l1_arg_$idx')
+      .al(");")
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l1Type} _l1_output;')
+        .ail("_l1_output = PyObject_CallObject(_l1_fn, _python_args);")
+        .ail('${ret.l2Type} _l2_output;')
+        .ail(ret.l1l2("_l1_output", "_l2_output"))
+        .ail(ret.l2l3("_l2_output", outputExpr))
+      .ife()
+        .ail("PyObject_CallObject(_l1_fn, _python_args);")
+      .ifd();
+  }
+
   public function closureCall(
     fn:String,
     clType:MarshalClosure<PythonTypeMarshal>,
     outputExpr:String,
     args:Array<String>
   ):String {
-    // TODO: ref/unref args?
     return new LineBuf()
       .ail("do {")
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .ail("PyObject* _l1_fn_ref;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail("PyObject* _l1_fn;")
         .ail("_l1_fn = ((_ammer_haxe_ref*)PyLong_AsUnsignedLongLong(_l1_fn_ref))->value;")
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ai('PyObject* _python_args = PyTuple_Pack(${args.length}')
-        .mapi(args, (idx, arg) -> ', _l1_arg_$idx')
-        .al(");")
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ail("_l1_output = PyObject_CallObject(_l1_fn, _python_args);")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ife()
-          .ail("PyObject_CallObject(_l1_fn, _python_args);")
-        .ifd()
+        .apply(baseCall.bind(_, clType.ret, clType.args, outputExpr, args))
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function staticCall(
+    ret:PythonTypeMarshal,
+    args:Array<PythonTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    var scbId = staticCallbackIds.length;
+    staticCallbackIds.push(name);
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('PyObject* _l1_fn = PySequence_GetItem(_ammer_haxe_scb, ${scbId});')
+        .apply(baseCall.bind(_, ret, args, outputExpr, argExprs))
       .d()
       .ail("} while (0);")
       .done();

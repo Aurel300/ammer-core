@@ -48,6 +48,7 @@ class NekoLibrary extends BaseLibrary<
   NekoMarshal
 > {
   var abstractKinds = new Map();
+  var staticCallbackIds:Array<String> = [];
 
   function pushNative(name:String, argCount:Int, pos:Position):Void {
     tdef.fields.push({
@@ -73,19 +74,8 @@ class NekoLibrary extends BaseLibrary<
     pushNative("_ammer_ref_setcount", 2, config.pos);
     pushNative("_ammer_ref_getvalue", 1, config.pos);
 
-    pushNative("_ammer_init", 2, config.pos);
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_native",
-      kind: FVar(
-        (macro : Int),
-        macro {
-          _ammer_init(haxe.Int64.make(0, 0), "");
-          0;
-        }
-      ),
-      access: [APrivate, AStatic],
-    });
+    pushNative("_ammer_init", 3, config.pos);
+
     lb.ail("#include <neko.h>");
     lb.ail('static vobject *_ammer_haxe_proto_int64;');
     lb.ail('static field _ammer_haxe_field_high;');
@@ -142,21 +132,43 @@ static value _ammer_ref_getvalue(value vref) {
   return *ref->data;
 }
 DEFINE_PRIM(_ammer_ref_getvalue, 1);
+
+value* _ammer_haxe_scb;
 ');
   }
 
   override function finalise(platConfig:NekoConfig):Void {
+    var scbInit = [ for (id => cb in staticCallbackIds) {
+      macro scb[$v{id}] = $p{tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name])}.$cb;
+    } ];
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : Int),
+        macro {
+          var scb:neko.NativeArray<Dynamic> = neko.NativeArray.alloc($v{staticCallbackIds.length});
+          $b{scbInit};
+          _ammer_init(haxe.Int64.make(0, 0), "", scb);
+          0;
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+
     // TODO: name symbols with internalPrefix
     lb
-      .ail('static value _ammer_init(value ex_int64, value ex_string) {
+      .ail('static value _ammer_init(value ex_int64, value ex_string, value scb) {
   _ammer_haxe_proto_int64 = ((vobject *)ex_int64)->proto;
   _ammer_haxe_field_high = val_id("high");
   _ammer_haxe_field_low = val_id("low");
   _ammer_haxe_proto_string = ((vobject *)ex_string)->proto;
   _ammer_haxe_field_string = val_id("__s");
+  _ammer_haxe_scb = alloc_root(1);
+  *_ammer_haxe_scb = scb;
   return val_null;
 }
-DEFINE_PRIM(_ammer_init, 2);');
+DEFINE_PRIM(_ammer_init, 3);');
     super.finalise(platConfig);
   }
 
@@ -255,44 +267,74 @@ DEFINE_PRIM(_ammer_init, 2);');
     return fieldExpr(name);
   }
 
+  function baseCall(
+    lb:LineBuf,
+    ret:NekoTypeMarshal,
+    args:Array<NekoTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    lb
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+      .lmapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+      .ifi(args.length > 0)
+        .ail('value _neko_args[${args.length}] = {')
+        .lmapi(args, (idx, arg) -> '_l1_arg_$idx,')
+        .ail("};")
+      .ifd()
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l1Type} _l1_output;')
+        .ai('_l1_output = val_callN(_l1_fn, ')
+        .a(args.length > 0 ? "_neko_args" : "NULL")
+        .al(', ${args.length});')
+        .ail('${ret.l2Type} _l2_output;')
+        .ail(ret.l1l2("_l1_output", "_l2_output"))
+        .ail(ret.l2l3("_l2_output", outputExpr))
+      .ife()
+        .ai('val_callN(_l1_fn, ')
+        .a(args.length > 0 ? "_neko_args" : "NULL")
+        .al(', ${args.length});')
+      .ifd();
+  }
+
   public function closureCall(
     fn:String,
     clType:MarshalClosure<NekoTypeMarshal>,
     outputExpr:String,
     args:Array<String>
   ):String {
-    // TODO: ref/unref args?
     return new LineBuf()
       .ail("do {")
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .ail("value _l1_fn_ref;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail('${clType.type.l1Type} _l1_fn;')
         .ail("_l1_fn = *(((_ammer_haxe_ref*)(int_val)val_data(_l1_fn_ref))->data);")
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(args.length > 0)
-          .ail('value _neko_args[${args.length}] = {')
-          .lmapi(args, (idx, arg) -> '_l1_arg_$idx,')
-          .ail("};")
-        .ifd()
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai('_l1_output = val_callN(_l1_fn, ')
-          .a(args.length > 0 ? "_neko_args" : "NULL")
-          .al(', ${args.length});')
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ife()
-          .ai('val_callN(_l1_fn, ')
-          .a(args.length > 0 ? "_neko_args" : "NULL")
-          .al(', ${args.length});')
-        .ifd()
+        .apply(baseCall.bind(_, clType.ret, clType.args, outputExpr, args))
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function staticCall(
+    ret:NekoTypeMarshal,
+    args:Array<NekoTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    var scbId = staticCallbackIds.length;
+    staticCallbackIds.push(name);
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('value _l1_fn = val_array_ptr(*_ammer_haxe_scb)[$scbId];')
+        .apply(baseCall.bind(_, ret, args, outputExpr, argExprs))
       .d()
       .ail("} while (0);")
       .done();
@@ -486,7 +528,7 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
     }
     return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
       haxeType: (macro : Dynamic),
-      l1l2: (l1, l2) -> '$l2 = ($name*)(int_val)val_data($l1);',
+      l1l2: (l1, l2) -> '$l2 = ($name)(int_val)val_data($l1);',
       l2l1: (l2, l1) -> '$l1 = alloc_abstract(_neko_abstract_kind_$mname, (value)(int_val)($l2));',
     });
   }
@@ -534,7 +576,6 @@ alloc_field($l1, _ammer_haxe_field_string, alloc_string($l2));',
 
   function haxePtrInternalType(haxeType:ComplexType):NekoTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
     haxeType: (macro : Dynamic),
-    l1Type: "_ammer_haxe_ref*",
     l1l2: (l1, l2) -> '$l2 = (_ammer_haxe_ref*)(int_val)val_data($l1);',
     l2l1: (l2, l1) -> 'if ($l2 == NULL) {
   $l1 = val_null;

@@ -134,6 +134,10 @@ class CppLibrary extends BaseLibrary<
     codePath = '$absLibPath/lib.cpp_static.$ext';
 
     addCppIncludes(tdef, true);
+    tdefStaticCallbacks.meta.push({
+      pos: config.pos,
+      name: ":unreflective",
+    });
 
     // TODO: share type across libraries?
     var native = typeDefCreate(false);
@@ -182,6 +186,7 @@ _ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value);
 void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref);
 #endif');
     lb.ail('
+#include <${tdefStaticCallbacks.pack.map(p -> '$p/').join("")}${tdefStaticCallbacks.name}.h>
 _ammer_haxe_ref* _ammer_ref_${config.name}_create(::Dynamic value) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
   ref->value = value;
@@ -312,6 +317,29 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
       .done();
   }
 
+  public function staticCall(
+    ret:CppTypeMarshal,
+    args:Array<CppTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    return new LineBuf()
+      // TODO: l1->l2->l3???
+      .ifi(ret.mangled != "v")
+        //.ai('${ret.l3Type} ${config.returnIdent} = ')
+        .ai('$outputExpr = ')
+      .ife()
+        .ai("")
+      .ifd()
+      .map(tdefStaticCallbacks.pack, p -> '::$p')
+      .a('::${tdefStaticCallbacks.name}_obj::$name(')
+      .mapi(args, (idx, arg) -> argExprs[idx], ", ")
+      .al(');')
+      .done();
+  }
+
   public function addCallback(
     ret:CppTypeMarshal,
     args:Array<CppTypeMarshal>,
@@ -327,10 +355,10 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
         .ail("::hx::NativeAttach _cpp_attach_gc;")
         .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
-          .ail(code)
+        .ifd()
+        .ail(code)
+        .ifi(ret.mangled != "v")
           .ail('return ${config.returnIdent};')
-        .ife()
-          .ail(code)
         .ifd()
       .d()
       .al("}");

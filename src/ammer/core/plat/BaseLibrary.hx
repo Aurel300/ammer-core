@@ -42,6 +42,7 @@ abstract class BaseLibrary<
   var platform:TPlatform;
   var config:TLibraryConfig;
   var tdef:TypeDefinition;
+  var tdefStaticCallbacks:TypeDefinition;
   var tdefs:Array<TypeDefinition> = [];
   var lb = new LineBuf();
   var functionNames:Map<String, Int> = new Map();
@@ -55,6 +56,14 @@ abstract class BaseLibrary<
     if (config.typeDefPack == null) config.typeDefPack = ["ammer", "externs"];
     if (config.typeDefName == null) config.typeDefName = 'CoreExtern_${config.name}';
     tdef = typeDefCreate();
+    tdefs.push(tdefStaticCallbacks = {
+      pos: config.pos,
+      pack: config.typeDefPack,
+      name: 'CoreExtern_${config.name}_StaticCallbacks',
+      meta: [],
+      kind: TDClass(null, [], false, true, false),
+      fields: [],
+    });
     lb.ail("#include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -170,11 +179,62 @@ abstract class BaseLibrary<
     args:Array<String>
   ):String;
 
+  function baseStaticCall(
+    ret:TTypeMarshal,
+    args:Array<TTypeMarshal>,
+    code:Expr
+  ):String {
+    var name = mangleFunction(ret, args, "", "scb");
+    tdefStaticCallbacks.fields.push({
+      pos: config.pos,
+      meta: [{
+        pos: config.pos,
+        name: ":keep",
+      }],
+      name: name,
+      kind: FFun({
+        ret: ret.haxeType,
+        expr: code,
+        args: args.mapi((idx, arg) -> ({
+          name: 'arg$idx',
+          type: arg.haxeType,
+        }:FunctionArg)),
+      }),
+      access: [APublic, AStatic],
+    });
+    return name;
+  }
+  abstract public function staticCall(
+    ret:TTypeMarshal,
+    args:Array<TTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String;
+
   abstract public function addCallback(
     ret:TTypeMarshal,
     args:Array<TTypeMarshal>,
     code:String
   ):String;
+
+  public function addStaticCallback(
+    ret:TTypeMarshal,
+    args:Array<TTypeMarshal>,
+    code:Expr
+  ):String {
+    return addCallback(
+      ret,
+      args,
+      staticCall(
+        ret,
+        args,
+        code,
+        "_return",
+        args.mapi((idx, arg) -> '_arg$idx')
+      )
+    );
+  }
 
   function typeDefCreate(addToDefs:Bool = true):TypeDefinition {
     var ret = {

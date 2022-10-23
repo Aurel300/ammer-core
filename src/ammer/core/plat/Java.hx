@@ -16,6 +16,7 @@ class JavaLibraryConfig extends LibraryConfig {
 typedef JavaTypeMarshalExt = {
   primitive:Bool,
   javaMangle:String,
+  javaFullName:String,
 };
 typedef JavaTypeMarshal = {
   >BaseTypeMarshal,
@@ -42,6 +43,7 @@ class Java extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.javaIncludePaths,
       libraryPaths: config.javaLibraryPaths,
+      linkNames: ["jvm"],
     });
   }
 }
@@ -226,15 +228,15 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .ail("jlong _l1_fn_ref;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail("jobject _l1_fn;")
         .ail("_l1_fn = ((_ammer_haxe_ref*)_l1_fn_ref)->value;")
+        .ail("jclass _l1_fn_cls = (*_java_env)->GetObjectClass(_java_env, _l1_fn);")
+        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ail("jclass _l1_fn_cls = (*_java_env)->GetObjectClass(_java_env, _l1_fn);");
+        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'));
     if (config.jvm) {
       lb
         .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, "invoke", "(')
@@ -246,29 +248,13 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         .ife()
           .ai("(*_java_env)->Call")
         .ifd()
-        .a(switch (clType.ret) {
-          case JavaMarshal.MARSHAL_VOID: "Void";
-          case JavaMarshal.MARSHAL_BOOL: "Boolean";
-          case JavaMarshal.MARSHAL_UINT8: "Boolean";
-          case JavaMarshal.MARSHAL_INT8: "Byte";
-          case JavaMarshal.MARSHAL_UINT16: "Char";
-          case JavaMarshal.MARSHAL_INT16: "Short";
-          case JavaMarshal.MARSHAL_UINT32: "Int";
-          case JavaMarshal.MARSHAL_INT32: "Int";
-          case JavaMarshal.MARSHAL_UINT64: "Long";
-          case JavaMarshal.MARSHAL_INT64: "Long";
-          case JavaMarshal.MARSHAL_FLOAT32: "Float";
-          case JavaMarshal.MARSHAL_FLOAT64: "Double";
-          case _: "Object";
-        })
+        .a(clType.ret.javaFullName)
         .a("Method(_java_env, _l1_fn, _java_method")
         .mapi(args, (idx, arg) -> ', _l1_arg_${idx}')
         .al(');');
     } else {
       lb
         .ail('jclass _java_class = (*_java_env)->FindClass(_java_env, "java/lang/Class");')
-        .ail('jmethodID _java_name = (*_java_env)->GetMethodID(_java_env, _java_class, "getName", "()Ljava/lang/String;");')
-        .ail('jstring _java_name_fn = (*_java_env)->CallObjectMethod(_java_env, _l1_fn_cls, _java_name);')
         .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, ')
         .a('"__hx_invoke${args.length}_${clType.ret.primitive ? "f" : "o"}", "(')
         .map(args, arg -> "DLjava/lang/Object;")
@@ -298,6 +284,47 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
       .done();
   }
 
+  public function staticCall(
+    ret:JavaTypeMarshal,
+    args:Array<JavaTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .lmapi(args, (idx, arg) -> '${args[idx].l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> args[idx].l3l2(argExprs[idx], '_l2_arg_${idx}'))
+        .lmapi(args, (idx, arg) -> '${args[idx].l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> args[idx].l2l1('_l2_arg_${idx}', '_l1_arg_${idx}'))
+        .ail('jclass _java_scb = (*_java_env)->FindClass(_java_env, "${tdefStaticCallbacks.pack.join("/")}/${tdefStaticCallbacks.name}");')
+        .ai('jmethodID _java_scb_method = (*_java_env)->GetStaticMethodID(_java_env, _java_scb, "${name}", "(')
+        .map(args, arg -> arg.javaMangle)
+        .a(")")
+        .a(ret.javaMangle)
+        .al('");')
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l1Type} _l1_output;')
+          .ai("_l1_output = (*_java_env)->CallStatic")
+        .ife()
+          .ai("(*_java_env)->CallStatic")
+        .ifd()
+        .a(ret.javaFullName)
+        .a("Method(_java_env, _java_scb, _java_scb_method")
+        .mapi(args, (idx, arg) -> ', _l1_arg_$idx')
+        .al(');')
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l2Type} _l2_output;')
+          .ail(ret.l1l2("_l1_output", "_l2_output"))
+          .ail(ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
   public function addCallback(
     ret:JavaTypeMarshal,
     args:Array<JavaTypeMarshal>,
@@ -312,24 +339,19 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
       .i()
         .ail('JavaVM* _java_vm = ${config.internalPrefix}ctx;')
         .ail('JNIEnv* _java_env;')
-        .ail('(*_java_vm)->AttachCurrentThread(_java_vm, (void**)&_java_env, NULL);');
-    if (!config.jvm) {
-      lb
-        .ail('jclass _java_runtime = (*_java_env)->FindClass(_java_env, "haxe/lang/Runtime");')
-        .ail('jfieldID _java_undef_f = (*_java_env)->GetStaticFieldID(_java_env, _java_runtime, "undefined", "Ljava/lang/Object;");')
-        .ail('jobject _java_undef = (*_java_env)->GetStaticObjectField(_java_env, _java_runtime, _java_undef_f);');
-    }
-    if (ret.mangled != "v") {
-      lb
-        .ail('${ret.l3Type} ${config.returnIdent};')
-        .ail(code)
-        .ail('return ${config.returnIdent};');
-    } else {
-      lb
-        .ail(code);
-    }
-    // TODO: detach???
-    lb
+        .ail('(*_java_vm)->AttachCurrentThread(_java_vm, (void**)&_java_env, NULL);')
+        .ifi(!config.jvm)
+          .ail('jclass _java_runtime = (*_java_env)->FindClass(_java_env, "haxe/lang/Runtime");')
+          .ail('jfieldID _java_undef_f = (*_java_env)->GetStaticFieldID(_java_env, _java_runtime, "undefined", "Ljava/lang/Object;");')
+          .ail('jobject _java_undef = (*_java_env)->GetStaticObjectField(_java_env, _java_runtime, _java_undef_f);')
+        .ifd()
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l3Type} ${config.returnIdent};')
+          .ail(code)
+          .ail('return ${config.returnIdent};')
+        .ife()
+          .ail(code)
+        .ifd()
       .d()
       .al("}");
     return name;
@@ -369,13 +391,22 @@ class JavaMarshal extends BaseMarshal<
       arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
       primitive: ext.primitive,
       javaMangle: ext.javaMangle,
+      javaFullName: ext.javaFullName,
     };
   }
 
-  static final MARSHAL_VOID = baseExtend(BaseMarshal.baseVoid(), {primitive: true, javaMangle: "V"});
+  static final MARSHAL_VOID = baseExtend(BaseMarshal.baseVoid(), {
+    primitive: true,
+    javaMangle: "V",
+    javaFullName: "Void",
+  });
   public function void():JavaTypeMarshal return MARSHAL_VOID;
 
-  static final MARSHAL_BOOL = baseExtend(BaseMarshal.baseBool(), {primitive: true, javaMangle: "Z"}, {
+  static final MARSHAL_BOOL = baseExtend(BaseMarshal.baseBool(), {
+    primitive: true,
+    javaMangle: "Z",
+    javaFullName: "Boolean",
+  }, {
     l1Type: "jboolean",
     l1l2: (l1, l2) -> '$l2 = ($l1 == JNI_TRUE);',
     l2l1: (l2, l1) -> '$l1 = ($l2 ? JNI_TRUE : JNI_FALSE);',
@@ -386,45 +417,78 @@ class JavaMarshal extends BaseMarshal<
     primitive: true,
     // TODO: there is no java.types.Uint8, so u8 arrays use i8
     javaMangle: "B", //javaMangle: "Z",
+    javaFullName: "Boolean",
   }, {
     // l1Type: "jboolean",
     l1Type: "jbyte",
     arrayType: (macro : java.types.Int8),
   });
-  static final MARSHAL_INT8 = baseExtend(BaseMarshal.baseInt8(), {primitive: true, javaMangle: "B"}, {
+  static final MARSHAL_INT8 = baseExtend(BaseMarshal.baseInt8(), {
+    primitive: true,
+    javaMangle: "B",
+    javaFullName: "Byte",
+  }, {
     l1Type: "jbyte",
     arrayType: (macro : java.types.Int8),
   });
-  static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {primitive: true, javaMangle: "C"}, {
+  static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {
+    primitive: true,
+    javaMangle: "C",
+    javaFullName: "Char",
+  }, {
     l1Type: "jchar",
     arrayType: (macro : java.types.Char16),
   });
 
   #if (haxe >= version("4.2.6")) // "can't compare S and S" until PR#10722
-  static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {primitive: true, javaMangle: "S"}, {
+  static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {
+    primitive: true,
+    javaMangle: "S",
+    javaFullName: "Short",
+  }, {
     l1Type: "jshort",
     arrayType: (macro : java.types.Int16),
   });
   #else
-  static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {primitive: true, javaMangle: "C"}, {
+  static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {
+    primitive: true,
+    javaMangle: "C",
+    javaFullName: "Short",
+  }, {
     l1Type: "jshort",
     arrayType: (macro : java.types.Char16),
   });
   #end
 
-  static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {primitive: true, javaMangle: "I"}, {
+  static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {
+    primitive: true,
+    javaMangle: "I",
+    javaFullName: "Int",
+  }, {
     l1Type: "jint",
     arrayType: (macro : Int),
   });
-  static final MARSHAL_INT32 = baseExtend(BaseMarshal.baseInt32(), {primitive: true, javaMangle: "I"}, {
+  static final MARSHAL_INT32 = baseExtend(BaseMarshal.baseInt32(), {
+    primitive: true,
+    javaMangle: "I",
+    javaFullName: "Int",
+  }, {
     l1Type: "jint",
     arrayType: (macro : Int),
   });
-  static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {primitive: true, javaMangle: "J"}, {
+  static final MARSHAL_UINT64 = baseExtend(BaseMarshal.baseUint64(), {
+    primitive: true,
+    javaMangle: "J",
+    javaFullName: "Long",
+  }, {
     l1Type: "jlong",
     arrayType: (macro : haxe.Int64),
   });
-  static final MARSHAL_INT64 = baseExtend(BaseMarshal.baseInt64(), {primitive: true, javaMangle: "J"}, {
+  static final MARSHAL_INT64 = baseExtend(BaseMarshal.baseInt64(), {
+    primitive: true,
+    javaMangle: "J",
+    javaFullName: "Long",
+  }, {
     l1Type: "jlong",
     arrayType: (macro : haxe.Int64),
   });
@@ -437,18 +501,30 @@ class JavaMarshal extends BaseMarshal<
   public function uint64():JavaTypeMarshal return MARSHAL_UINT64;
   public function int64():JavaTypeMarshal return MARSHAL_INT64;
 
-  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {primitive: true, javaMangle: "F"}, {
+  static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
+    primitive: true,
+    javaMangle: "F",
+    javaFullName: "Float",
+  }, {
     l1Type: "jfloat",
     arrayType: (macro : Single),
   });
-  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {primitive: true, javaMangle: "D"}, {
+  static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {
+    primitive: true,
+    javaMangle: "D",
+    javaFullName: "Double",
+  }, {
     l1Type: "jdouble",
     arrayType: (macro : Float),
   });
   public function float32():JavaTypeMarshal return MARSHAL_FLOAT32;
   public function float64():JavaTypeMarshal return MARSHAL_FLOAT64;
 
-  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {primitive: false, javaMangle: "Ljava/lang/String;"}, {
+  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
+    primitive: false,
+    javaMangle: "Ljava/lang/String;",
+    javaFullName: "Object",
+  }, {
     l1Type: "jstring",
     // TODO: avoid copy somehow?
     l1l2: (l1, l2) -> 'do {
@@ -460,7 +536,11 @@ class JavaMarshal extends BaseMarshal<
   });
   public function string():JavaTypeMarshal return MARSHAL_STRING;
 
-  static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {primitive: false, javaMangle: "J"}, {
+  static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
+    primitive: false,
+    javaMangle: "J",
+    javaFullName: "Long",
+  }, {
     haxeType: (macro : haxe.Int64),
     l1Type: "jlong",
     l1l2: BaseMarshal.MARSHAL_CONVERT_CAST("uint8_t*"),
@@ -508,6 +588,7 @@ class JavaMarshal extends BaseMarshal<
   function opaqueInternal(name:String):JavaTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
     primitive: true,
     javaMangle: "J",
+    javaFullName: "Long",
   }, {
     haxeType: (macro : haxe.Int64),
     l1Type: "jlong",
@@ -518,6 +599,7 @@ class JavaMarshal extends BaseMarshal<
   function structPtrDerefInternal(name:String):JavaTypeMarshal return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
     primitive: true,
     javaMangle: "J",
+    javaFullName: "Long",
   }, {
     haxeType: (macro : haxe.Int64),
     l1Type: "jlong",
@@ -526,8 +608,9 @@ class JavaMarshal extends BaseMarshal<
   });
 
   function arrayPtrInternalType(element:JavaTypeMarshal):JavaTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
-    primitive: false,
+    primitive: false, // TODO: why?
     javaMangle: "J",
+    javaFullName: "Long",
   }, {
     haxeType: (macro : haxe.Int64),
     l1Type: "jlong",
@@ -680,6 +763,7 @@ JNIEXPORT void ${library.javaMangle(unrefFrom)}(JNIEnv *_java_env, jclass _java_
   function haxePtrInternalType(haxeType:ComplexType):JavaTypeMarshal return baseExtend(BaseMarshal.baseHaxePtrInternalType(haxeType), {
     primitive: true,
     javaMangle: "J",
+    javaFullName: "Long",
   }, {
     haxeType: (macro : haxe.Int64),
     l1Type: "jlong",

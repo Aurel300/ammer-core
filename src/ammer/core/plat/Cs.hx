@@ -47,6 +47,8 @@ class CsLibrary extends BaseLibrary<
   CsTypeMarshal,
   CsMarshal
 > {
+  var delegateCtr = 0;
+
   // TODO: move to base?
   var haxeRefTdefs:Map<String, TypeDefinition> = [];
 
@@ -168,8 +170,60 @@ LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
     return fieldExpr(name);
   }
 
-  var delegateCtr = 0;
-  var delegates:Map<String, Int> = [];
+  function baseCall(
+    lb:LineBuf,
+    code:Expr,
+    ret:CsTypeMarshal,
+    args:Array<CsTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    var delegateId = delegateCtr++;
+    lbImport
+      .ai('private delegate ${ret.csType} ClosureDelegate$delegateId(')
+      .mapi(args, (idx, arg) -> '${arg.csType} arg${idx}', ", ")
+      .al(");");
+    var callArgs = [ for (i in 0...args.length) macro $i{'arg$i'} ];
+    tdef.fields.push({
+      pos: config.pos,
+      name: 'ImplClosureDelegate$delegateId',
+      kind: TypeUtils.ffun(
+        args.map(arg -> arg.haxeType),
+        ret.haxeType,
+        code
+      ),
+      access: [APrivate, AStatic],
+    });
+
+    lb
+      .ail("do {")
+      .i()
+        .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+        .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+        .lmapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx};')
+        .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l1Type} _l1_output;')
+          .ai('_l1_output = ')
+        .ife()
+          .ai("")
+        .ifd()
+        .a('((${ret.l1Type} (*)(')
+        .map(args, arg -> '${arg.l1Type}', ", ")
+        .a('))(_ammer_delegates[$delegateId]))(')
+        .mapi(args, (idx, arg) ->
+          args[idx].l1Type == "int32_t" && args[idx].l2Type == "void*"
+          ? '(int32_t)_l1_arg_${idx}'
+          : '_l1_arg_${idx}', ", ")
+        .al(');')
+        .ifi(ret.mangled != "v")
+          .ail('${ret.l2Type} _l2_output;')
+          .ail(ret.l1l2("_l1_output", "_l2_output"))
+          .ail(ret.l2l3("_l2_output", outputExpr))
+        .ifd()
+      .d()
+      .al("} while (0);");
+  }
 
   public function closureCall(
     fn:String,
@@ -177,60 +231,28 @@ LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
     outputExpr:String,
     args:Array<String>
   ):String {
-    // TODO: use mangled as identifier instead of counter
-    var delegateId = delegates[clType.type.mangled];
-    if (delegateId == null) {
-      delegates[clType.type.mangled] = (delegateId = delegateCtr++);
-      lbImport
-        .ai('private delegate ${clType.ret.csType} ClosureDelegate$delegateId(int handle_cl')
-        .mapi(clType.args, (idx, arg) -> ', ${arg.csType} arg${idx}')
-        .al(");");
-      var callArgs = [ for (i in 0...clType.args.length) macro $i{'arg${i + 1}'} ];
-      var clAccess = TypeUtils.accessTdef(haxeRefTdefs[clType.type.mangled]);
-      tdef.fields.push({
-        pos: config.pos,
-        name: 'ImplClosureDelegate$delegateId',
-        kind: TypeUtils.ffun(
-          [(macro : Int)].concat(clType.args.map(arg -> arg.haxeType)),
-          clType.ret.haxeType,
-          macro {
-            // TODO: handle refs for args (and ret)
-            var arg0 = (@:privateAccess $clAccess.handles)[arg0].value;
-            return arg0($a{callArgs});
-          }
-        ),
-        access: [APrivate, AStatic],
-      });
-    }
-    // TODO: ref/unref args?
+    var callArgs = [ for (i in 0...clType.args.length) macro $i{'arg${i + 1}'} ];
+    var clAccess = TypeUtils.accessTdef(haxeRefTdefs[clType.type.mangled]);
+    var adjArgs = [clType.type].concat(clType.args);
+    var adjArgExprs = [fn].concat(args);
     return new LineBuf()
-      .ail("do {")
-      .i()
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai('_l1_output = ')
-        .ife()
-          .ai("")
-        .ifd()
-        .a('((${clType.ret.l1Type} (*)(int32_t')
-        .map(clType.args, arg -> ', ${arg.l1Type}')
-        .a('))(_ammer_delegates[$delegateId]))((int32_t)$fn')
-        .mapi(args, (idx, arg) ->
-          clType.args[idx].l1Type == "int32_t" && clType.args[idx].l2Type == "void*"
-          ? ', (int32_t)${arg}'
-          : ', ${arg}')
-        .al(');')
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
-      .d()
-      .ail("} while (0);")
+      .apply(baseCall.bind(_, macro {
+        // TODO: handle refs for args (and ret)
+        var arg0 = (@:privateAccess $clAccess.handles)[arg0].value;
+        return arg0($a{callArgs});
+      }, clType.ret, adjArgs, outputExpr, adjArgExprs))
+      .done();
+  }
+
+  public function staticCall(
+    ret:CsTypeMarshal,
+    args:Array<CsTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    return new LineBuf()
+      .apply(baseCall.bind(_, code, ret, args, outputExpr, argExprs))
       .done();
   }
 

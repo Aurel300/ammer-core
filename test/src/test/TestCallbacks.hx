@@ -5,6 +5,11 @@ package test;
 class TestCallbacks extends TestBase {
   public function new() {
     super("TestCallbacks");
+    testClosures();
+    testStatic();
+  }
+
+  function testClosures():Void {
     var typeNative = cType("void* field_cl; void* field_cl2;");
     var closureType = marshal.closure(marshal.int32(), [marshal.int32(), marshal.int32()]);
     var closureType2 = marshal.closure(marshal.void(), []);
@@ -87,6 +92,32 @@ class TestCallbacks extends TestBase {
       assertEq(macro callLog, macro 2);
       run(type.free(macro struct));
     });
+  }
+
+  function testStatic():Void {
+    var cb = lib.addStaticCallback(
+      marshal.int32(),
+      [marshal.int32(), marshal.int32()],
+      macro return arg0 + arg1
+    );
+    var caller = lib.addFunction(
+      marshal.int32(),
+      [],
+      '_return = $cb(11, 22);'
+    );
+    assertEq(macro $caller(), macro 33);
+
+    var cb = lib.addStaticCallback(
+      marshal.string(),
+      [marshal.int32(), marshal.string()],
+      macro return '$arg0$arg1'
+    );
+    var caller = lib.addFunction(
+      marshal.string(),
+      [marshal.int32()],
+      '_return = $cb(_arg0, "hello");'
+    );
+    assertEq(macro $caller(5), macro "5hello");
   }
 }
 

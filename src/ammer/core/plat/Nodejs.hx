@@ -69,6 +69,7 @@ class Nodejs extends Base<
   }
 }
 
+@:allow(ammer.core.plat)
 class NodejsLibrary extends BaseLibrary<
   NodejsLibrary,
   Nodejs,
@@ -77,13 +78,16 @@ class NodejsLibrary extends BaseLibrary<
   NodejsTypeMarshal,
   NodejsMarshal
 > {
+  var tdefExtern:TypeDefinition;
+  var tdefExternExpr:Expr;
   var lbInit = new LineBuf();
   var exportCount = 0;
   var nativeCount = 0;
+  var staticCallbackIds:Array<String> = [];
 
   function pushNative(name:String, signature:ComplexType, pos:Position):Void {
     nativeCount++;
-    tdef.fields.push({
+    tdefExtern.fields.push({
       pos: pos,
       name: name,
       kind: TypeUtils.ffunCt(signature),
@@ -93,12 +97,16 @@ class NodejsLibrary extends BaseLibrary<
 
   public function new(platform:Nodejs, config:NodejsLibraryConfig) {
     super(platform, config, new NodejsMarshal(this));
-    tdef.isExtern = true;
-    tdef.meta.push({
+
+    tdefExtern = typeDefCreate();
+    tdefExtern.name += "_Native";
+    tdefExtern.isExtern = true;
+    tdefExtern.meta.push({
       pos: config.pos,
       params: [macro $v{"./" + config.name + ".node"}],
       name: ":jsRequire",
     });
+
     pushNative("_ammer_nodejs_tohaxecopy", (macro : (Dynamic, Int) -> js.lib.ArrayBuffer), config.pos);
     pushNative("_ammer_nodejs_fromhaxecopy", (macro : (js.lib.ArrayBuffer) -> Dynamic), config.pos);
     pushNative("_ammer_nodejs_tohaxeref", (macro : (Dynamic, Int) -> js.lib.ArrayBuffer), config.pos);
@@ -110,6 +118,9 @@ class NodejsLibrary extends BaseLibrary<
     pushNative("_ammer_ref_setcount", (macro : (Dynamic, Int) -> Void), config.pos);
     pushNative("_ammer_ref_getvalue", (macro : (Dynamic) -> Dynamic), config.pos);
 
+    pushNative("_ammer_init", (macro : (Array<Any>) -> Void), config.pos);
+
+    tdefExternExpr = macro $p{config.typeDefPack.concat([config.typeDefName + "_Native"])};
     lb.ail("#define NAPI_VERSION 3");
     lb.ail("#include <node_api.h>");
     lb.ail("#define NAPI_CALL_ENV(_nodejs_env, call, dref)                    \\
@@ -193,20 +204,28 @@ static napi_value _ammer_ref_getvalue(napi_env _nodejs_env, napi_callback_info _
   NAPI_CALL(napi_get_reference_value(_nodejs_env, ref->value, &res));
   return res;
 }
+napi_ref _ammer_haxe_scb;
 ');
-    /*
-    lb.ail("static size_t _ammer_ctr = 0;"); // TODO: internalPrefix
-    boilerplate(
-      "napi_env",
-      "void*",
-      "napi_ref ref;",
-      "",
-      'NAPI_CALL_ENV(${config.internalPrefix}registry.ctx, napi_delete_reference(${config.internalPrefix}registry.ctx, curr->ref),);'
-    );
-    */
   }
 
   override function finalise(platConfig:NodejsConfig):Void {
+    var scbInit = [ for (id => cb in staticCallbackIds) {
+      macro $p{tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name])}.$cb;
+    } ];
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : Int),
+        macro {
+          var scb:Array<Any> = $a{scbInit};
+          (@:privateAccess $tdefExternExpr._ammer_init)(scb);
+          0;
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+
     lb.ail('#define NAPI_CALL_I NAPI_CALL
 static napi_value _ammer_nodejs_tohaxecopy(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
   size_t _nodejs_argc = 2;
@@ -280,6 +299,15 @@ static napi_value _ammer_nodejs_fromhaxeref(napi_env _nodejs_env, napi_callback_
   NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data, NULL, NULL, NULL));
   return res;
 }
+static napi_value _ammer_init(napi_env _nodejs_env, napi_callback_info _nodejs_cbinfo) {
+  size_t _nodejs_argc = 1;
+  napi_value _nodejs_argv[1];
+  NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
+  NAPI_CALL_I(napi_create_reference(_nodejs_env, _nodejs_argv[0], 1, &_ammer_haxe_scb));
+  napi_value res;
+  NAPI_CALL_I(napi_get_undefined(_nodejs_env, &res));
+  return res;
+}
 #undef NAPI_CALL_I
 NAPI_MODULE_INIT() {
   napi_property_descriptor _init_wrap[] = {
@@ -294,6 +322,8 @@ NAPI_MODULE_INIT() {
     {"_ammer_ref_getcount", NULL, _ammer_ref_getcount, NULL, NULL, NULL, napi_default, NULL},
     {"_ammer_ref_setcount", NULL, _ammer_ref_setcount, NULL, NULL, NULL, napi_default, NULL},
     {"_ammer_ref_getvalue", NULL, _ammer_ref_getvalue, NULL, NULL, NULL, napi_default, NULL},
+
+    {"_ammer_init", NULL, _ammer_init, NULL, NULL, NULL, napi_default, NULL},
   };
   if (napi_define_properties(env, exports, ${exportCount + nativeCount}, _init_wrap) != napi_ok) return NULL;
   _ammer_nodejs_env = env;
@@ -338,13 +368,42 @@ NAPI_MODULE_INIT() {
       .ail("}");
     lbInit.ail('{"${name}", NULL, ${name}, NULL, NULL, NULL, napi_default, NULL},');
     exportCount++;
-    tdef.fields.push({
+    tdefExtern.fields.push({
       pos: options.pos,
       name: name,
       kind: TypeUtils.ffun(args.map(arg -> arg.haxeType), ret.haxeType),
       access: [APublic, AStatic],
     });
-    return fieldExpr(name);
+    return macro (@:privateAccess $tdefExternExpr.$name);
+  }
+
+  function baseCall(
+    lb:LineBuf,
+    ret:NodejsTypeMarshal,
+    args:Array<NodejsTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    lb
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+      .lmapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+      .ail('${ret.l1Type} _l1_output;')
+      .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, ')
+      .ifi(args.length > 0)
+        .a('(napi_value[]){')
+        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
+        .a("}")
+      .ife()
+        .a("NULL")
+      .ifd()
+      .al(", &_l1_output));")
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l2Type} _l2_output;')
+        .ail(ret.l1l2("_l1_output", "_l2_output"))
+        .ail(ret.l2l3("_l2_output", outputExpr))
+      .ifd();
   }
 
   public function closureCall(
@@ -354,37 +413,41 @@ NAPI_MODULE_INIT() {
     args:Array<String>
   ):String {
     // TODO: what about rebound "this"?
-    // TODO: ref/unref args?
     return new LineBuf()
       .ail("do {")
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .ail("napi_value _l1_fn_ref;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail("_ammer_haxe_ref* _l1_fn_ref2;")
         .ail("NAPI_CALL_I(napi_unwrap(_nodejs_env, _l1_fn_ref, (void**)&_l1_fn_ref2));")
         .ail('${clType.type.l1Type} _l1_fn;')
         .ail("NAPI_CALL_I(napi_get_reference_value(_nodejs_env, _l1_fn_ref2->value, &_l1_fn));")
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ail('${clType.ret.l1Type} _l1_output;')
-        .ai('NAPI_CALL_I(napi_call_function(_nodejs_env, _l1_fn, _l1_fn, ${args.length}, ')
-        .ifi(args.length > 0)
-          .a('(napi_value[]){')
-          .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
-          .a("}")
-        .ife()
-          .a("NULL")
-        .ifd()
-        .al(", &_l1_output));")
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
+        .apply(baseCall.bind(_, clType.ret, clType.args, outputExpr, args))
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function staticCall(
+    ret:NodejsTypeMarshal,
+    args:Array<NodejsTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    var scbId = staticCallbackIds.length;
+    staticCallbackIds.push(name);
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail("napi_value scb;")
+        .ail('NAPI_CALL_I(napi_get_reference_value(_nodejs_env, _ammer_haxe_scb, &scb));')
+        .ail('napi_value _l1_fn;')
+        .ail('NAPI_CALL_I(napi_get_element(_nodejs_env, scb, ${scbId}, &_l1_fn));')
+        .apply(baseCall.bind(_, ret, args, outputExpr, argExprs))
       .d()
       .ail("} while (0);")
       .done();
@@ -591,6 +654,7 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
     toHaxeRef:Null<(self:Expr, size:Expr)->Expr>,
     fromHaxeRef:Null<(bytes:Expr)->Expr>,
   } {
+    var tdefExternExpr = library.tdefExternExpr;
     var pathBytesRef = baseBytesRef(
       (macro : Int), macro 0,
       (macro : Int), macro 0, // handle unused
@@ -600,23 +664,23 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
       toHaxeCopy: (self, size) -> macro {
         var _self:Dynamic = $self;
         var _size:Int = $size;
-        var _res:js.lib.ArrayBuffer = (@:privateAccess $e{library.fieldExpr("_ammer_nodejs_tohaxecopy")})(_self, _size);
+        var _res:js.lib.ArrayBuffer = (@:privateAccess $tdefExternExpr._ammer_nodejs_tohaxecopy)(_self, _size);
         haxe.io.Bytes.ofData(_res);
       },
       fromHaxeCopy: (bytes) -> macro {
         var _bytes:haxe.io.Bytes = $bytes;
-        (@:privateAccess $e{library.fieldExpr("_ammer_nodejs_fromhaxecopy")})(_bytes.getData());
+        (@:privateAccess $tdefExternExpr._ammer_nodejs_fromhaxecopy)(_bytes.getData());
       },
 
       toHaxeRef: (self, size) -> macro {
         var _self:Dynamic = $self;
         var _size:Int = $size;
-        var _res:js.lib.ArrayBuffer = (@:privateAccess $e{library.fieldExpr("_ammer_nodejs_tohaxeref")})(_self, _size);
+        var _res:js.lib.ArrayBuffer = (@:privateAccess $tdefExternExpr._ammer_nodejs_tohaxeref)(_self, _size);
         haxe.io.Bytes.ofData(_res);
       },
       fromHaxeRef: (bytes) -> macro {
         var _bytes:haxe.io.Bytes = $bytes;
-        var _ptr:Dynamic = (@:privateAccess $e{library.fieldExpr("_ammer_nodejs_fromhaxeref")})(_bytes.getData());
+        var _ptr:Dynamic = (@:privateAccess $tdefExternExpr._ammer_nodejs_fromhaxeref)(_bytes.getData());
         (@:privateAccess new $pathBytesRef(_bytes, _ptr, 0));
       },
     };
@@ -646,15 +710,16 @@ NAPI_CALL_I(napi_wrap(_nodejs_env, $l1, $l2, NULL, NULL, NULL));',
   });
 
   function haxePtrInternal(haxeType:ComplexType):MarshalHaxe<NodejsTypeMarshal> {
+    var tdefExternExpr = library.tdefExternExpr;
     var ret = baseHaxePtrInternal(
       haxeType,
       (macro : Dynamic),
       macro null,
-      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getvalue")})(handle),
-      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_getcount")})(handle),
-      rc -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_setcount")})(handle, $rc),
-      value -> macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_create")})($value),
-      macro (@:privateAccess $e{library.fieldExpr("_ammer_ref_delete")})(handle)
+      macro (@:privateAccess $tdefExternExpr._ammer_ref_getvalue)(handle),
+      macro (@:privateAccess $tdefExternExpr._ammer_ref_getcount)(handle),
+      rc -> macro (@:privateAccess $tdefExternExpr._ammer_ref_setcount)(handle, $rc),
+      value -> macro (@:privateAccess $tdefExternExpr._ammer_ref_create)($value),
+      macro (@:privateAccess $tdefExternExpr._ammer_ref_delete)(handle)
     );
     TypeUtils.defineType(ret.tdef);
     return ret.marshal;

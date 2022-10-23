@@ -48,25 +48,10 @@ class LuaLibrary extends BaseLibrary<
   LuaMarshal
 > {
   var lbInit = new LineBuf();
+  var staticCallbackIds:Array<String> = [];
 
   public function new(platform:Lua, config:LuaLibraryConfig) {
     super(platform, config, new LuaMarshal(this));
-    tdef.fields.push({
-      pos: config.pos,
-      name: "_ammer_native",
-      kind: FVar(
-        (macro : lua.Table<String, Dynamic>),
-        macro {
-          var loadlib = (switch (Sys.systemName()) {
-            case "Windows": $v{config.name} + ".dll";
-            case "Mac": "lib" + $v{config.name} + ".dylib";
-            case _: "lib" + $v{config.name} + ".so";
-          });
-          untyped __lua__('assert(package.loadlib({0}, "_ammer_init"))()', loadlib);
-        }
-      ),
-      access: [APrivate, AStatic],
-    });
     // TODO: internalPrefix
     lb.ail('#include <lua.h>
 #include <lualib.h>
@@ -74,6 +59,7 @@ class LuaLibrary extends BaseLibrary<
 
 static int32_t _ammer_ctr = 0;
 static const char *_ammer_registry_name = "${config.internalPrefix}registry";
+static const char *_ammer_registry_scb = "${config.internalPrefix}scb";
 static lua_State* _ammer_lua_state; // TODO: multiple threads?
 typedef struct { int32_t value; int32_t refcount; } _ammer_haxe_ref;
 static int _ammer_ref_create(lua_State* _lua_state) {
@@ -120,25 +106,31 @@ static int _ammer_ref_getvalue(lua_State* _lua_state) {
   return 1;
 }
 ');
-    /*
-    lb.ail(""); 
-    lb.ail('static const char *_ammer_registry_name = "${config.internalPrefix}registry";');
-    boilerplate(
-      "void*",
-      "const void*",
-      "size_t stored;",
-      "",
-      "lua_State* _lua_state = _ammer_core_registry.ctx;
-lua_pushstring(_lua_state, _ammer_registry_name);
-lua_gettable(_lua_state, LUA_REGISTRYINDEX);
-lua_pushinteger(_lua_state, curr->stored);
-lua_pushnil(_lua_state);
-lua_settable(_lua_state, -3);"
-    );
-    */
   }
 
   override function finalise(platConfig:LuaConfig):Void {
+    var scbInit = [ for (id => cb in staticCallbackIds) {
+      macro $p{tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name])}.$cb;
+    } ];
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_native",
+      kind: FVar(
+        (macro : lua.Table<String, Dynamic>),
+        macro {
+          var loadlib = (switch (Sys.systemName()) {
+            case "Windows": $v{config.name} + ".dll";
+            case "Mac": "lib" + $v{config.name} + ".dylib";
+            case _: "lib" + $v{config.name} + ".so";
+          });
+          var scb:Array<Any> = $a{scbInit};
+          var scb:lua.Table<Int, Any> = lua.Table.fromArray(scb);
+          untyped __lua__('assert(package.loadlib({0}, "_ammer_init"))({1})', loadlib, scb);
+        }
+      ),
+      access: [APrivate, AStatic],
+    });
+
     // TODO: name symbols with internalPrefix
     lb.ail('
 static int _ammer_lua_tobytesdata(lua_State* _lua_state) {
@@ -183,6 +175,9 @@ int _ammer_init(lua_State* _lua_state) {
   lua_pushstring(_lua_state, _ammer_registry_name);
   lua_newtable(_lua_state);
   lua_settable(_lua_state, LUA_REGISTRYINDEX);
+  lua_pushstring(_lua_state, _ammer_registry_scb);
+  lua_pushvalue(_lua_state, 1);
+  lua_settable(_lua_state, LUA_REGISTRYINDEX);
   _ammer_lua_state = _lua_state;
   return 1;
 }');
@@ -222,21 +217,37 @@ int _ammer_init(lua_State* _lua_state) {
     return macro ((untyped $e{fieldExpr("_ammer_native")}[$v{name}]) : $funcType);
   }
 
+  function baseCall(
+    lb:LineBuf,
+    ret:LuaTypeMarshal,
+    args:Array<LuaTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    lb
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+      .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', ""))
+      .ail('lua_call(_lua_state, ${args.length}, 1);')
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l2Type} _l2_output;')
+        .ail(ret.l1l2("-1", "_l2_output"))
+        .ail(ret.l2l3("_l2_output", outputExpr))
+        .ail("lua_pop(_lua_state, 1);")
+      .ifd();
+  }
+
   public function closureCall(
     fn:String,
     clType:MarshalClosure<LuaTypeMarshal>,
     outputExpr:String,
     args:Array<String>
   ):String {
-    // TODO: ref/unref args?
     return new LineBuf()
       .ail("do {")
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
-        // first the function is restored and pushed
         .ail('${clType.type.l2l1("_l2_fn", "")}
 int _l1_fn_idx = ((_ammer_haxe_ref*)lua_touserdata(_lua_state, -1))->value;
 lua_pop(_lua_state, 1);
@@ -244,15 +255,30 @@ lua_pushstring(_lua_state, _ammer_registry_name);
 lua_gettable(_lua_state, LUA_REGISTRYINDEX);
 lua_pushinteger(_lua_state, _l1_fn_idx);
 lua_gettable(_lua_state, -2);')
-        // then the arguments in direct order
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', ""))
-        .ail('lua_call(_lua_state, ${args.length}, 1);')
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("-1", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-          .ail("lua_pop(_lua_state, 1);")
-        .ifd()
+        .apply(baseCall.bind(_, clType.ret, clType.args, outputExpr, args))
+      .d()
+      .ail("} while (0);")
+      .done();
+  }
+
+  public function staticCall(
+    ret:LuaTypeMarshal,
+    args:Array<LuaTypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    var name = baseStaticCall(ret, args, code);
+    var scbId = staticCallbackIds.length;
+    staticCallbackIds.push(name);
+    return new LineBuf()
+      .ail("do {")
+      .i()
+        .ail('lua_pushstring(_lua_state, _ammer_registry_scb);
+lua_gettable(_lua_state, LUA_REGISTRYINDEX);
+lua_pushinteger(_lua_state, ${scbId + 1});
+lua_gettable(_lua_state, -2);')
+        .apply(baseCall.bind(_, ret, args, outputExpr, argExprs))
       .d()
       .ail("} while (0);")
       .done();
@@ -293,29 +319,6 @@ class LuaMarshal extends BaseMarshal<
   LuaLibrary,
   LuaTypeMarshal
 > {
-  /*
-  // TODO: ${config.internalPrefix}
-  // TODO: this already roots
-  static final MARSHAL_REGISTRY_GET_NODE = (l1:String, l2:String)
-    -> '$l2 = _ammer_core_registry_get(lua_topointer(_lua_state, $l1));
-$l2->stored = _ammer_ctr++;
-lua_pushstring(_lua_state, _ammer_registry_name);
-lua_gettable(_lua_state, LUA_REGISTRYINDEX);
-lua_pushinteger(_lua_state, $l2->stored);
-lua_pushvalue(_lua_state, $l1);
-lua_settable(_lua_state, -3);
-lua_pop(_lua_state, 1);';
-  static final MARSHAL_REGISTRY_REF = (l2:String)
-    -> '_ammer_core_registry_incref($l2);';
-  static final MARSHAL_REGISTRY_UNREF = (l2:String)
-    -> '_ammer_core_registry_decref($l2);';
-  static final MARSHAL_REGISTRY_GET_KEY = MARSHAL_PUSH((l2:String) // TODO: target type cast
-    -> 'lua_pushstring(_lua_state, _ammer_registry_name);
-lua_gettable(_lua_state, LUA_REGISTRYINDEX);
-lua_pushinteger(_lua_state, $l2->stored);
-lua_gettable(_lua_state, -2);
-lua_remove(_lua_state, -2);');
-  */
   static final MARSHAL_PUSH = (l2push:String->String) -> (l2:String, l1:String) -> {
     if (l1 != "") throw 0; // in L2->L1 we can push onto the top of the stack
     l2push(l2);

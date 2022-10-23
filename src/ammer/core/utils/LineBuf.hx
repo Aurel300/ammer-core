@@ -29,6 +29,11 @@ class LineBuf {
     return this;
   }
 
+  public function apply(f:LineBuf->Void):LineBuf {
+    f(this);
+    return this;
+  }
+
   public inline function a(val:String):LineBuf {
     if (condActive) {
       data.add(val);

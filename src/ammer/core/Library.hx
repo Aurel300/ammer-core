@@ -79,12 +79,40 @@ class Library {
     );
   }
 
+  public function staticCall(
+    ret:TypeMarshal,
+    args:Array<TypeMarshal>,
+    code:Expr,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):String {
+    return library.staticCall(
+      ret,
+      args,
+      code,
+      outputExpr,
+      argExprs
+    );
+  }
+
   public function addCallback(
     ret:TypeMarshal,
     args:Array<TypeMarshal>,
     code:String
   ):String {
     return library.addCallback(
+      ret,
+      args,
+      code
+    );
+  }
+
+  public function addStaticCallback(
+    ret:TypeMarshal,
+    args:Array<TypeMarshal>,
+    code:Expr
+  ):String {
+    return library.addStaticCallback(
       ret,
       args,
       code
