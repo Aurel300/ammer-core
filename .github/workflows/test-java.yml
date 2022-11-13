@@ -54,15 +54,15 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" build/build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" build/build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" -D ammercoretest.java.librarypaths="$JAVA_HOME/lib/server" build/build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" -D ammercoretest.java.librarypaths="$JAVA_HOME/lib/server" build/build-jvm.hxml
 
     - name: Compile tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         cd ammer-core/test
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" build/build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" build/build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" -D ammercoretest.java.librarypaths="$JAVA_HOME/jre/lib/server" build/build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" -D ammercoretest.java.librarypaths="$JAVA_HOME/jre/lib/server" build/build-jvm.hxml
  
     - name: Compile tests (Windows)
       if: matrix.os == 'windows-latest'
@@ -71,8 +71,8 @@ jobs:
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
         cd ammer-core/test
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build/build-java.hxml
-        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" build/build-jvm.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" -D ammercoretest.java.librarypaths="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" build/build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" -D ammercoretest.java.librarypaths="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" build/build-jvm.hxml
 
     - name: Run tests
       shell: bash

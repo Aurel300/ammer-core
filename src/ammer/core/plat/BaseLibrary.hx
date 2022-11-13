@@ -64,6 +64,9 @@ abstract class BaseLibrary<
       kind: TDClass(null, [], false, true, false),
       fields: [],
     });
+    // TODO: MSVC assumed to be LE (MSVC can also target BE: xbox)
+    // TODO: the endian defines on the BSD variants are not tested
+    // does not work on cpp: (!*(unsigned char*)(void*)&(uint16_t){1})
     lb.ail("#include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -73,7 +76,52 @@ abstract class BaseLibrary<
 #else
   #define LIB_EXPORT
 #endif
-");
+#ifdef _MSC_VER
+  #define _AMMER_BIG_ENDIAN 0
+  #define bswap_16(x) _byteswap_ushort(x)
+  #define bswap_32(x) _byteswap_ulong(x)
+  #define bswap_64(x) _byteswap_uint64(x)
+#elif defined(__APPLE__)
+  #include <libkern/OSByteOrder.h>
+  #if defined(__BIG_ENDIAN__)
+    #define _AMMER_BIG_ENDIAN 1
+  #else
+    #define _AMMER_BIG_ENDIAN 0
+  #endif
+  #define bswap_16(x) OSSwapInt16(x)
+  #define bswap_32(x) OSSwapInt32(x)
+  #define bswap_64(x) OSSwapInt64(x)
+#elif defined(__sun) || defined(sun)
+  #include <sys/byteorder.h>
+  #define _AMMER_BIG_ENDIAN (_BYTE_ORDER == _BIG_ENDIAN)
+  #define bswap_16(x) BSWAP_16(x)
+  #define bswap_32(x) BSWAP_32(x)
+  #define bswap_64(x) BSWAP_64(x)
+#elif defined(__FreeBSD__)
+  #include <sys/endian.h>
+  #define _AMMER_BIG_ENDIAN (_BYTE_ORDER == _BIG_ENDIAN)
+  #define bswap_16(x) bswap16(x)
+  #define bswap_32(x) bswap32(x)
+  #define bswap_64(x) bswap64(x)
+#elif defined(__OpenBSD__)
+  #include <sys/types.h>
+  #define _AMMER_BIG_ENDIAN (_BYTE_ORDER == _BIG_ENDIAN)
+  #define bswap_16(x) swap16(x)
+  #define bswap_32(x) swap32(x)
+  #define bswap_64(x) swap64(x)
+#elif defined(__NetBSD__)
+  #include <sys/types.h>
+  #include <machine/bswap.h>
+  #define _AMMER_BIG_ENDIAN (_BYTE_ORDER == _BIG_ENDIAN)
+  #if defined(__BSWAP_RENAME) && !defined(__bswap_32)
+    #define bswap_16(x) bswap16(x)
+    #define bswap_32(x) bswap32(x)
+    #define bswap_64(x) bswap64(x)
+  #endif
+#else
+  #include <byteswap.h>
+  #define _AMMER_BIG_ENDIAN (__BYTE_ORDER == __BIG_ENDIAN)
+#endif");
   }
 
   function finalise(config:TConfig):Void {

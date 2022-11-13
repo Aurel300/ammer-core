@@ -43,7 +43,7 @@ class Eval extends Base<
 (library
   (name ammer_core_${lib.config.name})
   (libraries haxe)
-  (c_names stubs)
+  (foreign_stubs (language c) (names stubs))
 )')
       ));
       ops.push(BOAlways(

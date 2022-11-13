@@ -53,8 +53,11 @@ jobs:
     - name: Compile tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
+        python3-config --cflags
+        python3-config --ldflags
+        python3-config --libs
         cd ammer-core/test
-        haxe -D ammercoretest.python.includepaths="/usr/include/python3.8;/usr/include/x86_64-linux-gnu/python3.8" -D ammercoretest.python.version=8 build/build-python.hxml
+        haxe -D ammercoretest.python.includepaths="/usr/include/python3.10" -D ammercoretest.python.librarypaths="/usr/lib/python3.10/config-3.10-x86_64-linux-gnu" -D ammercoretest.python.version=10 build/build-python.hxml
 
     - name: Compile tests (macOS)
       if: matrix.os == 'macos-latest'
@@ -63,7 +66,7 @@ jobs:
         python3-config --ldflags
         python3-config --libs
         cd ammer-core/test
-        haxe -D ammercoretest.python.includepaths=/usr/local/opt/python@3.10/Frameworks/Python.framework/Versions/3.10/include/python3.10 -D ammercoretest.python.librarypaths=/usr/local/opt/python@3.10/Frameworks/Python.framework/Versions/3.10/lib/python3.10/config-3.10-darwin -D ammercoretest.python.version=10 build/build-python.hxml
+        haxe -D ammercoretest.python.includepaths="/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11;/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11" -D ammercoretest.python.librarypaths=/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/config-3.11-darwin -D ammercoretest.python.version=11 build/build-python.hxml
 
     - name: Compile tests (Windows)
       if: matrix.os == 'windows-latest'

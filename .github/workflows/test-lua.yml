@@ -63,7 +63,14 @@ jobs:
 
     - name: Install Lua and dependencies (macOS)
       if: matrix.os == 'macos-latest'
+      env:
+        PCRE_VERSION: 8.44
       run: |
+        curl -L https://downloads.sourceforge.net/project/pcre/pcre/$PCRE_VERSION/pcre-$PCRE_VERSION.tar.gz | tar xz
+        cd pcre-$PCRE_VERSION
+        ./configure --enable-utf8 --enable-pcre8 --enable-pcre16 --enable-pcre32 --enable-unicode-properties --enable-pcregrep-libz --enable-pcregrep-libbz2 --enable-jit
+        make && make install
+        cd ..
         brew install lua luarocks
         luarocks install lrexlib-pcre 2.9.1-1
         luarocks install luv 1.41.1-0
