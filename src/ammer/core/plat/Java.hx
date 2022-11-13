@@ -370,8 +370,6 @@ class JavaMarshal extends BaseMarshal<
   // Primitive types
   // https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/types.html#primitive_types
 
-  // TODO: javaMangle ...
-
   static function baseExtend(
     base:BaseTypeMarshal,
     ext:JavaTypeMarshalExt,
@@ -415,12 +413,11 @@ class JavaMarshal extends BaseMarshal<
 
   static final MARSHAL_UINT8 = baseExtend(BaseMarshal.baseUint8(), {
     primitive: true,
-    // TODO: there is no java.types.Uint8, so u8 arrays use i8
-    javaMangle: "B", //javaMangle: "Z",
+    javaMangle: "Z",
     javaFullName: "Boolean",
   }, {
-    // l1Type: "jboolean",
-    l1Type: "jbyte",
+    l1Type: "jboolean",
+    // TODO: there is no java.types.Uint8, so u8 arrays use i8
     arrayType: (macro : java.types.Int8),
   });
   static final MARSHAL_INT8 = baseExtend(BaseMarshal.baseInt8(), {

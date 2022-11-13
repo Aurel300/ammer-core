@@ -243,12 +243,45 @@ abstract class BaseMarshal<
     var platform = bytesInternalOps(alloc, blit);
 
     var libExpr = library.typeDefExpr();
+
+    var mcp = library.config.memcpyFunction;
+
     var get8  = library.addFunction(uint8(),  [type, int32()], '_return = _arg0[_arg1];');
-    var get16 = library.addFunction(uint16(), [type, int32()], '${library.config.memcpyFunction}(&_return, &_arg0[_arg1], 2);');
-    var get32 = library.addFunction(uint32(), [type, int32()], '${library.config.memcpyFunction}(&_return, &_arg0[_arg1], 4);');
+    var get16 = library.addFunction(uint16(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 2);');
+    var get32 = library.addFunction(uint32(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 4);');
+    var get64 = library.addFunction(uint64(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 8);');
+
     var set8  = library.addFunction(void(), [type, int32(), uint8() ], '_arg0[_arg1] = _arg2;');
-    var set16 = library.addFunction(void(), [type, int32(), uint16()], '${library.config.memcpyFunction}(&_arg0[_arg1], &_arg2, 2);');
-    var set32 = library.addFunction(void(), [type, int32(), uint32()], '${library.config.memcpyFunction}(&_arg0[_arg1], &_arg2, 4);');
+    var set16 = library.addFunction(void(), [type, int32(), uint16()], '$mcp(&_arg0[_arg1], &_arg2, 2);');
+    var set32 = library.addFunction(void(), [type, int32(), uint32()], '$mcp(&_arg0[_arg1], &_arg2, 4);');
+    var set64 = library.addFunction(void(), [type, int32(), uint64()], '$mcp(&_arg0[_arg1], &_arg2, 8);');
+
+    var get16be = library.addFunction(uint16(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 2);
+if (!_AMMER_BIG_ENDIAN) _return = bswap_16(_return);');
+    var get32be = library.addFunction(uint32(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 4);
+if (!_AMMER_BIG_ENDIAN) _return = bswap_32(_return);');
+    var get64be = library.addFunction(uint64(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 8);
+if (!_AMMER_BIG_ENDIAN) _return = bswap_64(_return);');
+    var set16be = library.addFunction(void(), [type, int32(), uint16()], 'if (!_AMMER_BIG_ENDIAN) _arg2 = bswap_16(_arg2);
+$mcp(&_arg0[_arg1], &_arg2, 2);');
+    var set32be = library.addFunction(void(), [type, int32(), uint32()], 'if (!_AMMER_BIG_ENDIAN) _arg2 = bswap_32(_arg2);
+$mcp(&_arg0[_arg1], &_arg2, 4);');
+    var set64be = library.addFunction(void(), [type, int32(), uint64()], 'if (!_AMMER_BIG_ENDIAN) _arg2 = bswap_64(_arg2);
+$mcp(&_arg0[_arg1], &_arg2, 8);');
+
+    var get16le = library.addFunction(uint16(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 2);
+if (_AMMER_BIG_ENDIAN) _return = bswap_16(_return);');
+    var get32le = library.addFunction(uint32(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 4);
+if (_AMMER_BIG_ENDIAN) _return = bswap_32(_return);');
+    var get64le = library.addFunction(uint64(), [type, int32()], '$mcp(&_return, &_arg0[_arg1], 8);
+if (_AMMER_BIG_ENDIAN) _return = bswap_64(_return);');
+    var set16le = library.addFunction(void(), [type, int32(), uint16()], 'if (_AMMER_BIG_ENDIAN) _arg2 = bswap_16(_arg2);
+$mcp(&_arg0[_arg1], &_arg2, 2);');
+    var set32le = library.addFunction(void(), [type, int32(), uint32()], 'if (_AMMER_BIG_ENDIAN) _arg2 = bswap_32(_arg2);
+$mcp(&_arg0[_arg1], &_arg2, 4);');
+    var set64le = library.addFunction(void(), [type, int32(), uint64()], 'if (_AMMER_BIG_ENDIAN) _arg2 = bswap_64(_arg2);
+$mcp(&_arg0[_arg1], &_arg2, 8);');
+
     var zalloc = library.addFunction(
       type,
       [int32()],
@@ -270,16 +303,34 @@ abstract class BaseMarshal<
       '_return = (uint8_t*)${library.config.mallocFunction}(_arg1);
 ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
     );
+    var offset = library.addFunction(type, [type, int32()], '_return = &_arg0[_arg1];');
+
     return cacheBytes = {
       type: type,
 
       get8:  (self, index) -> macro $get8 ($self, $index),
       get16: (self, index) -> macro $get16($self, $index),
       get32: (self, index) -> macro $get32($self, $index),
+      get64: (self, index) -> macro $get64($self, $index),
 
       set8:  (self, index, val) -> macro $set8 ($self, $index, $val),
       set16: (self, index, val) -> macro $set16($self, $index, $val),
       set32: (self, index, val) -> macro $set32($self, $index, $val),
+      set64: (self, index, val) -> macro $set64($self, $index, $val),
+
+      get16be: (self, index) -> macro $get16be($self, $index),
+      get32be: (self, index) -> macro $get32be($self, $index),
+      get64be: (self, index) -> macro $get64be($self, $index),
+      set16be: (self, index, val) -> macro $set16be($self, $index, $val),
+      set32be: (self, index, val) -> macro $set32be($self, $index, $val),
+      set64be: (self, index, val) -> macro $set64be($self, $index, $val),
+
+      get16le: (self, index) -> macro $get16le($self, $index),
+      get32le: (self, index) -> macro $get32le($self, $index),
+      get64le: (self, index) -> macro $get64le($self, $index),
+      set16le: (self, index, val) -> macro $set16le($self, $index, $val),
+      set32le: (self, index, val) -> macro $set32le($self, $index, $val),
+      set64le: (self, index, val) -> macro $set64le($self, $index, $val),
 
       alloc: alloc,
       zalloc: (size) -> macro $zalloc($size),
@@ -287,6 +338,7 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
       free: (self) -> macro $free($self),
       copy: (self, size) -> macro $copy($self, $size),
       blit: blit,
+      offset: (self, pos) -> macro $offset($self, $pos),
 
       toHaxeCopy: platform.toHaxeCopy,
       fromHaxeCopy: platform.fromHaxeCopy,
