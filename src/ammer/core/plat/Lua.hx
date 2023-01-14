@@ -134,7 +134,7 @@ static int _ammer_ref_getvalue(lua_State* _lua_state) {
     // TODO: name symbols with internalPrefix
     lb.ail('
 static int _ammer_lua_tobytesdata(lua_State* _lua_state) {
-  uint8_t* data = lua_touserdata(_lua_state, 1);
+  uint8_t* data = (uint8_t*)lua_touserdata(_lua_state, 1);
   uint32_t size = lua_tointeger(_lua_state, 2);
   lua_createtable(_lua_state, size, 0);
   for (int i = 0; i < size; i++) {
@@ -428,7 +428,7 @@ lua_setfield(_lua_state, -2, "high");'),
 
   static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
     haxeType: (macro : lua.UserData),
-    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l1l2: (l1, l2) -> '$l2 = (uint8_t*)lua_touserdata(_lua_state, $l1);',
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
   });
   function bytesInternalType():LuaTypeMarshal return MARSHAL_BYTES;
@@ -472,19 +472,19 @@ lua_setfield(_lua_state, -2, "high");'),
 
   function opaqueInternal(name:String):LuaTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
     haxeType: (macro : lua.UserData),
-    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l1l2: (l1, l2) -> '$l2 = ($name)lua_touserdata(_lua_state, $l1);',
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
   });
 
   function structPtrDerefInternal(name:String):LuaTypeMarshal return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
     haxeType: (macro : lua.UserData),
-    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l1l2: (l1, l2) -> '$l2 = ($name*)lua_touserdata(_lua_state, $l1);',
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
   });
 
   function arrayPtrInternalType(element:LuaTypeMarshal):LuaTypeMarshal return baseExtend(BaseMarshal.baseArrayPtrInternal(element), {
     haxeType: (macro : lua.UserData),
-    l1l2: (l1, l2) -> '$l2 = lua_touserdata(_lua_state, $l1);',
+    l1l2: (l1, l2) -> '$l2 = (${element.l2Type}*)lua_touserdata(_lua_state, $l1);',
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushlightuserdata(_lua_state, $l2);'),
   });
 

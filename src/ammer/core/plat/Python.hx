@@ -185,9 +185,8 @@ static PyObject* _ammer_haxe_scb;
 
     lb
       .ail('static PyObject *_ammer_init(PyObject *_python_self, PyObject *_python_args) {
-  PyObject *ex_int64;
-  // TODO: get rid of parsetuple
-  if (!PyArg_ParseTuple(_python_args, \"OO\", &ex_int64, &_ammer_haxe_scb)) return NULL;
+  PyObject *ex_int64 = PyTuple_GetItem(_python_args, 0);
+  _ammer_haxe_scb = PyTuple_GetItem(_python_args, 1);
   _ammer_haxe_int64_type = Py_TYPE(ex_int64);
   Py_XINCREF(_ammer_haxe_scb);
   Py_RETURN_NONE;
@@ -258,6 +257,7 @@ PyMODINIT_FUNC PyInit_${config.name}(void) {
       access: [APrivate, AStatic],
     });
     var callArgs = [ for (i => arg in args) macro $i{'arg$i'} ];
+    // TODO: why not call directly?
     tdef.fields.push({
       pos: options.pos,
       name: name,
