@@ -200,8 +200,8 @@ abstract class BaseMarshal<
     l3Type: "float",
     mangled: "f32",
     l1l2: MARSHAL_CONVERT_DIRECT,
-    l2l3: MARSHAL_CONVERT_DIRECT, // cast?
-    l3l2: MARSHAL_CONVERT_DIRECT, // cast?
+    l2l3: MARSHAL_CONVERT_CAST("float"),
+    l3l2: MARSHAL_CONVERT_CAST("double"),
     l2l1: MARSHAL_CONVERT_DIRECT,
     arrayBits: 2,
   };

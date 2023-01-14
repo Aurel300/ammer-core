@@ -58,12 +58,13 @@ class Library {
 
   /*
   public function addNamedFunction(
-        name:String,
-        ret:TTypeMarshal,
-        args:Array<TTypeMarshal>,
-        code:String,
-        options:FunctionOptions
-      )*/
+    name:String,
+    ret:TTypeMarshal,
+    args:Array<TTypeMarshal>,
+    code:String,
+    options:FunctionOptions
+  );
+  */
 
   public function closureCall(
     fn:String,

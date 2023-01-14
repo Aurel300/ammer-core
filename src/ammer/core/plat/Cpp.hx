@@ -202,6 +202,7 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
   }
 
   override function finalise(platConfig:CppConfig):Void {
+    // TODO: file dependency to trigger recompilation when stubs change
     var xml = new LineBuf()
       .ail('<files id="haxe">')
       .i()
