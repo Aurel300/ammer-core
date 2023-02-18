@@ -115,6 +115,9 @@ class NoneMarshal extends BaseMarshal<
   public function uint64():NoneTypeMarshal return MARSHAL_UINT64;
   public function int64():NoneTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:NoneTypeMarshal):NoneTypeMarshal
+    return BaseMarshal.baseEnumInt(name, type);
+
   static final MARSHAL_FLOAT32 = BaseMarshal.baseFloat32();
   static final MARSHAL_FLOAT64 = BaseMarshal.baseFloat64();
   public function float32():NoneTypeMarshal return MARSHAL_FLOAT32;

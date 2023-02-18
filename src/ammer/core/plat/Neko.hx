@@ -451,6 +451,9 @@ alloc_field($l1, _ammer_haxe_field_low, alloc_int32($l2 & 0xFFFFFFFF));',
   public function uint64():NekoTypeMarshal return MARSHAL_UINT64;
   public function int64():NekoTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:NekoTypeMarshal):NekoTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
     l1l2: (l1, l2) -> '$l2 = val_number($l1);',
     l2l1: (l2, l1) -> '$l1 = alloc_float($l2);',

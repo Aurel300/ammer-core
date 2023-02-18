@@ -419,6 +419,12 @@ class CppMarshal extends BaseMarshal<
   public function uint64():CppTypeMarshal return MARSHAL_UINT64;
   public function int64():CppTypeMarshal return MARSHAL_INT64;
 
+  // setting `haxeType` to a type defined with `defineNativeType(name)` would
+  // result in the type being represented more "cleanly" in C++, but then it
+  // would not as easily be assignable to/from integers
+  public function enumInt(name:String, type:CppTypeMarshal):CppTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {arrayType: (macro : cpp.Float32)});
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {arrayType: (macro : cpp.Float64)});
   public function float32():CppTypeMarshal return MARSHAL_FLOAT32;

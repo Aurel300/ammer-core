@@ -425,6 +425,9 @@ $l1->low = (int32_t)($l2 & 0xFFFFFFFF);',
   public function uint64():HashlinkTypeMarshal return MARSHAL_UINT64;
   public function int64():HashlinkTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:HashlinkTypeMarshal):HashlinkTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type), {hlType: type.hlType});
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {hlType: "_F32"}, {
     arrayType: (macro : hl.F32),
   });
