@@ -53,9 +53,8 @@ abstract class Base<
   function baseDynamicLinkProgram(options:{
     ?includePaths:Array<String>,
     ?libraryPaths:Array<String>,
-    ?defines:TLibrary->Array<String>,
     ?linkNames:Array<String>,
-    ?outputPath:TLibrary->String,
+    ?defines:Array<String>,
   }):BuildProgram {
     var ops:Array<BuildOp> = [];
     for (lib in libraries) {
@@ -80,20 +79,17 @@ abstract class Base<
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
         CompileObject(lib.config.language, {
-          defines: (options.defines != null ? options.defines(lib) : lib.config.defines),
+          defines: lib.config.defines.concat(options.defines != null ? options.defines : []),
           includePaths: (options.includePaths != null ? options.includePaths : [])
             .concat(lib.config.includePaths),
         })
       ));
-      var outputPath = options.outputPath != null
-        ? options.outputPath(lib)
-        : '${config.outputPath}/%LIB%${lib.config.name}.%DLL%';
-      var linkName = outputPath.split("/").pop();
+      var linkName = lib.outputPathRelative.split("/").pop();
       ops.push(BODependent(
-        File(outputPath),
+        File('${config.outputPath}/${lib.outputPathRelative}'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         LinkLibrary(lib.config.language, {
-          defines: (options.defines != null ? options.defines(lib) : lib.config.defines),
+          defines: lib.config.defines.concat(options.defines != null ? options.defines : []),
           libraryPaths: (options.libraryPaths != null ? options.libraryPaths : [])
             .concat(lib.config.libraryPaths),
           libraries: (options.linkNames != null ? options.linkNames : [])
