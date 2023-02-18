@@ -462,6 +462,9 @@ class PythonMarshal extends BaseMarshal<
   public function uint64():PythonTypeMarshal return MARSHAL_UINT64;
   public function int64():PythonTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:PythonTypeMarshal):PythonTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
     l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
     l2l1: (l2, l1) -> '$l1 = PyFloat_FromDouble($l2);',

@@ -498,6 +498,13 @@ class JavaMarshal extends BaseMarshal<
   public function uint64():JavaTypeMarshal return MARSHAL_UINT64;
   public function int64():JavaTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:JavaTypeMarshal):JavaTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type), {
+      primitive: true,
+      javaMangle: type.javaMangle,
+      javaFullName: type.javaFullName,
+    });
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {
     primitive: true,
     javaMangle: "F",

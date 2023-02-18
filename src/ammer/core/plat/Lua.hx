@@ -409,6 +409,9 @@ lua_setfield(_lua_state, -2, "high");'),
   public function uint64():LuaTypeMarshal return MARSHAL_UINT64;
   public function int64():LuaTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:LuaTypeMarshal):LuaTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
     l1l2: (l1, l2) -> '$l2 = lua_tonumber(_lua_state, $l1);',
     l2l1: MARSHAL_PUSH((l2) -> 'lua_pushnumber(_lua_state, $l2);'),

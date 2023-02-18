@@ -70,6 +70,7 @@ class Marshal {
   public function int16():TypeMarshal return marshal.int16();
   public function int32():TypeMarshal return marshal.int32();
   public function int64():TypeMarshal return marshal.int64();
+  public function enumInt(name:String, type:TypeMarshal):TypeMarshal return marshal.enumInt(name, type);
   public function float32():TypeMarshal return marshal.float32();
   public function float64():TypeMarshal return marshal.float64();
   public function bytes():MarshalBytes<TypeMarshal> return marshal.bytes();

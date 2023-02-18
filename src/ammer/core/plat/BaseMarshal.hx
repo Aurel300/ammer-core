@@ -169,6 +169,20 @@ abstract class BaseMarshal<
   abstract public function uint64():TTypeMarshal;
   abstract public function int64():TTypeMarshal;
 
+  static function baseEnumInt(name:String, type:BaseTypeMarshal):BaseTypeMarshal return {
+    haxeType: type.haxeType,
+    l1Type: type.l1Type,
+    l2Type: type.l2Type,
+    l3Type: name,
+    mangled: type.mangled,
+    l1l2: type.l1l2,
+    l2l3: MARSHAL_CONVERT_CAST(name),
+    l3l2: MARSHAL_CONVERT_CAST(type.l2Type),
+    l2l1: type.l2l1,
+    arrayBits: type.arrayBits,
+  };
+  abstract public function enumInt(name:String, type:TTypeMarshal):TTypeMarshal;
+
   static function baseFloat32():BaseTypeMarshal return {
     haxeType: (macro : Single),
     l1Type: "float",

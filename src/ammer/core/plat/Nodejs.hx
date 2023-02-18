@@ -614,6 +614,9 @@ class NodejsMarshal extends BaseMarshal<
   public function uint64():NodejsTypeMarshal return MARSHAL_UINT64;
   public function int64():NodejsTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:NodejsTypeMarshal):NodejsTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
     l1l2: (l1, l2) -> 'NAPI_CALL_I(napi_get_value_double(_nodejs_env, $l1, &$l2));',
     l2l1: (l2, l1) -> 'NAPI_CALL_I(napi_create_double(_nodejs_env, $l2, &$l1));',

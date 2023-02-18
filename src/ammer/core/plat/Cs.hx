@@ -362,6 +362,9 @@ class CsMarshal extends BaseMarshal<
   public function uint64():CsTypeMarshal return MARSHAL_UINT64;
   public function int64():CsTypeMarshal return MARSHAL_INT64;
 
+  public function enumInt(name:String, type:CsTypeMarshal):CsTypeMarshal
+    return baseExtend(BaseMarshal.baseEnumInt(name, type), {primitive: true, csType: type.csType});
+
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {primitive: true, csType: "float"}, {
     arrayType: (macro : Single),
   });
