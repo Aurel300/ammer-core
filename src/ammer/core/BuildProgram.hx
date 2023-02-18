@@ -19,7 +19,7 @@ class BuildProgram {
 
   public var ops:Array<BuildOp>;
 
-  static function extensions(path:String):String {
+  public static function extensions(path:String):String {
     return path
       .replace("%OBJ%", useMSVC ? "obj" : "o")
       .replace("%LIB%", useMSVC ? "" : "lib")
@@ -64,6 +64,52 @@ class BuildProgram {
   ):Bool {
     // TODO: check (or build) dependencies
     return true;
+  }
+
+  function processLinkOptions(
+    opt:ammer.core.BuildOp.MakeLinkOptions
+  ):Array<String> {
+    var args = [];
+    if (useMSVC) {
+      for (d in opt.defines) {
+        args.push('/D$d');
+      }
+      args.push("/link");
+      for (path in opt.libraryPaths)
+        args.push('/LIBPATH:"$path"');
+      for (lib in opt.libraries.concat(opt.staticLibraries != null ? opt.staticLibraries : [])) // TODO: static/dynamic linking on Windows
+        args.push('$lib.lib');
+    } else {
+      for (d in opt.defines) {
+        args.push("-D");
+        args.push(d);
+      }
+      for (path in opt.libraryPaths)
+        args.push('-L$path');
+      if (opt.frameworks != null) {
+        // TODO: emit warning or error when not used on Mac
+        for (framework in opt.frameworks) {
+          args.push("-framework");
+          args.push(framework);
+        }
+      }
+      if (opt.staticLibraries != null) {
+        if (Sys.systemName() == "Mac") {
+          // TODO: mixing dynamic and static linking on Mac
+          // https://stackoverflow.com/questions/4576235/mixed-static-and-dynamic-link-on-mac-os
+          for (lib in opt.staticLibraries)
+            args.push('-l$lib');
+        } else {
+          args.push("-Wl,-Bstatic");
+          for (lib in opt.staticLibraries)
+            args.push('-l$lib');
+          args.push("-Wl,-Bdynamic");
+        }
+      }
+      for (lib in opt.libraries)
+        args.push('-l$lib');
+    }
+    return args;
   }
 
   // TODO: log commands after expansion
@@ -114,15 +160,8 @@ class BuildProgram {
       case [_, _, CompileObject(_)]: throw "invalid CompileObject command";
       case [File(dst), File(src), LinkLibrary(lang, opt)]:
         if (useMSVC) {
-          var args = ['/Fe${extensions(dst)}', "/LD", extensions(src)];
-          for (d in opt.defines) {
-            args.push('/D$d');
-          }
-          args.push("/link");
-          for (path in opt.libraryPaths)
-            args.push('/LIBPATH:"$path"');
-          for (lib in opt.libraries.concat(opt.staticLibraries != null ? opt.staticLibraries : [])) // TODO: static/dynamic linking on Windows
-            args.push('$lib.lib');
+          var args = ['/Fe${extensions(dst)}', "/LD", extensions(src)]
+            .concat(processLinkOptions(opt));
           run("cl.exe", args);
         } else {
           var args = ["-m64", "-o", extensions(dst)];
@@ -136,42 +175,33 @@ class BuildProgram {
             args.push("-fPIC");
           }
           args.push(extensions(src));
-          for (d in opt.defines) {
-            args.push("-D");
-            args.push(d);
-          }
-          for (path in opt.libraryPaths)
-            args.push('-L$path');
-          if (opt.frameworks != null) {
-            // TODO: emit warning or error when not used on Mac
-            for (framework in opt.frameworks) {
-              args.push("-framework");
-              args.push(framework);
-            }
-          }
-          if (opt.staticLibraries != null) {
-            if (Sys.systemName() == "Mac") {
-              // TODO: mixing dynamic and static linking on Mac
-              // https://stackoverflow.com/questions/4576235/mixed-static-and-dynamic-link-on-mac-os
-              for (lib in opt.staticLibraries)
-                args.push('-l$lib');
-            } else {
-              args.push("-Wl,-Bstatic");
-              for (lib in opt.staticLibraries)
-                args.push('-l$lib');
-              args.push("-Wl,-Bdynamic");
-            }
-          }
-          for (lib in opt.libraries)
-            args.push('-l$lib');
+          args = args.concat(processLinkOptions(opt));
           run(lang.match(Cpp | ObjectiveCpp) ? "g++" : "cc", args);
         }
       case [_, _, LinkLibrary(_)]: throw "invalid LinkLibrary command";
+      case [File(dst), File(src), LinkExecutable(lang, opt)]:
+        if (useMSVC) {
+          var args = ['/Fe${extensions(dst)}', extensions(src)]
+            .concat(processLinkOptions(opt));
+          run("cl.exe", args);
+        } else {
+          var args = ["-m64", "-o", extensions(dst), extensions(src)]
+            .concat(processLinkOptions(opt));
+          run(lang.match(Cpp | ObjectiveCpp) ? "g++" : "cc", args);
+        }
+      case [_, _, LinkExecutable(_)]: throw "invalid LinkExecutable command";
       case [File(path), _, EnsureDirectory]:
         Sys.println('mkdir $path');
         sys.FileSystem.createDirectory(extensions(path));
-      case [_, _, Command(cmd, args)]:
-        run(cmd, args);
+      case [_, _, Command(cmd, args, process)]:
+        if (process != null) {
+          var proc = new sys.io.Process(cmd, args);
+          var code = proc.exitCode();
+          process(code, proc);
+          proc.close();
+        } else {
+          run(cmd, args);
+        }
     }
   }
 }

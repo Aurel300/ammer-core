@@ -35,8 +35,9 @@ enum BuildOpCommand {
   WriteData(_:haxe.io.Bytes);
   CompileObject(lang:LibraryLanguage, opt:MakeCompileOptions);
   LinkLibrary(lang:LibraryLanguage, opt:MakeLinkOptions);
+  LinkExecutable(lang:LibraryLanguage, opt:MakeLinkOptions);
   EnsureDirectory;
-  Command(cmd:String, args:Array<String>);
+  Command(cmd:String, args:Array<String>, ?process:(code:Int, proc:sys.io.Process)->Void);
 }
 
 typedef MakeCompileOptions = {
