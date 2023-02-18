@@ -109,9 +109,8 @@ $export int _ammer_init(void* delegates[${delegateCtr}]) {
         .a(")] System.IntPtr[] delegates);")
       .ail("static int _ammer_native = _ammer_init(new System.IntPtr[]{")
         .lmap([ for (idx in 0...delegateCtr) idx ], (idx) ->
-          // TODO: what even is this
           'System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate('
-            + 'System.Delegate.CreateDelegate(typeof(ClosureDelegate${idx}), typeof(CoreExtern_example), "ImplClosureDelegate${idx}")),')
+            + 'System.Delegate.CreateDelegate(typeof(ClosureDelegate${idx}), typeof(CoreExtern_${config.name}), "ImplClosureDelegate${idx}")),')
       .ail("});");
     tdef.meta.push({
       pos: Context.currentPos(),

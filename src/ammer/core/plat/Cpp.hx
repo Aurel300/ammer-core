@@ -281,39 +281,50 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
     return fieldExpr(name);
   }
 
+  function baseCall(
+    lb:LineBuf,
+    call:String,
+    ret:CppTypeMarshal,
+    args:Array<CppTypeMarshal>,
+    outputExpr:String,
+    argExprs:Array<String>
+  ):Void {
+    lb
+      .lmapi(args, (idx, arg) -> '${arg.l2Type} _l2_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l3l2(argExprs[idx], '_l2_arg_$idx'))
+      .lmapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx};')
+      .lmapi(args, (idx, arg) -> arg.l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l1Type} _l1_output;')
+        .ai('_l1_output = (${ret.l1Type})($call(')
+      .ife()
+        .ai('(${ret.l1Type})($call(')
+      .ifd()
+      .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
+      .al("));")
+      .ifi(ret.mangled != "v")
+        .ail('${ret.l2Type} _l2_output;')
+        .ail(ret.l1l2("_l1_output", "_l2_output"))
+        .ail(ret.l2l3("_l2_output", outputExpr))
+      .ifd();
+  }
+
   public function closureCall(
     fn:String,
     clType:MarshalClosure<CppTypeMarshal>,
     outputExpr:String,
     args:Array<String>
   ):String {
-    // TODO: ref/unref args?
     return new LineBuf()
       .ail("do {")
       .i()
         .ail('${clType.type.l2Type} _l2_fn;')
         .ail(clType.type.l3l2(fn, "_l2_fn"))
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .ail("_ammer_haxe_ref* _l1_fn_ref;")
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail("::Dynamic _l1_fn;")
         .ail("_l1_fn = _l1_fn_ref->value;")
-        .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
-        .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'))
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l1Type} _l1_output;')
-          .ai('_l1_output = (${clType.ret.l1Type})(_l1_fn(')
-        .ife()
-          .ai('(${clType.ret.l1Type})(_l1_fn(')
-        .ifd()
-        .mapi(args, (idx, arg) -> '_l1_arg_${idx}', ", ")
-        .al("));")
-        .ifi(clType.ret.mangled != "v")
-          .ail('${clType.ret.l2Type} _l2_output;')
-          .ail(clType.ret.l1l2("_l1_output", "_l2_output"))
-          .ail(clType.ret.l2l3("_l2_output", outputExpr))
-        .ifd()
+        .apply(baseCall.bind(_, "_l1_fn", clType.ret, clType.args, outputExpr, args))
       .d()
       .ail("} while (0);")
       .done();
@@ -328,17 +339,13 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
   ):String {
     var name = baseStaticCall(ret, args, code);
     return new LineBuf()
-      // TODO: l1->l2->l3???
-      .ifi(ret.mangled != "v")
-        //.ai('${ret.l3Type} ${config.returnIdent} = ')
-        .ai('$outputExpr = ')
-      .ife()
-        .ai("")
-      .ifd()
-      .map(tdefStaticCallbacks.pack, p -> '::$p')
-      .a('::${tdefStaticCallbacks.name}_obj::$name(')
-      .mapi(args, (idx, arg) -> argExprs[idx], ", ")
-      .al(');')
+      .ail("do {")
+      .i()
+        .apply(baseCall.bind(
+          _, "::" + tdefStaticCallbacks.pack.concat([tdefStaticCallbacks.name + "_obj", name]).join("::"), ret, args, outputExpr, argExprs
+        ))
+      .d()
+      .ail("} while (0);")
       .done();
   }
 
