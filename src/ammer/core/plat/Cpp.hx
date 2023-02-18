@@ -438,7 +438,9 @@ class CppMarshal extends BaseMarshal<
   public function float32():CppTypeMarshal return MARSHAL_FLOAT32;
   public function float64():CppTypeMarshal return MARSHAL_FLOAT64;
 
-  static final MARSHAL_STRING = BaseMarshal.baseString();
+  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
+    l1Type: "::String",
+  });
   public function string():CppTypeMarshal return MARSHAL_STRING;
 
   static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
@@ -464,11 +466,13 @@ class CppMarshal extends BaseMarshal<
         var _self = ($self : cpp.Pointer<cpp.UInt8>);
         var _size = ($size : Int);
         var _ret = haxe.io.Bytes.alloc(_size); // TODO: does this zero unnecessarily?
-        $e{blit(
-          macro _self, macro 0,
-          macro cpp.Pointer.ofArray(_ret.getData()), macro 0,
-          macro _size
-        )};
+        if (_size != 0) { // hxcpp#1028
+          $e{blit(
+            macro _self, macro 0,
+            macro cpp.Pointer.ofArray(_ret.getData()), macro 0,
+            macro _size
+          )};
+        }
         _ret;
       },
       fromHaxeCopy: (bytes) -> macro {
@@ -497,10 +501,14 @@ class CppMarshal extends BaseMarshal<
 
   function opaqueInternal(name:String):CppTypeMarshal return baseExtend(BaseMarshal.baseOpaqueInternal(name), {
     haxeType: library.defineNativeType(name),
+    l1Type: (if (name.endsWith("*")) {
+      '::cpp::Pointer<${name.substr(0, name.length - 1)}>';
+    } else null),
   });
 
   function structPtrDerefInternal(name:String):CppTypeMarshal return baseExtend(BaseMarshal.baseStructPtrDerefInternal(name), {
     haxeType: library.defineNativeType('$name*'),
+    l1Type: '::cpp::Pointer<$name>',
   });
 
   function arrayPtrInternalType(element:CppTypeMarshal):CppTypeMarshal {
@@ -538,7 +546,7 @@ class CppMarshal extends BaseMarshal<
         haxe.ds.Vector.fromData(_self.toUnmanagedArray(_size)).copy();
       },
       fromHaxeCopy: (vector) -> macro {
-        var _vector = ($vector : $vectorType);
+        var _vector = (cast $vector : $vectorType);
         var _data:cpp.Pointer<$elType> = cpp.Pointer.ofArray(_vector.toData());
         // TODO: use alloc and blit instead?
         var _ret:cpp.Star<$elType> = cpp.Native.malloc(_vector.length << $v{element.arrayBits});
@@ -551,7 +559,7 @@ class CppMarshal extends BaseMarshal<
         haxe.ds.Vector.fromData(_self.toUnmanagedArray(_size));
       },
       fromHaxeRef: (vector) -> macro {
-        var _vector = ($vector : $vectorType);
+        var _vector = (cast $vector : $vectorType);
         var _ptr = cpp.Pointer.ofArray(_vector.toData());
         (@:privateAccess new $pathArrayRef(_vector, _ptr, 0));
       },
