@@ -9,6 +9,9 @@ typedef CsLibraryConfig = LibraryConfig;
 typedef CsTypeMarshalExt = {
   primitive:Bool,
   csType:String,
+  ?csTypeRet:String,
+  ?l1Cs:(l1:String, cs:String)->String,
+  ?csAnnotation:String,
 };
 typedef CsTypeMarshal = {
   >BaseTypeMarshal,
@@ -149,14 +152,35 @@ $export int _ammer_init(void* delegates[${delegateCtr}]) {
         .ifd()
       .d()
       .ail("}");
+    //args.exists(arg -> arg.l1Cs != null);
+    var wrapperNeeded = ret.l1Cs != null;
+    var externName = name;
+    var externRet = ret.csType;
+    if (wrapperNeeded) {
+      externName = '_extern_$name';
+      externRet = ret.csTypeRet;
+      lbImport
+        .ai('public static ${ret.csType} $name(')
+        .mapi(args, (idx, arg) -> '${arg.csType} arg${idx}', ", ")
+        .al(") {")
+        .i()
+          .ai('${ret.csTypeRet} retL1 = $externName(')
+          .mapi(args, (idx, arg) -> 'arg${idx}', ", ")
+          .al(');')
+          .ail('${ret.csType} ret;')
+          .ail(ret.l1Cs("retL1", "ret"))
+          .ail("return ret;")
+        .d()
+        .ail("}");
+    }
     lbImport
       .ai("[System.Runtime.InteropServices.DllImport(")
         .a('"${config.name}.dll", ')
-        // TODO: send strings as byte arrays to avoid this...
         .a("CharSet = System.Runtime.InteropServices.CharSet.Ansi")
+        .a(wrapperNeeded ? ', EntryPoint = "$name"' : "")
       .al(")]")
-      .ai('public static extern ${ret.csType} $name(')
-      .mapi(args, (idx, arg) -> '${arg.csType} arg${idx}', ", ")
+      .ai('public static extern $externRet $externName(')
+      .mapi(args, (idx, arg) -> (arg.csAnnotation != null ? '${arg.csAnnotation} ' : "") + '${arg.csType} arg${idx}', ", ")
       .al(");");
     tdef.fields.push({
       pos: options.pos,
@@ -309,6 +333,9 @@ class CsMarshal extends BaseMarshal<
       arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
       primitive: ext.primitive,
       csType:    ext.csType,
+      csTypeRet: ext.csTypeRet,
+      l1Cs:      ext.l1Cs,
+      csAnnotation: ext.csAnnotation,
     };
   }
 
@@ -375,7 +402,22 @@ class CsMarshal extends BaseMarshal<
   public function float64():CsTypeMarshal return MARSHAL_FLOAT64;
 
   // TODO: MarshalAs for strings? https://docs.microsoft.com/en-us/dotnet/standard/native-interop/type-marshaling
-  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {primitive: false, csType: "string"});
+  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
+    primitive: false,
+    csType: "string",
+
+    // this is not great (currently the only reason for C#-side method wrappers ...)
+    // see https://learn.microsoft.com/en-us/dotnet/framework/interop/marshalling-data-with-platform-invoke
+    // TODO: can the type be IntPtr for both directions?
+    csTypeRet: "System.IntPtr",
+    l1Cs: (l1, cs) -> '$cs = System.Runtime.InteropServices.Marshal.PtrToStringAuto($l1);',
+    // not available yet ...?
+    // csAnnotation: "[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]",
+    csAnnotation: "[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPStr)]",
+  }, {
+    // TODO: memory management for strings ...
+    l2l3: (l2, l3) -> '$l3 = strdup($l2);',
+  });
   public function string():CsTypeMarshal return MARSHAL_STRING;
 
   static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {primitive: false, csType: "System.IntPtr"}, {
