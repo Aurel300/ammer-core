@@ -72,10 +72,11 @@ abstract class BaseLibrary<
 #include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 #ifdef _WIN32
-  #define LIB_EXPORT __declspec(dllexport)
+  #define _AMMER_LIB_EXPORT __declspec(dllexport)
 #else
-  #define LIB_EXPORT
+  #define _AMMER_LIB_EXPORT
 #endif
 #ifdef _MSC_VER
   #define _AMMER_BIG_ENDIAN 0

@@ -70,12 +70,21 @@ class JavaLibrary extends BaseLibrary<
     });
   }
 
+  function jni(method:String, ?jni:String = "_java_env"):String {
+    return config.language.match(Cpp | ObjectiveCpp)
+      ? '$jni->$method('
+      : '(*$jni)->$method($jni, ';
+  }
+
+  var export:String;
+
   public function new(platform:Java, config:JavaLibraryConfig) {
     super(platform, config, new JavaMarshal(this));
     tdef.meta.push({
       pos: config.pos,
       name: ":nativeGen",
     });
+    export = '${config.language.match(Cpp | ObjectiveCpp) ? 'extern "C" ' : ""}JNIEXPORT';
 
     // TODO: better names
     pushNative("_ammer_java_tohaxecopy",     (macro : (haxe.Int64, Int) -> haxe.io.BytesData), config.pos);
@@ -103,48 +112,48 @@ class JavaLibrary extends BaseLibrary<
     });
     lb.ail('
 #include "jni.h"
-JNIEXPORT jbyteArray ${javaMangle("_ammer_java_tohaxecopy")}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
-  jbyteArray res = (*_java_env)->NewByteArray(_java_env, size);
-  (*_java_env)->SetByteArrayRegion(_java_env, res, 0, size, (const jbyte*)data);
+$export jbyteArray ${javaMangle("_ammer_java_tohaxecopy")}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
+  jbyteArray res = ${jni("NewByteArray")}size);
+  ${jni("SetByteArrayRegion")}res, 0, size, (const jbyte*)data);
   return res;
 }
-JNIEXPORT jlong ${javaMangle("_ammer_java_fromhaxecopy")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
-  jsize size = (*_java_env)->GetArrayLength(_java_env, data);
+$export jlong ${javaMangle("_ammer_java_fromhaxecopy")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
+  jsize size = ${jni("GetArrayLength")}data);
   uint8_t* data_res = (uint8_t*)${config.mallocFunction}(size);
-  (*_java_env)->GetByteArrayRegion(_java_env, data, 0, size, (jbyte*)data_res);
+  ${jni("GetByteArrayRegion")}data, 0, size, (jbyte*)data_res);
   return (jlong)data_res;
 }
 
-JNIEXPORT jlong ${javaMangle("_ammer_java_fromhaxeref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
-  uint8_t* data_res = (uint8_t*)((*_java_env)->GetByteArrayElements(_java_env, data, NULL));
+$export jlong ${javaMangle("_ammer_java_fromhaxeref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data) {
+  uint8_t* data_res = (uint8_t*)(${jni("GetByteArrayElements")}data, NULL));
   return (jlong)data_res;
 }
-JNIEXPORT void ${javaMangle("_ammer_java_frombytesunref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data, jlong ptr) {
-  (*_java_env)->ReleaseByteArrayElements(_java_env, data, (jbyte*)ptr, 0);
+$export void ${javaMangle("_ammer_java_frombytesunref")}(JNIEnv *_java_env, jclass _java_cls, jbyteArray data, jlong ptr) {
+  ${jni("ReleaseByteArrayElements")}data, (jbyte*)ptr, 0);
 }
 
 typedef struct { jobject value; int32_t refcount; } _ammer_haxe_ref;
-JNIEXPORT jlong ${javaMangle("_ammer_ref_create")}(JNIEnv *_java_env, jclass _java_cls, jobject value) {
+$export jlong ${javaMangle("_ammer_ref_create")}(JNIEnv *_java_env, jclass _java_cls, jobject value) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)${config.mallocFunction}(sizeof(_ammer_haxe_ref));
-  ref->value = (*_java_env)->NewGlobalRef(_java_env, value);
+  ref->value = ${jni("NewGlobalRef")}value);
   ref->refcount = 0;
   return (jlong)ref;
 }
-JNIEXPORT void ${javaMangle("_ammer_ref_delete")}(JNIEnv *_java_env, jclass _java_cls, jlong wref) {
+$export void ${javaMangle("_ammer_ref_delete")}(JNIEnv *_java_env, jclass _java_cls, jlong wref) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)wref;
-  (*_java_env)->DeleteGlobalRef(_java_env, ref->value);
+  ${jni("DeleteGlobalRef")}ref->value);
   ref->value = NULL;
   ${config.freeFunction}(ref);
 }
-JNIEXPORT jint ${javaMangle("_ammer_ref_getcount")}(JNIEnv *_java_env, jclass _java_cls, jlong wref) {
+$export jint ${javaMangle("_ammer_ref_getcount")}(JNIEnv *_java_env, jclass _java_cls, jlong wref) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)wref;
   return ref->refcount;
 }
-JNIEXPORT void ${javaMangle("_ammer_ref_setcount")}(JNIEnv *_java_env, jclass _java_cls, jlong wref, jint rc) {
+$export void ${javaMangle("_ammer_ref_setcount")}(JNIEnv *_java_env, jclass _java_cls, jlong wref, jint rc) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)wref;
   ref->refcount = rc;
 }
-JNIEXPORT jobject ${javaMangle("_ammer_ref_getvalue")}(JNIEnv *_java_env, jclass _java_cls, jlong wref) {
+$export jobject ${javaMangle("_ammer_ref_getvalue")}(JNIEnv *_java_env, jclass _java_cls, jlong wref) {
   _ammer_haxe_ref* ref = (_ammer_haxe_ref*)wref;
   return ref->value;
 }
@@ -184,7 +193,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   ):Expr {
     var mangledName = javaMangle(name);
     lb
-      .ai('JNIEXPORT ${ret.l1Type} $mangledName(JNIEnv *_java_env, jclass _java_cls')
+      .ai('$export ${ret.l1Type} $mangledName(JNIEnv *_java_env, jclass _java_cls')
       .mapi(args, (idx, arg) -> ', ${arg.l1Type} _l1_arg_$idx')
       .al(') {')
       .i();
@@ -232,30 +241,29 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         .ail(clType.type.l2l1("_l2_fn", "_l1_fn_ref"))
         .ail("jobject _l1_fn;")
         .ail("_l1_fn = ((_ammer_haxe_ref*)_l1_fn_ref)->value;")
-        .ail("jclass _l1_fn_cls = (*_java_env)->GetObjectClass(_java_env, _l1_fn);")
+        .ail('jclass _l1_fn_cls = ${jni("GetObjectClass")}_l1_fn);')
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l2Type} _l2_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l3l2(arg, '_l2_arg_$idx'))
         .lmapi(args, (idx, arg) -> '${clType.args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> clType.args[idx].l2l1('_l2_arg_$idx', '_l1_arg_$idx'));
     if (config.jvm) {
       lb
-        .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, "invoke", "(')
+        .ai('jmethodID _java_method = ${jni("GetMethodID")}_l1_fn_cls, "invoke", "(')
         .mapi(args, (idx, arg) -> clType.args[idx].javaMangle)
         .al(')${clType.ret.javaMangle}");')
         .ifi(clType.ret.mangled != "v")
           .ail('${clType.ret.l1Type} _l1_output;')
-          .ai("_l1_output = (*_java_env)->Call")
+          .ai('_l1_output = ${jni('Call${clType.ret.javaFullName}Method')}')
         .ife()
-          .ai("(*_java_env)->Call")
+          .ai(jni('Call${clType.ret.javaFullName}Method'))
         .ifd()
-        .a(clType.ret.javaFullName)
-        .a("Method(_java_env, _l1_fn, _java_method")
+        .a("_l1_fn, _java_method")
         .mapi(args, (idx, arg) -> ', _l1_arg_${idx}')
         .al(');');
     } else {
       lb
-        .ail('jclass _java_class = (*_java_env)->FindClass(_java_env, "java/lang/Class");')
-        .ai('jmethodID _java_method = (*_java_env)->GetMethodID(_java_env, _l1_fn_cls, ')
+        .ail('jclass _java_class = ${jni("FindClass")}"java/lang/Class");')
+        .ai('jmethodID _java_method = ${jni("GetMethodID")}_l1_fn_cls, ')
         .a('"__hx_invoke${args.length}_${clType.ret.primitive ? "f" : "o"}", "(')
         .map(args, arg -> "DLjava/lang/Object;")
         .al(')${clType.ret.primitive ? "D" : "Ljava/lang/Object;"}");')
@@ -266,8 +274,8 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
           .ai("")
         .ifd()
         .a(clType.ret.primitive
-          ? '(*_java_env)->CallDoubleMethod(_java_env, _l1_fn, _java_method'
-          : '(*_java_env)->CallObjectMethod(_java_env, _l1_fn, _java_method')
+          ? '${jni("CallDoubleMethod")}_l1_fn, _java_method'
+          : '${jni("CallObjectMethod")}_l1_fn, _java_method')
         .mapi(args, (idx, arg) -> clType.args[idx].primitive
           ? ', (jdouble)_l1_arg_${idx}, _java_undef'
           : ', 0.0, _l1_arg_${idx}')
@@ -299,20 +307,19 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         .lmapi(args, (idx, arg) -> args[idx].l3l2(argExprs[idx], '_l2_arg_${idx}'))
         .lmapi(args, (idx, arg) -> '${args[idx].l1Type} _l1_arg_${idx};')
         .lmapi(args, (idx, arg) -> args[idx].l2l1('_l2_arg_${idx}', '_l1_arg_${idx}'))
-        .ail('jclass _java_scb = (*_java_env)->FindClass(_java_env, "${tdefStaticCallbacks.pack.join("/")}/${tdefStaticCallbacks.name}");')
-        .ai('jmethodID _java_scb_method = (*_java_env)->GetStaticMethodID(_java_env, _java_scb, "${name}", "(')
+        .ail('jclass _java_scb = ${jni("FindClass")}"${tdefStaticCallbacks.pack.join("/")}/${tdefStaticCallbacks.name}");')
+        .ai('jmethodID _java_scb_method = ${jni("GetStaticMethodID")}_java_scb, "${name}", "(')
         .map(args, arg -> arg.javaMangle)
         .a(")")
         .a(ret.javaMangle)
         .al('");')
         .ifi(ret.mangled != "v")
           .ail('${ret.l1Type} _l1_output;')
-          .ai("_l1_output = (*_java_env)->CallStatic")
+          .ai('_l1_output = ${jni('CallStatic${ret.javaFullName}Method')}')
         .ife()
-          .ai("(*_java_env)->CallStatic")
+          .ai(jni('CallStatic${ret.javaFullName}Method'))
         .ifd()
-        .a(ret.javaFullName)
-        .a("Method(_java_env, _java_scb, _java_scb_method")
+        .a("_java_scb, _java_scb_method")
         .mapi(args, (idx, arg) -> ', _l1_arg_$idx')
         .al(');')
         .ifi(ret.mangled != "v")
@@ -341,9 +348,9 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         .ail('JNIEnv* _java_env;')
         .ail('(*_java_vm)->AttachCurrentThread(_java_vm, (void**)&_java_env, NULL);')
         .ifi(!config.jvm)
-          .ail('jclass _java_runtime = (*_java_env)->FindClass(_java_env, "haxe/lang/Runtime");')
-          .ail('jfieldID _java_undef_f = (*_java_env)->GetStaticFieldID(_java_env, _java_runtime, "undefined", "Ljava/lang/Object;");')
-          .ail('jobject _java_undef = (*_java_env)->GetStaticObjectField(_java_env, _java_runtime, _java_undef_f);')
+          .ail('jclass _java_runtime = ${jni("FindClass")}"haxe/lang/Runtime");')
+          .ail('jfieldID _java_undef_f = ${jni("GetStaticFieldID")}_java_runtime, "undefined", "Ljava/lang/Object;");')
+          .ail('jobject _java_undef = ${jni("GetStaticObjectField")}_java_runtime, _java_undef_f);')
         .ifd()
         .ifi(ret.mangled != "v")
           .ail('${ret.l3Type} ${config.returnIdent};')
@@ -524,7 +531,7 @@ class JavaMarshal extends BaseMarshal<
   public function float32():JavaTypeMarshal return MARSHAL_FLOAT32;
   public function float64():JavaTypeMarshal return MARSHAL_FLOAT64;
 
-  static final MARSHAL_STRING = baseExtend(BaseMarshal.baseString(), {
+  public function string():JavaTypeMarshal return baseExtend(BaseMarshal.baseString(), {
     primitive: false,
     javaMangle: "Ljava/lang/String;",
     javaFullName: "Object",
@@ -532,13 +539,12 @@ class JavaMarshal extends BaseMarshal<
     l1Type: "jstring",
     // TODO: avoid copy somehow?
     l1l2: (l1, l2) -> 'do {
-  const char* _java_tmp = (*_java_env)->GetStringUTFChars(_java_env, $l1, NULL);
+  const char* _java_tmp = ${library.jni("GetStringUTFChars")}$l1, NULL);
   $l2 = strdup(_java_tmp);
-  (*_java_env)->ReleaseStringUTFChars(_java_env, $l1, _java_tmp);
+  ${library.jni("ReleaseStringUTFChars")}$l1, _java_tmp);
 } while (0);',
-    l2l1: (l2, l1) -> '$l1 = (*_java_env)->NewStringUTF(_java_env, $l2);',
+    l2l1: (l2, l1) -> '$l1 = ${library.jni("NewStringUTF")}$l2);',
   });
-  public function string():JavaTypeMarshal return MARSHAL_STRING;
 
   static final MARSHAL_BYTES = baseExtend(BaseMarshal.baseBytesInternal(), {
     primitive: false,
@@ -700,24 +706,24 @@ class JavaMarshal extends BaseMarshal<
     var arrayName = 'j${arrayRoot}Array';
     var arrayOp = arrayRoot.charAt(0).toUpperCase() + arrayRoot.substr(1);
     library.lb.ail('
-JNIEXPORT $arrayName ${library.javaMangle(copyTo)}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
-  $arrayName res = (*_java_env)->New${arrayOp}Array(_java_env, size);
-  (*_java_env)->Set${arrayOp}ArrayRegion(_java_env, res, 0, size, (const j${arrayRoot}*)data);
+${library.export} $arrayName ${library.javaMangle(copyTo)}(JNIEnv *_java_env, jclass _java_cls, jlong data, jint size) {
+  $arrayName res = ${library.jni('New${arrayOp}Array')}size);
+  ${library.jni('Set${arrayOp}ArrayRegion')}res, 0, size, (const j${arrayRoot}*)data);
   return res;
 }
-JNIEXPORT jlong ${library.javaMangle(copyFrom)}(JNIEnv *_java_env, jclass _java_cls, $arrayName data) {
-  jsize size = (*_java_env)->GetArrayLength(_java_env, data);
+${library.export} jlong ${library.javaMangle(copyFrom)}(JNIEnv *_java_env, jclass _java_cls, $arrayName data) {
+  jsize size = ${library.jni("GetArrayLength")}data);
   uint8_t* data_res = (uint8_t*)${library.config.mallocFunction}(size << ${element.arrayBits});
-  (*_java_env)->Get${arrayOp}ArrayRegion(_java_env, data, 0, size, (j${arrayRoot}*)data_res);
+  ${library.jni('Get${arrayOp}ArrayRegion')}data, 0, size, (j${arrayRoot}*)data_res);
   return (jlong)data_res;
 }
 
-JNIEXPORT jlong ${library.javaMangle(refFrom)}(JNIEnv *_java_env, jclass _java_cls, $arrayName data) {
-  uint8_t* data_res = (uint8_t*)((*_java_env)->Get${arrayOp}ArrayElements(_java_env, data, NULL));
+${library.export} jlong ${library.javaMangle(refFrom)}(JNIEnv *_java_env, jclass _java_cls, $arrayName data) {
+  uint8_t* data_res = (uint8_t*)(${library.jni('Get${arrayOp}ArrayElements')}data, NULL));
   return (jlong)data_res;
 }
-JNIEXPORT void ${library.javaMangle(unrefFrom)}(JNIEnv *_java_env, jclass _java_cls, $arrayName data, jlong ptr) {
-  (*_java_env)->Release${arrayOp}ArrayElements(_java_env, data, (j${arrayRoot}*)ptr, 0);
+${library.export} void ${library.javaMangle(unrefFrom)}(JNIEnv *_java_env, jclass _java_cls, $arrayName data, jlong ptr) {
+  ${library.jni('Release${arrayOp}ArrayElements')}data, (j${arrayRoot}*)ptr, 0);
 }
 ');
 
