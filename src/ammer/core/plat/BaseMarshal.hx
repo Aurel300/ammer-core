@@ -348,7 +348,7 @@ ${library.config.memcpyFunction}(_return, _arg0, _arg1);'
 
       alloc: alloc,
       zalloc: (size) -> macro $zalloc($size),
-      nullPtr: macro $e{nullPtr}(),
+      nullPtr: macro $nullPtr(),
       free: (self) -> macro $free($self),
       copy: (self, size) -> macro $copy($self, $size),
       blit: blit,
@@ -680,6 +680,11 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
       [type],
       '${library.config.freeFunction}(_arg0);'
     );
+    var nullPtr = library.addFunction(
+      type,
+      [],
+      '_return = (${type.l3Type})0;'
+    );
     return cacheArray[cacheKey] = {
       type: type,
       get: get,
@@ -688,6 +693,7 @@ ${library.config.memcpyFunction}(_return, _arg0, sizeof($name));'
       alloc: alloc,
       zalloc: (size) -> macro $zalloc($size),
       free: (self) -> macro $free($self),
+      nullPtr: macro $nullPtr(),
 
       vectorType: platform.vectorType,
       vectorTypePath: platform.vectorType != null ? TypeUtils.complexTypeToPath(platform.vectorType) : null,

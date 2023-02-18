@@ -14,6 +14,7 @@ typedef MarshalArray<TTypeMarshal> = {
   alloc:(size:Expr)->Expr,
   zalloc:(size:Expr)->Expr,
   free:(self:Expr)->Expr,
+  nullPtr:Null<Expr>,
 
   // TODO: offset? other functions from Bytes, zalloc, copy, blit
 
