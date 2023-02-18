@@ -51,6 +51,7 @@ class CsLibrary extends BaseLibrary<
   var haxeRefTdefs:Map<String, TypeDefinition> = [];
 
   var lbImport = new LineBuf();
+  var export:String;
 
   public function new(platform:Cs, config:CsLibraryConfig) {
     super(platform, config, new CsMarshal(this));
@@ -58,12 +59,13 @@ class CsLibrary extends BaseLibrary<
       pos: config.pos,
       name: ":nativeGen",
     });
+    export = '${config.language.match(Cpp | ObjectiveCpp) ? 'extern "C" ' : ""}_AMMER_LIB_EXPORT';
     lb
       .ail("void** _ammer_delegates;");
-    lb.ail('LIB_EXPORT void _ammer_cs_tohaxecopy(uint8_t* data, int size, uint8_t* res, int res_size) {
+    lb.ail('$export void _ammer_cs_tohaxecopy(uint8_t* data, int size, uint8_t* res, int res_size) {
   ${config.memcpyFunction}(res, data, size);
 }
-LIB_EXPORT uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
+$export uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
   uint8_t* res = (uint8_t*)${config.mallocFunction}(size);
   ${config.memcpyFunction}(res, data, size);
   return res;
@@ -93,7 +95,7 @@ LIB_EXPORT uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
   override function finalise(platConfig:CsConfig):Void {
     lb
       .ail('
-LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
+$export int _ammer_init(void* delegates[${delegateCtr}]) {
   _ammer_delegates = (void**)${config.mallocFunction}(sizeof(void*) * ${delegateCtr});
   ${config.memcpyFunction}(_ammer_delegates, delegates, sizeof(void*) * ${delegateCtr});
   return 0;
@@ -128,7 +130,7 @@ LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
     options:FunctionOptions
   ):Expr {
     lb
-      .ai('LIB_EXPORT ${ret.l1Type} $name(')
+      .ai('$export ${ret.l1Type} $name(')
       .mapi(args, (idx, arg) -> '${arg.l1Type} _l1_arg_${idx}', ", ")
       .a(args.length == 0 ? "void" : "")
       .al(") {")

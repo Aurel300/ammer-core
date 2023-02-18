@@ -53,10 +53,14 @@ class LuaLibrary extends BaseLibrary<
   public function new(platform:Lua, config:LuaLibraryConfig) {
     super(platform, config, new LuaMarshal(this));
     // TODO: internalPrefix
-    lb.ail('#include <lua.h>
+    if (config.language.match(Cpp | ObjectiveCpp)) {
+      lb.ail('#include <lua.hpp>');
+    } else {
+      lb.ail('#include <lua.h>
 #include <lualib.h>
-#include <lauxlib.h>
-
+#include <lauxlib.h>');
+    }
+    lb.ail('
 static int32_t _ammer_ctr = 0;
 static const char *_ammer_registry_name = "${config.internalPrefix}registry";
 static const char *_ammer_registry_scb = "${config.internalPrefix}scb";
@@ -131,6 +135,7 @@ static int _ammer_ref_getvalue(lua_State* _lua_state) {
       access: [APrivate, AStatic],
     });
 
+    var export = config.language.match(Cpp | ObjectiveCpp) ? 'extern "C" ' : "";
     // TODO: name symbols with internalPrefix
     lb.ail('
 static int _ammer_lua_tobytesdata(lua_State* _lua_state) {
@@ -158,7 +163,7 @@ static int _ammer_lua_frombytesdata(lua_State* _lua_state) {
   lua_pushlightuserdata(_lua_state, data);
   return 1;
 }
-int _ammer_init(lua_State* _lua_state) {
+${export}int _ammer_init(lua_State* _lua_state) {
   luaL_Reg _init_wrap[] = {
 ').addBuf(lbInit).ail('
     {"_ammer_lua_tobytesdata", _ammer_lua_tobytesdata},

@@ -112,7 +112,7 @@ static PyObject* _ammer_python_fromhaxecopy(PyObject *_python_self, PyObject *_p
 static PyObject* _ammer_python_fromhaxeref(PyObject *_python_self, PyObject *_python_args) {
   Py_buffer* view = (Py_buffer*)${config.mallocFunction}(sizeof(Py_buffer));
   PyObject_GetBuffer(PyTuple_GetItem(_python_args, 0), view, PyBUF_C_CONTIGUOUS); // TODO: writable flag?
-  uint8_t* data = view->buf;
+  uint8_t* data = (uint8_t*)view->buf;
   return PyTuple_Pack(2,
     PyLong_FromUnsignedLongLong((uint64_t)view),
     PyLong_FromUnsignedLongLong((uint64_t)data)
