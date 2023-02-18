@@ -374,25 +374,25 @@ class PythonMarshal extends BaseMarshal<
 > {
   static function baseExtend(
     base:BaseTypeMarshal,
-    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+    over:BaseTypeMarshal.BaseTypeMarshalOpt
   ):PythonTypeMarshal {
     return {
-      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
+      haxeType:  over.haxeType  != null ? over.haxeType  : base.haxeType,
       // L1 type is always "PyObject*", a Python object pointer
       l1Type:   "PyObject*",
-      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
-      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
-      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
-      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
-      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
-      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
-      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
-      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
-      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+      l2Type:    over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2l3:      over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2l1:      over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over.arrayType != null ? over.arrayType : base.arrayType,
     };
   }
 
-  static final MARSHAL_VOID = baseExtend(BaseMarshal.baseVoid());
+  static final MARSHAL_VOID = baseExtend(BaseMarshal.baseVoid(), {});
   public function void():PythonTypeMarshal return MARSHAL_VOID;
 
   static final MARSHAL_BOOL = baseExtend(BaseMarshal.baseBool(), {
@@ -463,7 +463,7 @@ class PythonMarshal extends BaseMarshal<
   public function int64():PythonTypeMarshal return MARSHAL_INT64;
 
   public function enumInt(name:String, type:PythonTypeMarshal):PythonTypeMarshal
-    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+    return baseExtend(BaseMarshal.baseEnumInt(name, type), {});
 
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat64As32(), {
     l1l2: (l1, l2) -> '$l2 = PyFloat_AsDouble($l1);',
