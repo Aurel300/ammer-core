@@ -232,6 +232,7 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
     //  pos: config.pos
     //});
     super.finalise(platConfig);
+    outputPathRelative = null;
   }
 
   override public function addInclude(include:SourceInclude):Void {

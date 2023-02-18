@@ -32,9 +32,7 @@ class Cs extends Base<
   }
 
   public function finalise():BuildProgram {
-    return baseDynamicLinkProgram({
-      outputPath: lib -> '${config.outputPath}/${lib.config.name}.dll',
-    });
+    return baseDynamicLinkProgram({});
   }
 }
 
@@ -118,6 +116,7 @@ LIB_EXPORT int _ammer_init(void* delegates[${delegateCtr}]) {
       params: [macro $v{lbImport.done()}],
       name: ":classCode",
     });
+    outputPathRelative = '${config.name}.dll';
     super.finalise(platConfig);
   }
 

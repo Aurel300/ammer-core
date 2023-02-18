@@ -248,6 +248,7 @@ CAMLprim value _ammer_init(value scb, value decode_i64, value encode_i64, value 
       .addBuf(lbInit)
       .ail("];");
     super.finalise(platConfig);
+    outputPathRelative = null; // TODO: output path does not really make sense here, but what about .cmxo files?
   }
 
   public function addNamedFunction(

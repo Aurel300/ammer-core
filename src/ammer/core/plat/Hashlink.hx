@@ -40,9 +40,6 @@ class Hashlink extends Base<
       includePaths: config.hlIncludePaths,
       libraryPaths: config.hlLibraryPaths,
       linkNames: [BuildProgram.useMSVC ? "libhl" : "hl"],
-      outputPath: lib -> config.hlc
-        ? '${config.outputPath}/lib${lib.config.name}.%DLL%'
-        : '${config.outputPath}/${lib.config.name}.hdll',
     });
   }
 }
@@ -171,6 +168,7 @@ DEFINE_PRIM(_VOID, _ammer_init, _OBJ(_I32 _I32) _OBJ(_BYTES _I32) _ARR);');
       ),
       access: [APrivate, AStatic],
     });
+    outputPathRelative = platConfig.hlc ? 'lib${config.name}.%DLL%' : '${config.name}.hdll';
     super.finalise(platConfig);
   }
 

@@ -38,6 +38,7 @@ abstract class BaseLibrary<
   >
 > {
   public var marshal:TMarshal;
+  public var outputPathRelative:String;
 
   var platform:TPlatform;
   var config:TLibraryConfig;
@@ -124,8 +125,11 @@ abstract class BaseLibrary<
 #endif");
   }
 
-  function finalise(config:TConfig):Void {
+  function finalise(platConfig:TConfig):Void {
     if (finalised) throw "library was already finalised";
+    if (outputPathRelative == null) {
+      outputPathRelative = '%LIB%${config.name}.%DLL%';
+    }
     finalised = true;
     for (tdef in tdefs) {
       TypeUtils.defineType(tdef); // TODO: moduleDependency arg

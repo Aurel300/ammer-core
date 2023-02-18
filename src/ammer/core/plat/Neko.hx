@@ -33,7 +33,6 @@ class Neko extends Base<
       includePaths: config.nekoIncludePaths,
       libraryPaths: config.nekoLibraryPaths,
       linkNames: ["neko"],
-      outputPath: lib -> '${config.outputPath}/${lib.config.name}.ndll',
     });
   }
 }
@@ -169,6 +168,7 @@ value* _ammer_haxe_scb;
   return val_null;
 }
 DEFINE_PRIM(_ammer_init, 3);');
+    outputPathRelative = '${config.name}.ndll';
     super.finalise(platConfig);
   }
 

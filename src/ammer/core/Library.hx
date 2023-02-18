@@ -30,6 +30,10 @@ class Library {
     }));
   }
 
+  public function outputPathRelative():String {
+    return this.library.outputPathRelative;
+  }
+
   public function addInclude(include:SourceInclude):Void {
     library.addInclude(include);
   }

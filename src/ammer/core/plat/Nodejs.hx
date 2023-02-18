@@ -60,7 +60,7 @@ class Nodejs extends Base<
         ]
       ));
       ops.push(BODependent(
-        File('${config.outputPath}/${lib.config.name}.node'),
+        File('${config.outputPath}/${lib.outputPathRelative}'),
         File('${config.buildPath}/${lib.config.name}/build/Release/binding.node'),
         Copy
       ));
@@ -329,6 +329,7 @@ NAPI_MODULE_INIT() {
   _ammer_nodejs_env = env;
   return exports;
 }');
+    outputPathRelative = '${config.name}.node';
     super.finalise(platConfig);
   }
 

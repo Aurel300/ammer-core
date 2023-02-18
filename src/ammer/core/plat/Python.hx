@@ -33,10 +33,8 @@ class Python extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.pythonIncludePaths,
       libraryPaths: config.pythonLibraryPaths,
-      defines: lib -> ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"].concat(lib.config.defines),
+      defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
       linkNames: ['python3${BuildProgram.useMSVC ? "" : "."}${config.pythonVersionMinor}'],
-      // .so is intentional on macOS
-      outputPath: lib -> '${config.outputPath}/${lib.config.name}.${BuildProgram.useMSVC ? "pyd" : "so"}',
     });
   }
 }
@@ -215,6 +213,8 @@ PyMODINIT_FUNC PyInit_${config.name}(void) {
   };
   return PyModule_Create2(&_init_module, PYTHON_API_VERSION);
 }');
+    // .so is intentional on macOS
+    outputPathRelative = '${config.name}.${BuildProgram.useMSVC ? "pyd" : "so"}';
     super.finalise(platConfig);
   }
 
