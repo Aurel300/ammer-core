@@ -379,20 +379,20 @@ class CppMarshal extends BaseMarshal<
 > {
   static function baseExtend(
     base:BaseTypeMarshal,
-    ?over:BaseTypeMarshal.BaseTypeMarshalOpt
+    over:BaseTypeMarshal.BaseTypeMarshalOpt
   ):CppTypeMarshal {
     return {
-      haxeType:  over != null && over.haxeType  != null ? over.haxeType  : base.haxeType,
-      l1Type:    over != null && over.l1Type    != null ? over.l1Type    : base.l1Type,
-      l2Type:    over != null && over.l2Type    != null ? over.l2Type    : base.l2Type,
-      l3Type:    over != null && over.l3Type    != null ? over.l3Type    : base.l3Type,
-      mangled:   over != null && over.mangled   != null ? over.mangled   : base.mangled,
-      l1l2:      over != null && over.l1l2      != null ? over.l1l2      : base.l1l2,
-      l2l3:      over != null && over.l2l3      != null ? over.l2l3      : base.l2l3,
-      l3l2:      over != null && over.l3l2      != null ? over.l3l2      : base.l3l2,
-      l2l1:      over != null && over.l2l1      != null ? over.l2l1      : base.l2l1,
-      arrayBits: over != null && over.arrayBits != null ? over.arrayBits : base.arrayBits,
-      arrayType: over != null && over.arrayType != null ? over.arrayType : base.arrayType,
+      haxeType:  over.haxeType  != null ? over.haxeType  : base.haxeType,
+      l1Type:    over.l1Type    != null ? over.l1Type    : base.l1Type,
+      l2Type:    over.l2Type    != null ? over.l2Type    : base.l2Type,
+      l3Type:    over.l3Type    != null ? over.l3Type    : base.l3Type,
+      mangled:   over.mangled   != null ? over.mangled   : base.mangled,
+      l1l2:      over.l1l2      != null ? over.l1l2      : base.l1l2,
+      l2l3:      over.l2l3      != null ? over.l2l3      : base.l2l3,
+      l3l2:      over.l3l2      != null ? over.l3l2      : base.l3l2,
+      l2l1:      over.l2l1      != null ? over.l2l1      : base.l2l1,
+      arrayBits: over.arrayBits != null ? over.arrayBits : base.arrayBits,
+      arrayType: over.arrayType != null ? over.arrayType : base.arrayType,
     };
   }
 
@@ -424,7 +424,7 @@ class CppMarshal extends BaseMarshal<
   // result in the type being represented more "cleanly" in C++, but then it
   // would not as easily be assignable to/from integers
   public function enumInt(name:String, type:CppTypeMarshal):CppTypeMarshal
-    return baseExtend(BaseMarshal.baseEnumInt(name, type));
+    return baseExtend(BaseMarshal.baseEnumInt(name, type), {});
 
   static final MARSHAL_FLOAT32 = baseExtend(BaseMarshal.baseFloat32(), {arrayType: (macro : cpp.Float32)});
   static final MARSHAL_FLOAT64 = baseExtend(BaseMarshal.baseFloat64(), {arrayType: (macro : cpp.Float64)});
