@@ -62,8 +62,8 @@ class LuaLibrary extends BaseLibrary<
     }
     lb.ail('
 static int32_t _ammer_ctr = 0;
-static const char *_ammer_registry_name = "${config.internalPrefix}registry";
-static const char *_ammer_registry_scb = "${config.internalPrefix}scb";
+static const char *_ammer_registry_name = "${config.internalPrefix}_${config.name}_registry";
+static const char *_ammer_registry_scb = "${config.internalPrefix}_${config.name}_scb";
 static lua_State* _ammer_lua_state; // TODO: multiple threads?
 typedef struct { int32_t value; int32_t refcount; } _ammer_haxe_ref;
 static int _ammer_ref_create(lua_State* _lua_state) {
