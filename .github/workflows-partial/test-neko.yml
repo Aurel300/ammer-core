@@ -1,0 +1,30 @@
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+        cd ammer-core/test
+        haxe -D ammercoretest.neko.includepaths="$NEKOPATH/include" -D ammercoretest.neko.librarypaths="$NEKOPATH" build/build-neko.hxml
+
+    - name: Run tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        test/test-neko-linux.sh
+
+    - name: Run tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        test/test-neko-macos.sh
+
+    - name: Run tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-neko-windows.sh

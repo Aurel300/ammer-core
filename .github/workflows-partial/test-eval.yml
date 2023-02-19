@@ -1,0 +1,11 @@
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Run tests
+      run: |
+        haxelib dev ammer-core ammer-core
+        cd ammer-core/test
+        eval $(opam env)
+        haxe -D ammercoretest.eval.haxerepopath="$HAXE_PATH" build/build-eval.hxml

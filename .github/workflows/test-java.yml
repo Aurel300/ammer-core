@@ -1,19 +1,22 @@
+# generated with ./rebuild-gh-actions.sh, do not edit directly
 name: Test java, jvm
 
 on:
   push:
     branches: [master, dev]
-  pull_request:
+    tags:
+      - "v*.*.*"
 
 jobs:
-  test-java:
+  build:
+    env:
+      CI_HAXE_VERSION: '4.2.5'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-
     - name: Adjust path (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -30,29 +33,57 @@ jobs:
         sudo apt update
         sudo apt-get install -y software-properties-common
 
-    - name: Install Haxe (4.2.5)
+    - name: Set up MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Fix "link" (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        # "link" interferes with the MSVC linker
+        rm /usr/bin/link
+
+    - name: Install Haxe
       uses: krdlab/setup-haxe@v1
       with:
-        haxe-version: 4.2.5
+        haxe-version: ${{env.CI_HAXE_VERSION}}
+
+    - name: Set up hxjava
+      shell: bash
+      run: |
+        haxelib --quiet install hxjava
+
+    - name: Set up Java paths (macOS)
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        echo CI_JAVA_INCLUDEPATHS="$JAVA_HOME/include;$JAVA_HOME/include/darwin" >> $GITHUB_ENV
+        echo CI_JAVA_LIBRARYPATHS="$JAVA_HOME/jre/lib/server" >> $GITHUB_ENV
+
+    - name: Set up Java paths (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        echo CI_JAVA_INCLUDEPATHS="$JAVA_HOME/include;$JAVA_HOME/include/linux" >> $GITHUB_ENV
+        echo CI_JAVA_LIBRARYPATHS="$JAVA_HOME/lib/server" >> $GITHUB_ENV
+
+    - name: Set up Java paths (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        echo CI_JAVA_INCLUDEPATHS="$JAVA_HOME\include;$JAVA_HOME\include\win32" >> $GITHUB_ENV
+        echo CI_JAVA_LIBRARYPATHS="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" >> $GITHUB_ENV
 
     - name: Checkout ammer-core
       uses: actions/checkout@v2
       with:
         path: "ammer-core"
 
-    - name: Set up haxelibs
-      shell: bash
-      run: |
-        haxelib --quiet install hxjava
-        haxelib dev ammer-core ammer-core
- 
-    - name: Set up MSVC (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: ilammy/msvc-dev-cmd@v1
-
     - name: Compile tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
+        haxelib dev ammer-core ammer-core
         cd ammer-core/test
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" -D ammercoretest.java.librarypaths="$JAVA_HOME/lib/server" build/build-java.hxml
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" -D ammercoretest.java.librarypaths="$JAVA_HOME/lib/server" build/build-jvm.hxml
@@ -60,6 +91,7 @@ jobs:
     - name: Compile tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
+        haxelib dev ammer-core ammer-core
         cd ammer-core/test
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" -D ammercoretest.java.librarypaths="$JAVA_HOME/jre/lib/server" build/build-java.hxml
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" -D ammercoretest.java.librarypaths="$JAVA_HOME/jre/lib/server" build/build-jvm.hxml
@@ -68,6 +100,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
+        haxelib dev ammer-core ammer-core
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
         cd ammer-core/test

@@ -1,19 +1,22 @@
+# generated with ./rebuild-gh-actions.sh, do not edit directly
 name: Test hl, hlc
 
 on:
   push:
     branches: [master, dev]
-  pull_request:
+    tags:
+      - "v*.*.*"
 
 jobs:
-  test-hl:
+  build:
+    env:
+      CI_HAXE_VERSION: '4.2.5'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-
     - name: Adjust path (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -30,21 +33,28 @@ jobs:
         sudo apt update
         sudo apt-get install -y software-properties-common
 
-    - name: Install Haxe (4.2.5)
+    - name: Set up MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Fix "link" (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        # "link" interferes with the MSVC linker
+        rm /usr/bin/link
+
+    - name: Install Haxe
       uses: krdlab/setup-haxe@v1
       with:
-        haxe-version: 4.2.5
+        haxe-version: ${{env.CI_HAXE_VERSION}}
 
-    - name: Checkout ammer-core
-      uses: actions/checkout@v2
-      with:
-        path: "ammer-core"
+    # TODO: configure Hashlink version (Windows uses 1.12, others checkout latest)
 
-    - name: Set up haxelibs
+    - name: Set up Hashlink haxelib
       shell: bash
       run: |
         haxelib git hashlink https://github.com/HaxeFoundation/hashlink.git master other/haxelib/
-        haxelib dev ammer-core ammer-core
 
     - name: Checkout HashLink (non-Windows)
       if: matrix.os != 'windows-latest'
@@ -67,6 +77,9 @@ jobs:
         make
         sudo make install
 
+        echo CI_HL_INCLUDEPATHS="" >> $GITHUB_ENV
+        echo CI_HL_LIBRARYPATHS="" >> $GITHUB_ENV
+
     - name: Build and install HashLink (macOS)
       if: matrix.os == 'macos-latest'
       run: |
@@ -80,7 +93,11 @@ jobs:
         make
         sudo make install
 
+        echo CI_HL_INCLUDEPATHS="" >> $GITHUB_ENV
+        echo CI_HL_LIBRARYPATHS="" >> $GITHUB_ENV
+
     - name: Install HashLink (1.12, Windows)
+      if: matrix.os == 'windows-latest'
       shell: bash
       run: |
         curl -L https://github.com/HaxeFoundation/hashlink/releases/download/1.12/hl-1.12.0-win.zip -o hashlink.zip
@@ -89,14 +106,18 @@ jobs:
         echo "HASHLINK_PATH=`pwd`" >> $GITHUB_ENV
         echo "HASHLINK_PATH_WIN=$(cygpath -w `pwd`)" >> $GITHUB_ENV
         pwd >> $GITHUB_PATH
+        echo CI_HL_INCLUDEPATHS="$(cygpath -w `pwd`)\include" >> $GITHUB_ENV
+        echo CI_HL_LIBRARYPATHS="$(cygpath -w `pwd`)" >> $GITHUB_ENV
 
-    - name: Set up MSVC (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: ilammy/msvc-dev-cmd@v1
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
 
     - name: Compile tests (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
+        haxelib dev ammer-core ammer-core
         cd ammer-core/test
         haxe build/build-hl.hxml
         haxe build/build-hlc.hxml
@@ -108,6 +129,7 @@ jobs:
     - name: Compile tests (macOS)
       if: matrix.os == 'macos-latest'
       run: |
+        haxelib dev ammer-core ammer-core
         cd ammer-core/test
         haxe build/build-hl.hxml
         haxe build/build-hlc.hxml
@@ -118,6 +140,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
+        haxelib dev ammer-core ammer-core
         # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
         rm /usr/bin/link
         cd ammer-core/test

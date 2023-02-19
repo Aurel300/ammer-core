@@ -1,0 +1,38 @@
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Compile tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        haxelib dev ammer-core ammer-core
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" -D ammercoretest.java.librarypaths="$JAVA_HOME/lib/server" build/build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/linux" -D ammercoretest.java.librarypaths="$JAVA_HOME/lib/server" build/build-jvm.hxml
+
+    - name: Compile tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        haxelib dev ammer-core ammer-core
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" -D ammercoretest.java.librarypaths="$JAVA_HOME/jre/lib/server" build/build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME/include;$JAVA_HOME/include/darwin" -D ammercoretest.java.librarypaths="$JAVA_HOME/jre/lib/server" build/build-jvm.hxml
+ 
+    - name: Compile tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
+        rm /usr/bin/link
+        cd ammer-core/test
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" -D ammercoretest.java.librarypaths="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" build/build-java.hxml
+        haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" -D ammercoretest.java.librarypaths="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" build/build-jvm.hxml
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-java.sh
+        test/test-jvm.sh

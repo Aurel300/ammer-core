@@ -1,0 +1,17 @@
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+        cd ammer-core/test
+        haxe build/build-nodejs.hxml
+
+    - name: Run tests
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-nodejs.sh

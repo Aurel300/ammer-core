@@ -1,19 +1,27 @@
+# generated with ./rebuild-gh-actions.sh, do not edit directly
 name: Test eval
 
 on:
   push:
     branches: [master, dev]
-  pull_request:
+    tags:
+      - "v*.*.*"
 
 jobs:
-  # from https://github.com/HaxeFoundation/haxe/blob/development/.github/workflows/main.yml
-  # TODO: use https://github.com/ocaml/setup-ocaml for ocaml/opam (for caching)
-  test-eval-mac:
-    runs-on: macos-latest
+  build:
     env:
+      CI_HAXE_VERSION: '4.2.5'
       PLATFORM: mac
       OPAMYES: 1
+    strategy:
+      matrix:
+        os: [macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
+    # TODO: this requires env: PLATFORM=mac (for neko) and OPAMYES=1
+    # TODO: checkout CI_HAXE_VERSION instead of latest Haxe
+    # TODO: use https://github.com/ocaml/setup-ocaml for ocaml/opam (for caching)
+    # TODO: also implement for linux, windows
 
     - name: Checkout Haxe
       uses: actions/checkout@v2
@@ -21,11 +29,6 @@ jobs:
         repository: HaxeFoundation/haxe
         submodules: recursive
         path: "haxe"
-
-    - name: Checkout ammer-core
-      uses: actions/checkout@v2
-      with:
-        path: "ammer-core"
 
     - name: Install Neko from S3
       run: |
@@ -103,10 +106,15 @@ jobs:
       shell: bash
       run: |
         haxelib setup ~/haxelib
-        haxelib dev ammer-core ammer-core
+
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
 
     - name: Run tests
       run: |
+        haxelib dev ammer-core ammer-core
         cd ammer-core/test
         eval $(opam env)
         haxe -D ammercoretest.eval.haxerepopath="$HAXE_PATH" build/build-eval.hxml

@@ -1,0 +1,30 @@
+    - name: Checkout ammer-core
+      uses: actions/checkout@v2
+      with:
+        path: "ammer-core"
+
+    - name: Compile tests
+      shell: bash
+      run: |
+        haxelib dev ammer-core ammer-core
+        cd ammer-core/test
+        haxe build/build-cpp-static.hxml
+
+    - name: Run tests (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd ammer-core/test
+        test/test-cpp-static-linux.sh
+
+    - name: Run tests (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd ammer-core/test
+        test/test-cpp-static-macos.sh
+
+    - name: Run tests (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd ammer-core/test
+        test/test-cpp-static-windows.sh
