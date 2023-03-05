@@ -1,4 +1,6 @@
-package ammer.core;
+package ammer.core.build;
+
+#if macro
 
 enum BuildOp {
   BOCwd(
@@ -14,7 +16,6 @@ enum BuildOp {
     requires:BuildOpDependency,
     command:BuildOpCommand
   );
-  // TODO: Haxe bakery
   // TODO: hot reload?
 }
 
@@ -53,3 +54,5 @@ typedef MakeLinkOptions = {
   ?frameworks:Array<String>,
   ?staticLibraries:Array<String>,
 };
+
+#end

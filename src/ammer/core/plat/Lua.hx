@@ -33,7 +33,7 @@ class Lua extends Base<
       includePaths: config.luaIncludePaths,
       libraryPaths: config.luaLibraryPaths,
       // TODO: version, configure, etc
-      linkNames: [BuildProgram.useMSVC ? "lua53" : "lua"],
+      linkNames: [Sys.systemName() == "Windows" ? "lua53" : "lua"],
     });
   }
 }

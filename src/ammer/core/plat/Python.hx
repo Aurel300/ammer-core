@@ -34,7 +34,7 @@ class Python extends Base<
       includePaths: config.pythonIncludePaths,
       libraryPaths: config.pythonLibraryPaths,
       defines: ["NDEBUG", "MAJOR_VERSION=1", "MINOR_VERSION=0"],
-      linkNames: ['python3${BuildProgram.useMSVC ? "" : "."}${config.pythonVersionMinor}'],
+      linkNames: ['python3${Sys.systemName() == "Windows" ? "" : "."}${config.pythonVersionMinor}'],
     });
   }
 }
@@ -214,7 +214,7 @@ PyMODINIT_FUNC PyInit_${config.name}(void) {
   return PyModule_Create2(&_init_module, PYTHON_API_VERSION);
 }');
     // .so is intentional on macOS
-    outputPathRelative = '${config.name}.${BuildProgram.useMSVC ? "pyd" : "so"}';
+    outputPathRelative = '${config.name}.${Sys.systemName() == "Windows" ? "pyd" : "so"}';
     super.finalise(platConfig);
   }
 

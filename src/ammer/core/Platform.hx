@@ -3,6 +3,7 @@ package ammer.core;
 #if macro
 
 import haxe.macro.Context;
+import ammer.core.build.BuildProgram;
 
 class Platform {
   public static function createCurrentPlatform(config:ammer.core.plat.BaseConfig):Platform {

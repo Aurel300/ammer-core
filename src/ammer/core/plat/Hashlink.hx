@@ -39,7 +39,7 @@ class Hashlink extends Base<
     return baseDynamicLinkProgram({
       includePaths: config.hlIncludePaths,
       libraryPaths: config.hlLibraryPaths,
-      linkNames: [BuildProgram.useMSVC ? "libhl" : "hl"],
+      linkNames: [Sys.systemName() == "Windows" ? "libhl" : "hl"],
     });
   }
 }

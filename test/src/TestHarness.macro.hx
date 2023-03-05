@@ -112,11 +112,14 @@ class TestHarness {
 
     platform.addLibrary(library);
     var program = platform.finalise();
-    program.build();
 
+    var builder = ammer.core.Builder.createCurrentBuilder(({} : ammer.core.build.BaseBuilderConfig));
+    builder.build(program);
+
+    final repeats = 1;
     return macro {
       var _allTestsPassed = true;
-      $b{testExprs};
+      for (i in 0...$v{repeats}) $b{testExprs};
       if (!_allTestsPassed) Sys.exit(1);
     };
   }

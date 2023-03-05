@@ -1,5 +1,7 @@
 package ammer.core;
 
+#if macro
+
 enum abstract PlatformId(String) {
   var Cpp = "cpp";
   var Cs = "cs";
@@ -13,3 +15,5 @@ enum abstract PlatformId(String) {
 
   var None = "none";
 }
+
+#end
