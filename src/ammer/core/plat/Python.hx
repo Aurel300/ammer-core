@@ -411,7 +411,7 @@ class PythonMarshal extends BaseMarshal<
   });
   static final MARSHAL_UINT16 = baseExtend(BaseMarshal.baseUint16(), {
     l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLong($l2);',
   });
   static final MARSHAL_INT16 = baseExtend(BaseMarshal.baseInt16(), {
     l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
@@ -419,7 +419,7 @@ class PythonMarshal extends BaseMarshal<
   });
   static final MARSHAL_UINT32 = baseExtend(BaseMarshal.baseUint32(), {
     l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
-    l2l1: (l2, l1) -> '$l1 = PyLong_FromLong($l2);',
+    l2l1: (l2, l1) -> '$l1 = PyLong_FromUnsignedLong($l2);',
   });
   static final MARSHAL_INT32 = baseExtend(BaseMarshal.baseInt32(), {
     l1l2: (l1, l2) -> '$l2 = PyLong_AsLong($l1);',
