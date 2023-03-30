@@ -5,12 +5,21 @@ package ammer.core;
 import haxe.macro.Expr;
 
 typedef FunctionOptions = {
-  // position to use for the corresponding field definitions; default: config.pos
+  /**
+  Position to use for the corresponding field definitions.
+  Default: `config.pos`
+  **/
   ?pos:Position,
 
-  // L3 return expression; default: config.returnIdent
+  /**
+  L3 return expression.
+  Default: `config.returnIdent`
+  **/
   ?l3Return:String,
 
+  /**
+  Comment to include in the generated function.
+  **/
   ?comment:String,
 };
 

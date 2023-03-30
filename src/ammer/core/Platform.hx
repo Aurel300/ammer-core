@@ -5,7 +5,20 @@ package ammer.core;
 import haxe.macro.Context;
 import ammer.core.build.BuildProgram;
 
+/**
+A wrapper for `ammer.core.plat.*` types. This hides the relatively complex type
+parameter scheme used by `ammer.core.plat.Base`, although some type casts are
+needed to pass a platform config or library config.
+
+See https://aurel300.github.io/ammer/core-api.html#platform
+**/
 class Platform {
+  /**
+  Creates a `Platform` instance corresponding to the current Haxe target (e.g.
+  if `-hl example.hl` is passed to Haxe, the HashLink platform will be used).
+  If no output is specified (`--no-output`), then the dummy `None` platform is
+  returned.
+  **/
   public static function createCurrentPlatform(config:ammer.core.plat.BaseConfig):Platform {
     var kind:PlatformId;
     var plat:Dynamic;
@@ -45,7 +58,14 @@ class Platform {
     return new Platform(kind, plat);
   }
 
+  /**
+  Which platform is this?
+  **/
   public var kind(default, null):PlatformId;
+
+  /**
+  The underlying `ammer.core.plat.*` type.
+  **/
   var plat:Dynamic;
 
   function new(kind:PlatformId, plat:Dynamic) {
@@ -53,14 +73,28 @@ class Platform {
     this.plat = plat;
   }
 
+  /**
+  Creates a library for this platform given a library configuration, then
+  returns it.
+  **/
   public function createLibrary(config:LibraryConfig):Library {
     return @:privateAccess new Library(kind, plat.createLibrary(config));
   }
 
+  /**
+  Adds a completed library to this platform. Once added, the library cannot be
+  modified anymore. The library will be included in the build program returned
+  by `finalise`.
+  **/
   public function addLibrary(library:Library):Void {
     plat.addLibrary(@:privateAccess library.library);
   }
 
+  /**
+  Finalises this platform. Libraries cannot be created or added after this is
+  called. Returns a build program (sequence of build steps) that can be passed
+  to a `Builder`.
+  **/
   public function finalise():BuildProgram {
     return plat.finalise();
   }

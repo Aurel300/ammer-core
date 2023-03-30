@@ -1,5 +1,12 @@
 package ammer.core;
 
+#if macro
+
+/**
+Statements to include header files in the glue code.
+
+See https://aurel300.github.io/ammer/ref-flags.html#lib.headers
+**/
 @:using(ammer.core.SourceInclude.SourceIncludeTools)
 enum SourceInclude {
   IncludeLocal(path:String);
@@ -19,3 +26,5 @@ class SourceIncludeTools {
     });
   }
 }
+
+#end

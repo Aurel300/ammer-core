@@ -1,5 +1,7 @@
 package ammer.core.utils;
 
+#if macro
+
 import haxe.macro.Context;
 import haxe.macro.Expr;
 
@@ -47,3 +49,5 @@ class TypeUtils {
     Context.defineType(tdef);
   }
 }
+
+#end

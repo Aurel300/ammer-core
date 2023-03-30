@@ -1,7 +1,18 @@
 package ammer.core.plat;
 
+#if macro
+
 import haxe.macro.Expr;
 
+/**
+Base class for a platform. The type parameters are used to make sure that each
+platform can define its own extensions to the related types (platform
+configuration, per-library configuration, type marshal representations). To
+avoid dealing with the type parameters (at the cost of some type safety), use
+`ammer.core.Platform`.
+
+See `ammer.core.Platform` for documentation of the public methods as well.
+**/
 @:allow(ammer.core.plat)
 abstract class Base<
   TSelf:Base<
@@ -50,6 +61,20 @@ abstract class Base<
 
   abstract public function finalise():BuildProgram;
 
+  /**
+  Many platforms implement `finalise` in similar ways, performing the following
+  steps for each library:
+
+  0. (Create the necessary directories.)
+  1. Write the main buffer (`lb`) of the library to a file.
+  2. Compile the file into an object file.
+  3. Link that object file into a dynamic library.
+
+  This method performs these steps, allowing minor adjustments to the include
+  paths, library paths, libraries to link against, and compile-time defines,
+  all of which are usually needed to be able to link against a target's FFI
+  mechanism.
+  **/
   function baseDynamicLinkProgram(options:{
     ?includePaths:Array<String>,
     ?libraryPaths:Array<String>,
@@ -103,3 +128,5 @@ abstract class Base<
     return new BuildProgram(ops);
   }
 }
+
+#end

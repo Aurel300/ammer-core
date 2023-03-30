@@ -2,6 +2,9 @@ package ammer.core;
 
 #if macro
 
+/**
+Identifier for platforms known to `ammer-core`.
+**/
 enum abstract PlatformId(String) {
   var Cpp = "cpp";
   var Cs = "cs";

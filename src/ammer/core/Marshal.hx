@@ -4,6 +4,11 @@ package ammer.core;
 
 import haxe.macro.Expr;
 
+/**
+A wrapper for `ammer.core.plat.(Platform).(Platform)Marshal` types.
+
+See file:///DevProjects/Repos/redok2/build/core-api.html#marshal
+**/
 class Marshal {
   var kind:PlatformId;
   var marshal:Dynamic;

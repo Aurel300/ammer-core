@@ -1,8 +1,8 @@
 # `ammer-core`
 
-`ammer-core` is the foundation for [`ammer`](https://github.com/Aurel300/ammer). It is a [Haxe](https://haxe.org/) macro library which allows Haxe code to call C code and vice versa with a unified interface. The table below shows which targets are supported.
+`ammer-core` is the foundation for [`ammer`](https://github.com/Aurel300/ammer). It is a [Haxe](https://haxe.org/) macro library which allows Haxe code to call C code and vice versa with a unified interface. The table below shows the CI status for each supported target on major operating systems.
 
-Documentation coming soon.
+Documentation is mainly to be found in the source code, although there is a [high-level overview](https://aurel300.github.io/ammer/core.html) in the `ammer` manual.
 
 | Target        | Linux | macOS | Windows | CI status |
 | ------------- |:-----:|:-----:|:-------:| ---------:|

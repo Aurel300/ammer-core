@@ -1,5 +1,12 @@
 package ammer.core;
 
+#if macro
+
+/**
+Languages used to generate the glue code.
+
+See https://aurel300.github.io/ammer/configuration-library.html#language
+**/
 @:using(ammer.core.LibraryLanguage.LibraryLanguageTools)
 enum LibraryLanguage {
   C;
@@ -27,3 +34,5 @@ class LibraryLanguageTools {
     });
   }
 }
+
+#end
