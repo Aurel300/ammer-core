@@ -49,6 +49,32 @@ jobs:
       with:
         haxe-version: ${{env.CI_HAXE_VERSION}}
 
+    # TODO: configurable Python version
+    # TODO: make use of python3-config --cflags, python3-config --ldflags, python3-config --libs
+    - name: Set up Python paths (macOS)
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        echo CI_PYTHON_VERSION=11 >> $GITHUB_ENV
+        echo CI_PYTHON_INCLUDEPATHS="/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11;/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11" >> $GITHUB_ENV
+        echo CI_PYTHON_LIBRARYPATHS="/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/config-3.11-darwin" >> $GITHUB_ENV
+
+    - name: Set up Python paths (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash
+      run: |
+        echo CI_PYTHON_VERSION=10 >> $GITHUB_ENV
+        echo CI_PYTHON_INCLUDEPATHS="/usr/include/python3.10" >> $GITHUB_ENV
+        echo CI_PYTHON_LIBRARYPATHS="/usr/lib/python3.10/config-3.10-x86_64-linux-gnu" >> $GITHUB_ENV
+
+    - name: Set up Python paths (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        echo CI_PYTHON_VERSION=9 >> $GITHUB_ENV
+        echo CI_PYTHON_INCLUDEPATHS="C:\hostedtoolcache\windows\Python\3.9.13\x64\include" >> $GITHUB_ENV
+        echo CI_PYTHON_LIBRARYPATHS="C:\hostedtoolcache\windows\Python\3.9.13\x64\libs" >> $GITHUB_ENV
+
     - name: Checkout ammer-core
       uses: actions/checkout@v2
       with:

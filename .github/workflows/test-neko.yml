@@ -49,6 +49,12 @@ jobs:
       with:
         haxe-version: ${{env.CI_HAXE_VERSION}}
 
+    - name: Set up Neko paths
+      shell: bash
+      run: |
+        echo CI_NEKO_INCLUDEPATHS="$NEKOPATH/include" >> $GITHUB_ENV
+        echo CI_NEKO_LIBRARYPATHS="$NEKOPATH" >> $GITHUB_ENV
+
     - name: Checkout ammer-core
       uses: actions/checkout@v2
       with:

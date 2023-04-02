@@ -24,8 +24,6 @@
       shell: bash
       run: |
         haxelib dev ammer-core ammer-core
-        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
-        rm /usr/bin/link
         cd ammer-core/test
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" -D ammercoretest.java.librarypaths="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" build/build-java.hxml
         haxe -D ammercoretest.java.includepaths="$JAVA_HOME\include;$JAVA_HOME\include\win32" -D ammercoretest.java.librarypaths="$JAVA_HOME\jre\bin\server;$JAVA_HOME\lib" build/build-jvm.hxml

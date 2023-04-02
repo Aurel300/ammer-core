@@ -30,8 +30,6 @@
       shell: bash
       run: |
         haxelib dev ammer-core ammer-core
-        # https://github.com/ilammy/msvc-dev-cmd#name-conflicts-with-shell-bash
-        rm /usr/bin/link
         cd ammer-core/test
         mkdir -p bin/hlc
         cp "$HASHLINK_PATH/libhl.dll" bin/hlc
