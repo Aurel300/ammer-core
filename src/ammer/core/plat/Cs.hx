@@ -96,25 +96,35 @@ $export uint8_t* _ammer_cs_fromhaxecopy(uint8_t* data, int size) {
   }
 
   override function finalise(platConfig:CsConfig):Void {
-    lb
-      .ail('
+    if (delegateCtr > 0) {
+      lb
+        .ail('
 $export int _ammer_init(void* delegates[${delegateCtr}]) {
   _ammer_delegates = (void**)${config.mallocFunction}(sizeof(void*) * ${delegateCtr});
   ${config.memcpyFunction}(_ammer_delegates, delegates, sizeof(void*) * ${delegateCtr});
   return 0;
 }');
-    lbImport
-      .ai("[System.Runtime.InteropServices.DllImport(")
-        .al('"${config.name}.dll")]')
-      .ail("public static extern int _ammer_init([System.Runtime.InteropServices.MarshalAs(")
-        .a("System.Runtime.InteropServices.UnmanagedType.LPArray,")
-        .a('SizeConst = ${delegateCtr}')
-        .a(")] System.IntPtr[] delegates);")
-      .ail("static int _ammer_native = _ammer_init(new System.IntPtr[]{")
-        .lmap([ for (idx in 0...delegateCtr) idx ], (idx) ->
-          'System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate('
-            + 'System.Delegate.CreateDelegate(typeof(ClosureDelegate${idx}), typeof(CoreExtern_${config.name}), "ImplClosureDelegate${idx}")),')
-      .ail("});");
+      lbImport
+        .ai('[System.Runtime.InteropServices.DllImport("${config.name}.dll")]')
+        .ail("public static extern int _ammer_init([System.Runtime.InteropServices.MarshalAs(")
+          .a("System.Runtime.InteropServices.UnmanagedType.LPArray,")
+          .a('SizeConst = ${delegateCtr}')
+          .a(")] System.IntPtr[] delegates);")
+        .ail("static int _ammer_native = _ammer_init(new System.IntPtr[]{")
+          .lmap([ for (idx in 0...delegateCtr) idx ], (idx) ->
+            'System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate('
+              + 'System.Delegate.CreateDelegate(typeof(ClosureDelegate${idx}), typeof(CoreExtern_${config.name}), "ImplClosureDelegate${idx}")),')
+        .ail("});");
+    } else {
+      lb.ail('
+$export int _ammer_init(void) {
+  return 0;
+}');
+      lbImport
+        .ai('[System.Runtime.InteropServices.DllImport("${config.name}.dll")]')
+        .ail("public static extern int _ammer_init();")
+        .ail("static int _ammer_native = _ammer_init();");
+    }
     tdef.meta.push({
       pos: Context.currentPos(),
       params: [macro $v{lbImport.done()}],
