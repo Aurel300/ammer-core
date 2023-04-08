@@ -42,6 +42,7 @@ class Nodejs extends Base<
   "target_name": "binding",
   "sources": ["lib.nodejs.$ext"],
   "include_dirs": [${lib.config.includePaths.map(p -> '"$p"').join(",")}],
+  "defines": [${lib.config.defines.map(p -> '"$p"').join(",")}],
   "link_settings": {
     "library_dirs": [${lib.config.libraryPaths.map(p -> '"$p"').join(",")}],
     "libraries": [${lib.config.linkNames.map(p -> '"-l$p"').concat(lib.config.frameworks.map(f -> '"$f.framework"')).join(",")}],
@@ -247,7 +248,13 @@ static napi_value _ammer_nodejs_fromhaxecopy(napi_env _nodejs_env, napi_callback
   NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
   uint8_t* data;
   size_t size;
-  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  bool _nodejs_is_buffer = false;
+  NAPI_CALL_I(napi_is_buffer(_nodejs_env, _nodejs_argv[0], &_nodejs_is_buffer));
+  if (_nodejs_is_buffer) {
+    NAPI_CALL_I(napi_get_buffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  } else {
+    NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  }
   uint8_t* data_res = (uint8_t*)${config.mallocFunction}(size);
   ${config.memcpyFunction}(data_res, data, size);
   napi_value res;
@@ -293,7 +300,13 @@ static napi_value _ammer_nodejs_fromhaxeref(napi_env _nodejs_env, napi_callback_
   NAPI_CALL_I(napi_get_cb_info(_nodejs_env, _nodejs_cbinfo, &_nodejs_argc, _nodejs_argv, NULL, NULL));
   uint8_t* data;
   size_t size;
-  NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  bool _nodejs_is_buffer = false;
+  NAPI_CALL_I(napi_is_buffer(_nodejs_env, _nodejs_argv[0], &_nodejs_is_buffer));
+  if (_nodejs_is_buffer) {
+    NAPI_CALL_I(napi_get_buffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  } else {
+    NAPI_CALL_I(napi_get_arraybuffer_info(_nodejs_env, _nodejs_argv[0], (void**)&data, &size));
+  }
   napi_value res;
   NAPI_CALL_I(napi_create_object(_nodejs_env, &res));
   NAPI_CALL_I(napi_wrap(_nodejs_env, res, (void*)data, NULL, NULL, NULL));
