@@ -29,18 +29,24 @@ class Cpp extends Base<
   }
 
   public function finalise():BuildProgram {
+    // C++ does not use `ammer.buildPath`. It uses the compiler output path
+    // (`--cpp the/path/here`), to make it easy for `@:headerCode` to include
+    // header with relative paths during `hxcpp` compilation.
+    var outputPath = haxe.macro.Compiler.getOutput();
+
     var ops:Array<BuildOp> = [];
     for (lib in libraries) {
       var ext = lib.config.language.extension();
       var exth = lib.config.language.extensionHeader();
-      ops.push(BOAlways(File('${config.buildPath}/${lib.config.name}'), EnsureDirectory));
+      ops.push(BOAlways(File('${outputPath}/ammer_build/${lib.config.name}'), EnsureDirectory));
       ops.push(BOAlways(File(config.outputPath), EnsureDirectory));
+
       ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/lib.cpp_static.$exth'),
+        File('${outputPath}/${lib.headerPath}'),
         WriteContent(lib.lbHeader.done())
       ));
       ops.push(BOAlways(
-        File('${config.buildPath}/${lib.config.name}/lib.cpp_static.$ext'),
+        File('${outputPath}/${lib.codePath}'),
         WriteContent(lib.lb.done())
       ));
     }
@@ -61,7 +67,6 @@ class CppLibrary extends BaseLibrary<
   var definedNativeTypes:Map<String, ComplexType> = [];
   var haxeRefCt:ComplexType = null;
 
-  var absLibPath:String;
   var headerPath:String;
   var codePath:String;
 
@@ -109,16 +114,26 @@ class CppLibrary extends BaseLibrary<
     });
   }
 
+  function outputRelativePath(pack:Array<String>, target:String):String {
+    // an extra `../` for `src` or `include`
+    return pack.map(part -> "../").join("") + "../" + target;
+  }
+
   public function addCppIncludes(tdef:TypeDefinition, code:Bool):Void {
     tdef.meta.push({
       pos: config.pos,
-      params: [macro $v{"#include \"" + headerPath + "\""}],
+      params: [macro $v{"#include \"" + outputRelativePath(tdef.pack, headerPath) + "\""}],
       name: ":headerCode",
     });
     if (code) {
+      var fileCode = new LineBuf();
+      for (define in config.definesCodeOnly) {
+        fileCode.ail('#define $define');
+      }
+      fileCode.ail("#include \"" + outputRelativePath(tdef.pack, codePath) + "\"");
       tdef.meta.push({
         pos: config.pos,
-        params: [macro $v{"#include \"" + codePath + "\""}],
+        params: [macro $v{fileCode.done()}],
         name: ":cppFileCode",
       });
     }
@@ -129,14 +144,22 @@ class CppLibrary extends BaseLibrary<
 
     var exth = config.language.extensionHeader();
     var ext = config.language.extension();
-    absLibPath = sys.FileSystem.absolutePath('${platform.config.buildPath}/${config.name}');
-    headerPath = '$absLibPath/lib.cpp_static.$exth';
-    codePath = '$absLibPath/lib.cpp_static.$ext';
+    headerPath = 'ammer_build/${config.name}/lib.cpp_static.$exth';
+    codePath = 'ammer_build/${config.name}/lib.cpp_static.$ext';
 
     addCppIncludes(tdef, true);
     tdefStaticCallbacks.meta.push({
       pos: config.pos,
       name: ":unreflective",
+    });
+    tdef.fields.push({
+      pos: config.pos,
+      name: "_ammer_haxe_scb",
+      kind: FVar(TPath({
+        pack: tdefStaticCallbacks.pack,
+        name: tdefStaticCallbacks.name,
+      }), macro null),
+      access: [APrivate, AStatic],
     });
 
     // TODO: share type across libraries?
@@ -203,34 +226,40 @@ void _ammer_ref_${config.name}_delete(_ammer_haxe_ref* ref) {
 
   override function finalise(platConfig:CppConfig):Void {
     // TODO: file dependency to trigger recompilation when stubs change
-    var xml = new LineBuf()
-      .ail('<files id="haxe">')
-      .i()
+
+    // This is kept in a separate meta with a comment tag to allow `ammer` to
+    // rewrite it when baking libraries.
+    var buildXmlPaths = new LineBuf()
+      .ail('<!--ammer_core_paths:${config.name}--><files id="haxe">').i()
         .lmap(config.includePaths, path -> '<compilerflag value="-I$path"/>')
-      .d()
-      .ail("</files>")
-      //.ifi(!platConfig.staticLink)
-        .ail('<target id="haxe">')
-        .i()
-          .lmap(config.libraryPaths, path -> '<libpath name="$path"/>')
-          .lmap(config.linkNames, name -> '<lib name="-l$name" unless="windows" />')
-          .lmap(config.linkNames, name -> '<lib name="$name" if="windows" />')
-          // TODO: allow only on Mac
-          .lmap(config.frameworks, name -> '<flag value="-framework" /><flag value="$name" />')
-        .d()
-        .ail("</target>")
-      //.ifd()
+      .d().ail('</files>')
+      .ail('<target id="haxe">').i()
+        .lmap(config.libraryPaths, path -> '<libpath name="$path"/>')
+      .d().ail("</target>")
       .done();
     tdef.meta.push({
       name: ":buildXml",
-      params: [{expr: EConst(CString(xml)), pos: config.pos}],
+      params: [{expr: EConst(CString(buildXmlPaths)), pos: config.pos}],
       pos: config.pos
     });
-    //tdef.meta.push({
-    //  name: ":fileXml",
-    //  params: [{expr: EConst(CString(xml)), pos: config.pos}],
-    //  pos: config.pos
-    //});
+
+    var buildXml = new LineBuf()
+      .ail('<files id="haxe">').i()
+        .lmap(config.defines, name -> '<compilerflag value="-D$name"/>')
+      .d().ail("</files>")
+      .ail('<target id="haxe">').i()
+        .lmap(config.linkNames, name -> '<lib name="-l$name" unless="windows" />')
+        .lmap(config.linkNames, name -> '<lib name="$name" if="windows" />')
+        // TODO: allow only on Mac
+        .lmap(config.frameworks, name -> '<flag value="-framework" /><flag value="$name" />')
+      .d().ail("</target>")
+      .done();
+    tdef.meta.push({
+      name: ":buildXml",
+      params: [{expr: EConst(CString(buildXml)), pos: config.pos}],
+      pos: config.pos
+    });
+
     super.finalise(platConfig);
     outputPathRelative = null;
   }

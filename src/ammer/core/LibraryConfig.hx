@@ -38,6 +38,11 @@ class LibraryConfig {
   public var defines:Array<String> = [];
 
   /**
+  See https://aurel300.github.io/ammer/ref-flags.html#lib.definescodeonly
+  **/
+  public var definesCodeOnly:Array<String> = [];
+
+  /**
   See https://aurel300.github.io/ammer/ref-flags.html#lib.language
   **/
   public var language:LibraryLanguage = C;

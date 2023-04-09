@@ -104,7 +104,8 @@ abstract class Base<
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.$ext'),
         CompileObject(lib.config.language, {
-          defines: lib.config.defines.concat(options.defines != null ? options.defines : []),
+          defines: lib.config.defines.concat(options.defines != null ? options.defines : [])
+            .concat(lib.config.definesCodeOnly),
           includePaths: (options.includePaths != null ? options.includePaths : [])
             .concat(lib.config.includePaths),
         })
@@ -114,7 +115,8 @@ abstract class Base<
         File('${config.outputPath}/${lib.outputPathRelative}'),
         File('${config.buildPath}/${lib.config.name}/lib.$platformId.%OBJ%'),
         LinkLibrary(lib.config.language, {
-          defines: lib.config.defines.concat(options.defines != null ? options.defines : []),
+          defines: lib.config.defines.concat(options.defines != null ? options.defines : [])
+            .concat(lib.config.definesCodeOnly),
           libraryPaths: (options.libraryPaths != null ? options.libraryPaths : [])
             .concat(lib.config.libraryPaths),
           libraries: (options.linkNames != null ? options.linkNames : [])

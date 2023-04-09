@@ -42,7 +42,7 @@ class Nodejs extends Base<
   "target_name": "binding",
   "sources": ["lib.nodejs.$ext"],
   "include_dirs": [${lib.config.includePaths.map(p -> '"$p"').join(",")}],
-  "defines": [${lib.config.defines.map(p -> '"$p"').join(",")}],
+  "defines": [${lib.config.defines.map(p -> '"$p"').concat(lib.config.definesCodeOnly.map(p -> '"$p"')).join(",")}],
   "link_settings": {
     "library_dirs": [${lib.config.libraryPaths.map(p -> '"$p"').join(",")}],
     "libraries": [${lib.config.linkNames.map(p -> '"-l$p"').concat(lib.config.frameworks.map(f -> '"$f.framework"')).join(",")}],
